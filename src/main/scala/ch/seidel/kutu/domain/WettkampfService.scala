@@ -900,6 +900,7 @@ trait WettkampfService extends DBService
                    where programm_Id in #${programs.map(_.id).mkString("(", ",", ")")}
            """.as[Long].withPinnedSession
       }, Duration.Inf)
+      lazy val hadRiege2 = hasWettkampfRiege2Assignments(wettkampfId)
 
       withAthlets.foreach { aidPair =>
         val (aid, media) = aidPair
@@ -929,9 +930,10 @@ trait WettkampfService extends DBService
         }, Duration.Inf)
         .map(t => {
           val wertung = getWertung(t._2).copy(wettkampfdisziplin = readWettkampfDisziplinView(wettkampfId, t._1, cache2))
+          val riege2 = if hadRiege2 then generateRiegen2Name(wertung) else None
           (t._2,
             generateRiegenName(wertung),
-            generateRiegen2Name(wertung),
+            riege2
           )
         })
 
@@ -954,6 +956,15 @@ trait WettkampfService extends DBService
         }).transactionally
       }, Duration.Inf)
     }
+  }
+
+  def hasWettkampfRiege2Assignments(wettkampfId: Long): Boolean = {
+    Await.result(database.run {
+      sql"""
+                   select count(id) from wertung
+                   where wettkampf_Id=$wettkampfId and riege2 is not null and riege2 != ''
+           """.as[Long].withPinnedSession
+    }, Duration.Inf).head > 0
   }
 
   def moveToProgram(event: AthletMovedInWettkampf): Seq[String] = {
@@ -983,7 +994,7 @@ trait WettkampfService extends DBService
         val newWertung = wertung.copy(wettkampfdisziplin = wkDiszView, team = event.team)
         (newWertung.id, newWertung.wettkampfdisziplin.id,
           generateRiegenName(newWertung), oldRiegenName,
-          generateRiegen2Name(newWertung), oldRiegen2Name,
+          if oldRiegen2Name != null && oldRiegen2Name.nonEmpty then generateRiegen2Name(newWertung) else None, oldRiegen2Name,
           newWertung.team, oldTeam
         )
       }

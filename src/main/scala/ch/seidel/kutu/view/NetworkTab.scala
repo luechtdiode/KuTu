@@ -313,7 +313,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   private val isRunning: BooleanProperty = BooleanProperty(false)
 
-  private def refreshData(): Unit = {
+  private def refreshData(fullsync: Boolean = false): Unit = {
       val expandedStates = model
         .filter(_.isExpanded)
         .map(_.value.value.durchgang.title)
@@ -348,24 +348,21 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
           }
         }
       }
-      if model.isEmpty then {
+      if fullsync || model.isEmpty || items.isEmpty then {
         model.setAll(items.asJavaCollection)
       } else {
-        items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
         if items.size < model.size then {
           model.removeRange(items.size, model.size - 1)
         }
-        if model.isEmpty then {
+        items.zip(model).foreach(pair => syncTreeItems(pair._1, pair._2))
+        if model.isEmpty || items.size > model.size then {
           val collection = items.asJavaCollection
           model.setAll(collection)
-        }
-        if items.size > model.size then {
-          items.drop(model.size).foreach(model.add)
         }
       }
 
       isRunning.set(model.exists(_.getValue.isRunning))
-      selected.foreach(selection => {
+      if !fullsync then selected.foreach(selection => {
         if selection.column > -1 && view.getColumns.size() > selection.column then {
           val column = view.getColumns.get(selection.column)
           view.selectionModel.value.select(selection.row, column)
@@ -377,13 +374,13 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
     if !target.getValue.equals(source.getValue) then {
       target.value = source.getValue
     }
-    source.children.zip(target.children).foreach(pair => syncTreeItems(pair._1, pair._2))
     if source.children.size < target.children.size then {
       target.children.removeRange(source.children.size, target.children.size - 1)
     }
     if source.children.size > target.children.size then {
       target.children.addAll(source.children.drop(target.children.size))
     }
+    source.children.zip(target.children).foreach(pair => syncTreeItems(pair._1, pair._2))
     target.expanded = source.isExpanded
   }
 
@@ -397,7 +394,7 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   onSelectionChanged = _ => {
     if selected.value then {
-      refreshData()
+      refreshData(true)
       updateButtons()
     }
   }

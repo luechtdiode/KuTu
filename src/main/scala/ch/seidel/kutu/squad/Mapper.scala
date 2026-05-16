@@ -26,7 +26,8 @@ trait Mapper {
     riegen.map(gr => gr.turnerriegen.map(tr => tr.name -> index(tr.name)).toMap).toSeq
   }
 
-  protected def rebuildDurchgangWertungen(riegen: Iterable[(String, String, Disziplin, Seq[WertungViewsZuAthletView])]): Map[String, Map[Disziplin, Iterable[(String, Seq[Wertung])]]] =
+  protected def rebuildDurchgangWertungen(riegen: Iterable[(String, String, Disziplin, Seq[WertungViewsZuAthletView])]): Map[String, Map[Disziplin, Iterable[(String, Seq[Wertung])]]] = {
+    val hasBarren = riegen.exists(r => r._3.name.equals("Barren"))
     riegen.groupBy { r => r._1 }
       .map { rr =>
         val (durchgang, disz) = rr
@@ -39,11 +40,12 @@ trait Mapper {
             logger.debug(riegenname, wertungen.size)
             (riegenname, wertungen.flatMap { wv =>
               wv._2.map(wt =>
-                wt.toWertung(riegenname, generateRiegen2Name(wt))
+                if hasBarren then wt.toWertung.copy(riege = Some(riegenname)) else wt.toWertung(riegenname, generateRiegen2Name(wt))
               )
             })
           })
         })
       }
+  }
 
 }

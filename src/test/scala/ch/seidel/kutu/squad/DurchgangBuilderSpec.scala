@@ -568,20 +568,31 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
       expectedStartIds should not be empty
     }
 
-    "derive Riegen2 target durchgaenge from suggested subset only" in {
+    "create one R2 durchgang per Kategorie with local riege2 groupings" in {
       val builder = DurchgangBuilder(this)
-      val disziplin = Disziplin(1L, "Boden")
-      val dummyWertung = Wertung(1L, 1L, 1L, 1L, "uuid", None, None, None, Some("R1"), Some("Barren K1"), Some(0), None, None)
+      val disziplin = Disziplin(1L, "Barren")
+      val k1Wertung = Wertung(1L, 1L, 1L, 1L, "uuid", None, None, None, Some("R1"), Some("Barren K1"), Some(0), None, None)
+      val k2Wertung = Wertung(2L, 2L, 2L, 1L, "uuid", None, None, None, Some("R2"), Some("Barren K2"), Some(0), None, None)
+      val k3Wertung = Wertung(3L, 3L, 2L, 1L, "uuid", None, None, None, Some("R2"), Some("Barren K2"), Some(0), None, None)
       val suggested: SuggestedDurchgaenge = Map(
-        "K1 (1)" -> Map(disziplin -> Seq("R1" -> Seq(dummyWertung))),
-        "K2 (1)" -> Map(disziplin -> Seq("R2" -> Seq(dummyWertung.copy(id = 2L, riege2 = None))))
+        "K1 (1)" -> Map(disziplin -> Seq("Barren K1" -> Seq(k1Wertung))),
+        "K2 (1)" -> Map(disziplin -> Seq("Barren K2" -> Seq(k2Wertung))),
+        "K2 (2)" -> Map(disziplin -> Seq("Barren K2" -> Seq(k3Wertung)))
       )
 
-      val separated = builder.separateRiegen2DurchgaengeFromSuggested(suggested)
+      val riege2Assignments = Map(
+        "Barren K1" -> ("K1 - R2", disziplin),
+        "Barren K2" -> ("K2 - R2", disziplin)
+      )
 
-      separated.keySet shouldBe Set("K1 (1)", "K1 (1) - R2", "K2 (1)")
-      separated("K1 (1)")(disziplin).head._2.head.riege2 shouldBe None
-      separated("K1 (1) - R2")(disziplin).head._1 shouldBe "Barren K1"
+      val separated = builder.separateRiegen2DurchgaengeFromSuggested(
+        suggested,
+        riege2Assignments
+      )
+
+      separated.keySet shouldBe Set("K1 - R2", "K2 - R2")
+      separated("K1 - R2")(disziplin).map(_._1).toSet shouldBe Set("Barren K1")
+      separated("K2 - R2")(disziplin).map(_._1).toSet shouldBe Set("Barren K2")
     }
   }
 }

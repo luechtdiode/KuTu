@@ -1,7 +1,6 @@
 package ch.seidel.kutu.squad
 
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.squad.RiegenBuilder.generateRiegen2Name
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -26,10 +25,9 @@ trait RiegenGrouper extends RiegenSplitter {
   private def toRiege(athletenZuRiegenName: (String, Seq[WertungViewsZuAthletView])): WertungenZuRiege = {
     val (riegenname, athletenWertungen) = athletenZuRiegenName
 
-    val wertungen = athletenWertungen.flatMap { athletenWertung => {
+    val wertungen = athletenWertungen.flatMap { athletenWertung =>
       val (athlet, wertungen) = athletenWertung
-      wertungen.map(wt => wt.toWertung(riegenname, generateRiegen2Name(wt)))
-    }
+      wertungen.map(wt => wt.toWertung(riegenname, wt.riege2))
     }
 
     (riegenname, wertungen)

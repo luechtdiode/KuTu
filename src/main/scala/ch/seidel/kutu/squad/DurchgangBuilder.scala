@@ -42,7 +42,14 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       }
 
       val suggested = rebuildDurchgangWertungen(riegen)
-      if separateRiegen2Durchgaenge then separateRiegen2DurchgaengeFromSuggested(suggested) else suggested
+      if separateRiegen2Durchgaenge then
+        val wettkampfdisziplinIdToKategorieUndStart = filteredWert.values.flatten
+          .map(_.wettkampfdisziplin).toSet
+          .map(w => w.id -> (w.programm.name, w.disziplin))
+          .toMap
+        val riege2Assignments = extractRiege2ToDurchgangMapping(suggested, wettkampfdisziplinIdToKategorieUndStart)
+        suggested ++ separateRiegen2DurchgaengeFromSuggested(suggested, riege2Assignments)
+      else suggested
     }
   }
 
@@ -55,61 +62,62 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
     DurchgangGrouper.groupDurchgaengeByKategorien(suggested, maxParallelProGruppe)
   }
 
-  def suggestRiegen2DurchgangAssignments(wettkampfId: Long, maxRiegenSize: Int = 0,
-      durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
-      splitSexOption: Option[SexDivideRule] = None, splitPgm: Boolean = true,
-      onDisziplinList: Option[Set[Disziplin]] = None): Map[String, String] = {
-    val suggested = suggestDurchgaenge(wettkampfId, maxRiegenSize, durchgangfilter, programmfilter, splitSexOption, splitPgm, onDisziplinList)
-    suggestRiegen2DurchgangAssignmentsFromSuggested(suggested)
-  }
-
-  def suggestRiegen2DurchgangAssignmentsFromSuggested(suggested: SuggestedDurchgaenge): Map[String, String] = {
-    val riege2ToDurchgangTargets = suggested.toSeq.sortBy(_._1).flatMap { case (durchgangName, startMap) =>
+  private def extractRiege2ToDurchgangMapping(suggested: SuggestedDurchgaenge, wdToKategorieMap: Map[Long, (String, Disziplin)]): Map[String, (String, Disziplin)] = {
+    suggested.toSeq.sortBy(_._1).flatMap { case (durchgangName, startMap) =>
       val riege2Names = startMap.values.toSeq
         .flatMap(_.toSeq)
         .flatMap(_._2)
-        .flatMap(_.riege2)
-      riege2Names.map(r2 => r2 -> s"$durchgangName - R2")
-    }
+        .flatMap(w => w.riege2.map(r => r -> wdToKategorieMap(w.wettkampfdisziplinId))).toMap
 
-    riege2ToDurchgangTargets
-      .groupBy(_._1)
-      .view
-      .mapValues(targets => targets.map(_._2).distinct.sorted.head)
-      .toMap
+      riege2Names.map(r2 =>
+          val (r2Name, (kategorie, start)) = r2
+          r2Name -> (s"$kategorie (${start.name})", start)
+      )
+    }.toMap
   }
 
-  private[squad] def separateRiegen2DurchgaengeFromSuggested(suggested: SuggestedDurchgaenge): SuggestedDurchgaenge = {
-    val result = mutable.LinkedHashMap.empty[String, DurchgangStationZuteilung]
+  private[squad] def separateRiegen2DurchgaengeFromSuggested(
+      suggested: SuggestedDurchgaenge,
+      riege2Assignments: Map[String, (String, Disziplin)]): SuggestedDurchgaenge = {
 
-    suggested.toSeq.sortBy(_._1).foreach { case (durchgangName, startMap) =>
-      val mainByStart = mutable.LinkedHashMap.empty[Disziplin, mutable.LinkedHashMap[String, Seq[Wertung]]]
-      val r2ByStart = mutable.LinkedHashMap.empty[Disziplin, mutable.LinkedHashMap[String, Seq[Wertung]]]
-
-      startMap.toSeq.sortBy(_._1.id).foreach { case (start, riegen) =>
-        val mainRiegen = mutable.LinkedHashMap.empty[String, Seq[Wertung]]
-
-        riegen.foreach { case (riegenName, wertungen) =>
-          val cleanedWertungen = wertungen.map(_.copy(riege2 = None))
-          mainRiegen.update(riegenName, mainRiegen.getOrElse(riegenName, Seq.empty) ++ cleanedWertungen)
-
-          wertungen.flatMap(_.riege2).distinct.foreach { r2Name =>
-            val perStart = r2ByStart.getOrElseUpdate(start, mutable.LinkedHashMap.empty[String, Seq[Wertung]])
-            perStart.update(r2Name, perStart.getOrElse(r2Name, Seq.empty) ++ cleanedWertungen)
+    val grouped = suggested.values.toSeq
+      .flatMap(_.toSeq)
+      .flatMap { case (disziplin, riegenIter) =>
+        riegenIter.toSeq
+          .flatMap(_._2)
+          .flatMap { wertung =>
+            wertung.riege2.flatMap { riege2Name =>
+              riege2Assignments.get(riege2Name).map { target =>
+                val (targetDurchgang, start) = target
+                (targetDurchgang, start, riege2Name, Seq(wertung))
+              }
+            }
           }
-        }
-
-        mainByStart.update(start, mainRiegen)
       }
 
-      result.update(durchgangName, mainByStart.view.mapValues(_.toSeq).toMap)
-
-      if r2ByStart.nonEmpty then {
-        result.update(s"$durchgangName - R2", r2ByStart.view.mapValues(_.toSeq).toMap)
+    grouped
+      .groupBy(_._1)
+      .toSeq
+      .sortBy(_._1)
+      .map { case (durchgangName, tuples) =>
+        val diszMap: DurchgangStationZuteilung = tuples
+          .groupBy(_._2)
+          .toSeq
+          .sortBy(_._1.name)
+          .map { case (disziplin, diszTuples) =>
+            val byRiege2: Seq[(String, Seq[Wertung])] = diszTuples
+              .groupBy(_._3)
+              .toSeq
+              .sortBy(_._1)
+              .map { case (riege2Name, riege2Tuples) =>
+                (riege2Name, riege2Tuples.flatMap(_._4))
+              }
+            disziplin -> byRiege2
+          }
+          .toMap
+        durchgangName -> diszMap
       }
-    }
-
-    result.toMap
+      .toMap
   }
 
 
@@ -215,3 +223,4 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
 
     
 }
+
