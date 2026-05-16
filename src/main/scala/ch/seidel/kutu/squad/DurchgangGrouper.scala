@@ -7,38 +7,44 @@ object DurchgangGrouper {
   private val logger = LoggerFactory.getLogger(getClass)
   private val DurchgangNamePattern = "^(.*)\\((\\d+)\\)$".r
 
-  def groupDurchgaengeByKategorien(durchgaenge: SuggestedDurchgaenge): Seq[SuggestedDurchgang] = {
-    val titleMapping = buildTitleMapping(durchgaenge)
+  def groupDurchgaengeByKategorien(durchgaenge: SuggestedDurchgaenge, maxParallelProGruppe: Int = Int.MaxValue): Seq[SuggestedDurchgang] = {
+    val titleMapping = buildTitleMapping(durchgaenge, maxParallelProGruppe)
     durchgaenge.toSeq.sortBy { case (name, _) => sortKey(name) }.map { case (name, startgeraete) =>
       SuggestedDurchgang(name = name, title = titleMapping.getOrElse(name, name), startgeraete = startgeraete)
     }
   }
 
-  def groupDurchgaengeByKategorienAsMap(durchgaenge: SuggestedDurchgaenge): Map[(String, String), DurchgangStationZuteilung] = {
-    groupDurchgaengeByKategorien(durchgaenge).map(item => (item.title, item.name) -> item.startgeraete).toMap
+  def groupDurchgaengeByKategorienAsMap(durchgaenge: SuggestedDurchgaenge, maxParallelProGruppe: Int = Int.MaxValue): Map[(String, String), DurchgangStationZuteilung] = {
+    groupDurchgaengeByKategorien(durchgaenge, maxParallelProGruppe).map(item => (item.title, item.name) -> item.startgeraete).toMap
   }
 
-  def buildTitleMapping(durchgaenge: SuggestedDurchgaenge): Map[String, String] = {
-    case class GroupState(names: Vector[String], categories: Set[String])
+  def buildTitleMapping(durchgaenge: SuggestedDurchgaenge, maxParallelProGruppe: Int = Int.MaxValue): Map[String, String] = {
+    case class GroupState(names: Vector[String], categories: Set[String], forcedGroupingTitle: Boolean)
+    val normalizedMaxParallel = if maxParallelProGruppe <= 0 then Int.MaxValue else maxParallelProGruppe
 
     val grouped = orderedNames(durchgaenge.keys.toSeq).foldLeft(Vector.empty[GroupState]) { (groups, durchgangName) =>
       val categories = categoriesOf(durchgangName)
       if categories.isEmpty then {
         logger.warn(s"No categories could be derived for suggested Durchgang '$durchgangName'. Falling back to the Durchgang name as title.")
-        groups :+ GroupState(Vector(durchgangName), Set.empty)
+        groups :+ GroupState(Vector(durchgangName), Set.empty, forcedGroupingTitle = normalizedMaxParallel < Int.MaxValue)
       }
       else {
-        val targetIndex = groups.indexWhere(state => state.categories.intersect(categories).isEmpty)
-        if targetIndex >= 0 then groups.updated(targetIndex, GroupState(groups(targetIndex).names :+ durchgangName, groups(targetIndex).categories ++ categories))
-        else groups :+ GroupState(Vector(durchgangName), categories)
+        val targetIndex = groups.indexWhere(state => state.categories.intersect(categories).isEmpty && state.names.size < normalizedMaxParallel)
+        if targetIndex >= 0 then {
+          groups.updated(targetIndex, GroupState(groups(targetIndex).names :+ durchgangName, groups(targetIndex).categories ++ categories, groups(targetIndex).forcedGroupingTitle))
+        }
+        else {
+          groups :+ GroupState(Vector(durchgangName), categories, forcedGroupingTitle = normalizedMaxParallel < Int.MaxValue)
+        }
       }
     }
 
     grouped.zipWithIndex.flatMap { indexedgroup =>
       val (group, idx) = indexedgroup
       val nonEmptyCategories = group.categories.filter(_.nonEmpty)
-      val title = if group.names.size <= 1 || nonEmptyCategories.isEmpty then group.names.head
-      else s"Abteilung ${idx+1} ${nonEmptyCategories.toSeq.sorted.mkString("-")}"
+      val categoryLabel = nonEmptyCategories.toSeq.sorted.mkString("-")
+      val title = if !group.forcedGroupingTitle && (group.names.size <= 1 || nonEmptyCategories.isEmpty) then group.names.head
+      else if categoryLabel.nonEmpty then s"Abteilung ${idx+1} $categoryLabel" else s"Abteilung ${idx+1}"
       group.names.map(_ -> title)
     }.toMap
   }

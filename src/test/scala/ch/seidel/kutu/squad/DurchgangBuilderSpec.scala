@@ -567,5 +567,21 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
       val expectedStartIds = result.values.head.keys.map(_.id).toSet
       expectedStartIds should not be empty
     }
+
+    "derive Riegen2 target durchgaenge from suggested subset only" in {
+      val builder = DurchgangBuilder(this)
+      val disziplin = Disziplin(1L, "Boden")
+      val dummyWertung = Wertung(1L, 1L, 1L, 1L, "uuid", None, None, None, Some("R1"), Some("Barren K1"), Some(0), None, None)
+      val suggested: SuggestedDurchgaenge = Map(
+        "K1 (1)" -> Map(disziplin -> Seq("R1" -> Seq(dummyWertung))),
+        "K2 (1)" -> Map(disziplin -> Seq("R2" -> Seq(dummyWertung.copy(id = 2L, riege2 = None))))
+      )
+
+      val separated = builder.separateRiegen2DurchgaengeFromSuggested(suggested)
+
+      separated.keySet shouldBe Set("K1 (1)", "K1 (1) - R2", "K2 (1)")
+      separated("K1 (1)")(disziplin).head._2.head.riege2 shouldBe None
+      separated("K1 (1) - R2")(disziplin).head._1 shouldBe "Barren K1"
+    }
   }
 }

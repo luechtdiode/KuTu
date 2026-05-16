@@ -7,7 +7,7 @@ import ch.seidel.kutu.KuTuApp.hostServices
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.*
-import ch.seidel.kutu.squad.DurchgangBuilder
+import ch.seidel.kutu.squad.{DurchgangBuilder, DurchgangGrouper}
 import javafx.scene.control as jfxsc
 import javafx.scene.text.Text
 import scalafx.Includes.{eventClosureWrapperWithParam, jfxActionEvent2sfx, jfxBooleanBinding2sfx, jfxBounds2sfx, jfxCellEditEvent2sfx, jfxKeyEvent2sfx, jfxMouseEvent2sfx, jfxObjectProperty2sfx, jfxParent2sfx, jfxPixelReader2sfx, jfxReadOnlyBooleanProperty2sfx, jfxTableViewSelectionModel2sfx, jfxText2sfxText, observableList2ObservableBuffer, when}
@@ -444,6 +444,11 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     tooltip = "Max. Gruppengrösse oder 0 für gleichmässige Verteilung mit einem Durchgang."
   }
 
+  private val txtMaxParallelDurchgaengeProGruppe = new TextField() {
+    text = "3"
+    tooltip = "Max. Anzahl paralleler Durchgänge pro Durchganggruppe. 0 = unbegrenzt."
+  }
+
   override def release: Unit = {
     subscription.cancel()
   }
@@ -635,6 +640,10 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         text = "Programme / Kategorien teilen"
         selected = durchgang.size != 1
       }
+      val chkSeparateRiegen2Durchgang = new CheckBox() {
+        text = "Riegen2 in separaten Durchgang einteilen"
+        selected = false
+      }
       val lvOnDisziplines = new ListView[CheckListBoxEditor[Disziplin]] {
         prefHeight = 250
         disziplinlist.foreach { d =>
@@ -661,6 +670,11 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         }
       }
 
+      def getMaxParallelDurchgaengeProGruppe: Int = {
+        val configured = str2Int(txtMaxParallelDurchgaengeProGruppe.text.value)
+        if configured <= 0 then Int.MaxValue else configured
+      }
+
       val titel = if durchgang.nonEmpty then
         "Durchgänge " + durchgang.mkString("[", ", ", "]") + " neu zuteilen ..."
       else
@@ -675,56 +689,78 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             add(txtGruppengroesse, 0, 1)
             add(new Label("Geschlechter-Trennung: "), 1, 0)
             add(cbSplitSex, 1, 1)
-            add(chkSplitPgm, 0, 2, 2, 1)
-            add(new Label("Verteilung auf folgende Diszipline: "), 0, 3, 2, 1)
-            add(lvOnDisziplines, 0, 4, 2, 2)
+            add(new Label("Max. parallele Durchgänge pro Durchganggruppe: "), 0, 2)
+            add(txtMaxParallelDurchgaengeProGruppe, 0, 3)
+            add(chkSeparateRiegen2Durchgang, 0, 4, 2, 1)
+            add(chkSplitPgm, 0, 6, 2, 1)
+            add(new Label("Verteilung auf folgende Diszipline: "), 0, 7, 2, 1)
+            add(lvOnDisziplines, 0, 8, 2, 2)
             if durchgang.isEmpty then {
               add(new Label(s"Mit der Neueinteilung der Riegen und Druchgänge werden\ndie bisherigen Einteilungen zurückgesetzt.", new ImageView {
                 image = warnIcon
               }),
-                0, 6, 2, 1)
+                0, 10, 2, 1)
             }
           }
         }
       }, new Button(if durchgang.isEmpty then "OK (bestehende Einteilung wird zurückgesetzt)" else "OK (selektierte Durchgänge werden frisch eingeteilt)", new ImageView {
         image = warnIcon
       }) {
-        onAction = (event: ActionEvent) => {
-          if txtGruppengroesse.text.value.nonEmpty then {
-            KuTuApp.invokeWithBusyIndicator {
-              val riegenzuteilungen = DurchgangBuilder(service).suggestDurchgaenge(
-                wettkampf.id,
-                str2Int(txtGruppengroesse.text.value), durchgang,
-                splitSexOption = cbSplitSex.getSelectionModel.getSelectedItem match {
-                  case item: SexDivideRule => Some(item)
-                  case null => None
-                },
-                splitPgm = chkSplitPgm.selected.value,
-                onDisziplinList = getSelectedDisziplines)
+         onAction = (event: ActionEvent) => {
+           if txtGruppengroesse.text.value.nonEmpty then {
+             KuTuApp.invokeWithBusyIndicator {
+               val durchgangBuilder = DurchgangBuilder(service)
+               val maxRiegenSizeValue = str2Int(txtGruppengroesse.text.value)
+               val splitSex = cbSplitSex.getSelectionModel.getSelectedItem match {
+                 case item: SexDivideRule => Some(item)
+                 case null => None
+               }
 
-              if durchgang.isEmpty then {
-                service.cleanAllRiegenDurchgaenge(wettkampf.id)
-              }
-              for
-                durchgang <- riegenzuteilungen.keys
-                (start, riegen) <- riegenzuteilungen(durchgang)
-                (riege, wertungen) <- riegen
-              do {
-                service.insertRiegenWertungen(RiegeRaw(
-                  wettkampfId = wettkampf.id,
-                  r = riege,
-                  durchgang = Some(durchgang),
-                  start = Some(start.id),
-                  kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
-                ), wertungen)
-              }
-              service.updateDurchgaenge(wettkampf.id)
-              reloadData()
-              riegenFilterView.sort()
-              durchgangView.sort()
-            }
-          }
-        }
+               // Suggest durchgaenge (riegen assignment)
+               val riegenzuteilungen = durchgangBuilder.suggestDurchgaenge(
+                 wettkampf.id,
+                 maxRiegenSizeValue, durchgang,
+                 splitSexOption = splitSex,
+                 splitPgm = chkSplitPgm.selected.value,
+                 onDisziplinList = getSelectedDisziplines,
+                 separateRiegen2Durchgaenge = chkSeparateRiegen2Durchgang.selected.value)
+
+               // Derive durchgang groups from the same suggestion result (single-pass)
+               val suggestedGroups = DurchgangGrouper.groupDurchgaengeByKategorien(
+                 riegenzuteilungen,
+                 getMaxParallelDurchgaengeProGruppe)
+
+               if durchgang.isEmpty then {
+                 service.cleanAllRiegenDurchgaenge(wettkampf.id)
+               }
+               for
+                 durchgang <- riegenzuteilungen.keys
+                 (start, riegen) <- riegenzuteilungen(durchgang)
+                 (riege, wertungen) <- riegen
+               do {
+                 service.insertRiegenWertungen(RiegeRaw(
+                   wettkampfId = wettkampf.id,
+                   r = riege,
+                   durchgang = Some(durchgang),
+                   start = Some(start.id),
+                   kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
+                 ), wertungen)
+               }
+
+
+               service.updateDurchgaenge(wettkampf.id)
+               // Apply suggested titles after durchgaenge have been updated in persistence
+               suggestedGroups.foreach { suggestedDg =>
+                 if suggestedDg.title != suggestedDg.name then {
+                   service.renameDurchgangGroup(wettkampf.id, suggestedDg.name, suggestedDg.title)
+                 }
+               }
+               reloadData()
+               riegenFilterView.sort()
+               durchgangView.sort()
+             }
+           }
+         }
       })
     }
 
@@ -847,6 +883,48 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         })
       }
       ret.setDisable(durchgang.size < 1)
+      ret
+    }
+
+    def makeUngroupDurchgangMenu(durchgang: Set[String], selectedEditor: DurchgangEditor): MenuItem = {
+      val ret = KuTuApp.makeMenuAction("Gruppierung auflösen") { (caption, action) =>
+        KuTuApp.invokeWithBusyIndicator {
+          val allDurchgaenge = durchgangModel.flatMap(group => {
+            if group.children.isEmpty then {
+              ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
+            } else {
+              group.children
+            }
+          }).map(_.getValue.durchgang)
+
+          val groupedDurchgangByName = allDurchgaenge
+            .filter(d => d.title != d.name)
+            .map(d => d.name -> d)
+            .toMap
+
+          val groupedToUngroup: Set[String] = selectedEditor match {
+            case gd: GroupDurchgangEditor => gd.aggregates.map(_.durchgang.name).toSet
+            case _ => durchgang.filter(groupedDurchgangByName.contains)
+          }
+
+          if groupedToUngroup.nonEmpty then {
+            val toStore = allDurchgaenge.map(d => if groupedToUngroup.contains(d.name) then d.copy(title = d.name) else d)
+            service.updateOrInsertDurchgaenge(toStore)
+            reloadData()
+            riegenFilterView.sort()
+            durchgangView.sort()
+          }
+        }
+      }
+
+      val canUngroup = if selectedEditor != null then {
+        selectedEditor match {
+          case gd: GroupDurchgangEditor => gd.aggregates.exists(d => d.durchgang.title != d.durchgang.name)
+          case dge: DurchgangEditor => dge.durchgang.title != dge.durchgang.name
+          case null => false
+        }
+      } else false
+      ret.setDisable(!canUngroup)
       ret
     }
 
@@ -1248,6 +1326,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             if selectedDurchgangHeader.isEmpty then {
               items += makeAggregateDurchganMenu(actDurchgangSelection)
             }
+            items += makeUngroupDurchgangMenu(actDurchgangSelection, selectedEditor)
             if focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty then {
               items += new SeparatorMenuItem()
               items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)
@@ -1272,6 +1351,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           if selectedDurchgangHeader.isEmpty then {
             btnEditDurchgang.items += makeAggregateDurchganMenu(actDurchgangSelection)
           }
+          btnEditDurchgang.items += makeUngroupDurchgangMenu(actDurchgangSelection, selectedEditor)
           if focusedCells.size == 1 && selectedEditor != null && selectedDurchgangHeader.isEmpty then {
             btnEditDurchgang.items += new SeparatorMenuItem()
             btnEditDurchgang.items += makeSetEmptyRiegeMenu(selectedEditor, focusedCells)

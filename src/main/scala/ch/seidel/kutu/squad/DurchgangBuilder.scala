@@ -20,7 +20,8 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
   def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 0,
       durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
       splitSexOption: Option[SexDivideRule] = None, splitPgm: Boolean = true,
-      onDisziplinList: Option[Set[Disziplin]] = None): SuggestedDurchgaenge = {
+      onDisziplinList: Option[Set[Disziplin]] = None,
+      separateRiegen2Durchgaenge: Boolean = false): SuggestedDurchgaenge = {
 
     implicit val cache: mutable.Map[String, Int] = scala.collection.mutable.Map[String, Int]()
     
@@ -40,16 +41,75 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
           groupWertungen(programm, wertungen, grouper, fullGrouper, startgeraete, maxRiegenSize, splitSex, jahrgangGroup)
       }
 
-      rebuildDurchgangWertungen(riegen)
+      val suggested = rebuildDurchgangWertungen(riegen)
+      if separateRiegen2Durchgaenge then separateRiegen2DurchgaengeFromSuggested(suggested) else suggested
     }
   }
 
   def suggestDurchgangGruppen(wettkampfId: Long, maxRiegenSize: Int = 0,
       durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
       splitSexOption: Option[SexDivideRule] = None, splitPgm: Boolean = true,
-      onDisziplinList: Option[Set[Disziplin]] = None): Seq[SuggestedDurchgang] = {
+      onDisziplinList: Option[Set[Disziplin]] = None,
+      maxParallelProGruppe: Int = Int.MaxValue): Seq[SuggestedDurchgang] = {
     val suggested = suggestDurchgaenge(wettkampfId, maxRiegenSize, durchgangfilter, programmfilter, splitSexOption, splitPgm, onDisziplinList)
-    DurchgangGrouper.groupDurchgaengeByKategorien(suggested)
+    DurchgangGrouper.groupDurchgaengeByKategorien(suggested, maxParallelProGruppe)
+  }
+
+  def suggestRiegen2DurchgangAssignments(wettkampfId: Long, maxRiegenSize: Int = 0,
+      durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
+      splitSexOption: Option[SexDivideRule] = None, splitPgm: Boolean = true,
+      onDisziplinList: Option[Set[Disziplin]] = None): Map[String, String] = {
+    val suggested = suggestDurchgaenge(wettkampfId, maxRiegenSize, durchgangfilter, programmfilter, splitSexOption, splitPgm, onDisziplinList)
+    suggestRiegen2DurchgangAssignmentsFromSuggested(suggested)
+  }
+
+  def suggestRiegen2DurchgangAssignmentsFromSuggested(suggested: SuggestedDurchgaenge): Map[String, String] = {
+    val riege2ToDurchgangTargets = suggested.toSeq.sortBy(_._1).flatMap { case (durchgangName, startMap) =>
+      val riege2Names = startMap.values.toSeq
+        .flatMap(_.toSeq)
+        .flatMap(_._2)
+        .flatMap(_.riege2)
+      riege2Names.map(r2 => r2 -> s"$durchgangName - R2")
+    }
+
+    riege2ToDurchgangTargets
+      .groupBy(_._1)
+      .view
+      .mapValues(targets => targets.map(_._2).distinct.sorted.head)
+      .toMap
+  }
+
+  private[squad] def separateRiegen2DurchgaengeFromSuggested(suggested: SuggestedDurchgaenge): SuggestedDurchgaenge = {
+    val result = mutable.LinkedHashMap.empty[String, DurchgangStationZuteilung]
+
+    suggested.toSeq.sortBy(_._1).foreach { case (durchgangName, startMap) =>
+      val mainByStart = mutable.LinkedHashMap.empty[Disziplin, mutable.LinkedHashMap[String, Seq[Wertung]]]
+      val r2ByStart = mutable.LinkedHashMap.empty[Disziplin, mutable.LinkedHashMap[String, Seq[Wertung]]]
+
+      startMap.toSeq.sortBy(_._1.id).foreach { case (start, riegen) =>
+        val mainRiegen = mutable.LinkedHashMap.empty[String, Seq[Wertung]]
+
+        riegen.foreach { case (riegenName, wertungen) =>
+          val cleanedWertungen = wertungen.map(_.copy(riege2 = None))
+          mainRiegen.update(riegenName, mainRiegen.getOrElse(riegenName, Seq.empty) ++ cleanedWertungen)
+
+          wertungen.flatMap(_.riege2).distinct.foreach { r2Name =>
+            val perStart = r2ByStart.getOrElseUpdate(start, mutable.LinkedHashMap.empty[String, Seq[Wertung]])
+            perStart.update(r2Name, perStart.getOrElse(r2Name, Seq.empty) ++ cleanedWertungen)
+          }
+        }
+
+        mainByStart.update(start, mainRiegen)
+      }
+
+      result.update(durchgangName, mainByStart.view.mapValues(_.toSeq).toMap)
+
+      if r2ByStart.nonEmpty then {
+        result.update(s"$durchgangName - R2", r2ByStart.view.mapValues(_.toSeq).toMap)
+      }
+    }
+
+    result.toMap
   }
 
 

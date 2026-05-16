@@ -53,6 +53,31 @@ class DurchgangGrouperSpec extends AnyWordSpec with Matchers {
         ("Abteilung 1 K1-K2", "K2 (1)")
       )
     }
+
+    "start a new Durchganggruppe when max parallel count is reached" in {
+      val grouped = DurchgangGrouper.groupDurchgaengeByKategorien(Map(
+        "K1 (1)" -> data,
+        "K2 (1)" -> data,
+        "K3 (1)" -> data,
+        "K4 (1)" -> data
+      ), maxParallelProGruppe = 3)
+
+      grouped.find(_.name == "K1 (1)").get.title shouldBe "Abteilung 1 K1-K2-K3"
+      grouped.find(_.name == "K2 (1)").get.title shouldBe "Abteilung 1 K1-K2-K3"
+      grouped.find(_.name == "K3 (1)").get.title shouldBe "Abteilung 1 K1-K2-K3"
+      grouped.find(_.name == "K4 (1)").get.title shouldBe "Abteilung 2 K4"
+    }
+
+    "keep unlimited grouping behavior when max parallel count is disabled" in {
+      val grouped = DurchgangGrouper.groupDurchgaengeByKategorien(Map(
+        "K1 (1)" -> data,
+        "K2 (1)" -> data,
+        "K3 (1)" -> data,
+        "K4 (1)" -> data
+      ), maxParallelProGruppe = 0)
+
+      grouped.map(_.title).toSet shouldBe Set("Abteilung 1 K1-K2-K3-K4")
+    }
   }
 }
 
