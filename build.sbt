@@ -6,7 +6,7 @@ import scala.collection.immutable.Seq
 
 ThisBuild / scalaVersion := "3.8.3"
 ThisBuild / organization := "ch.seidel"
-ThisBuild / version := "2.3.23"
+ThisBuild / version := "2.3.24"
 
 // logLevel := Level.Error
 
