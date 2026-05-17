@@ -6,6 +6,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.pekko.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.ApiService
+import ch.seidel.kutu.mail.MockedSMTPMailer
 import ch.seidel.kutu.squad.DurchgangBuilder
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
@@ -24,6 +25,9 @@ trait KuTuBaseSpec extends AnyWordSpec
   with ScalaFutures
   with ScalatestRouteTest
   with BeforeAndAfterAll {
+  // Initialises MockedSMTPMailer so that KuTuMailerActor.setProvider is called
+  // before the actor's lazy-val is first initialised.
+  private val mailer = new MockedSMTPMailer()
 
   implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(15.seconds) // or any duration you need
 

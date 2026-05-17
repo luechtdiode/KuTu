@@ -15,6 +15,7 @@ import scala.compiletime.uninitialized
 class DurchgangBuilderSpec extends KuTuBaseSpec {
 
   var testWettkampf: Wettkampf = uninitialized
+  var testWettkampfBig: Wettkampf = uninitialized
 
   private def insertK2FixtureWettkampfFromSpec(name: String): (Wettkampf, Long) = {
     val wettkampf = createWettkampf(
@@ -73,6 +74,7 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
   override def beforeAll(): Unit = {
     super.beforeAll()
     testWettkampf = insertGeTuWettkampf("TestDurchgangBuilderWK", 3)
+    testWettkampfBig = insertGeTuWettkampf("TestDurchgangBuilderBigWK", 20)
   }
 
   "DurchgangBuilder" should {
@@ -418,10 +420,9 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
     }
 
     "distribute athletes evenly across riegen" in {
-      testWettkampf = insertGeTuWettkampf("DistributionTestWK", 20)
       val builder = DurchgangBuilder(this)
       val result = builder.suggestDurchgaenge(
-        testWettkampf.id,
+        testWettkampfBig.id,
         maxRiegenSize = 10,
         splitSexOption = Some(GemischteRiegen)
       )
@@ -445,11 +446,10 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
     }
 
     "cover all start devices in every durchgang when low maxRiegenSize creates multiple durchgaenge" in {
-      val multiRoundWk = insertGeTuWettkampf("AllStartsPerDurchgangWK", 20)
       val builder = DurchgangBuilder(this)
 
       val result = builder.suggestDurchgaenge(
-        multiRoundWk.id,
+        testWettkampfBig.id,
         maxRiegenSize = 4,
         splitSexOption = Some(GemischteRiegen)
       )
@@ -468,11 +468,10 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
     }
 
     "not create an artificial singleton follow-up round when maxRiegenSize is still not reached in round 1" in {
-      val wk = insertGeTuWettkampf("NoSingletonRoundWK", 20)
       val builder = DurchgangBuilder(this)
 
       val result = builder.suggestDurchgaenge(
-        wk.id,
+        testWettkampfBig.id,
         maxRiegenSize = 8,
         splitSexOption = Some(GemischteRiegen)
       )
