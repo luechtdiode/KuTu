@@ -22,10 +22,6 @@ class RegistrationRestSpec extends KuTuBaseSpec {
   var judgeregistration: Option[JudgeRegistration] = None
   var registrationJwt: Option[RawHeader] = None
 
-  // Initialises MockedSMTPMailer so that KuTuMailerActor.setProvider is called
-  // before the actor's lazy-val is first initialised.
-  private val mailer = new MockedSMTPMailer()
-
   def createTestRegistration: Registration = {
     registration = registration match {
       case None =>
