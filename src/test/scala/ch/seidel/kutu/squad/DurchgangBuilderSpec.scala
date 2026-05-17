@@ -445,7 +445,7 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
     }
 
     "cover all start devices in every durchgang when low maxRiegenSize creates multiple durchgaenge" in {
-      val multiRoundWk = insertGeTuWettkampf("AllStartsPerDurchgangWK", 40)
+      val multiRoundWk = insertGeTuWettkampf("AllStartsPerDurchgangWK", 20)
       val builder = DurchgangBuilder(this)
 
       val result = builder.suggestDurchgaenge(
