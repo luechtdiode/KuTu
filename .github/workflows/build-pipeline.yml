@@ -104,7 +104,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y xvfb
       - name: Java Setup & Package-Build
         run: |
-          xvfb-run -a sbt -v "coverage; test; coverageReport"
+          xvfb-run -a sbt -v 'set Test / parallelExecution := false' 'set Test / fork := true' 'clean; coverage; testOnly * -- -oDF; coverageReport; coverageAggregate'
           sbt -v "packageApp"
         shell: bash
         env:
