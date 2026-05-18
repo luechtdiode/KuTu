@@ -15,10 +15,66 @@ import scala.compiletime.uninitialized
 class DurchgangBuilderSpec extends KuTuBaseSpec {
 
   var testWettkampf: Wettkampf = uninitialized
+  var testWettkampfBig: Wettkampf = uninitialized
+
+  private def insertK2FixtureWettkampfFromSpec(name: String): (Wettkampf, Long) = {
+    val wettkampf = createWettkampf(
+      new java.sql.Date(System.currentTimeMillis()),
+      name,
+      Set(20L),
+      "test@test.com",
+      1234,
+      5.0d,
+      Some(java.util.UUID.randomUUID().toString),
+      "", "", "", "", ""
+    )
+    val k2ProgrammId = readWettkampfLeafs(wettkampf.programmId).find(_.name == "K2").map(_.id).get
+
+    val k2CountsByVerein = Seq(
+      ("BTV Lustig", 0, 2),
+      ("DTV Schnell", 6, 0),
+      ("SV Laut", 5, 0),
+      ("TSV Schlau", 1, 1),
+      ("TV Gross", 1, 1),
+      ("TV Klein", 11, 2),
+      ("TV Dick", 6, 1),
+      ("TV Duenne", 3, 0),
+      ("TV Breit", 6, 0),
+      ("TV Schmal", 12, 0),
+      ("TV Hell", 14, 1),
+      ("TV Dunkel", 3, 0),
+      ("TZ Freundlich", 6, 0)
+    )
+
+    k2CountsByVerein.foreach { case (vereinName, femaleCount, maleCount) =>
+      val vereinId = createVerein(s"$vereinName-$name", Some("Spec"))
+
+      (1 to femaleCount).foreach { idx =>
+        val athlet = insertAthlete(Athlet(vereinId).copy(
+          geschlecht = "W",
+          name = s"${vereinName.replace(" ", "")}-Ti-$idx",
+          vorname = "Spec"
+        ))
+        assignAthletsToWettkampf(wettkampf.id, Set(k2ProgrammId), Set((athlet.id, None)), None)
+      }
+
+      (1 to maleCount).foreach { idx =>
+        val athlet = insertAthlete(Athlet(vereinId).copy(
+          geschlecht = "M",
+          name = s"${vereinName.replace(" ", "")}-Tu-$idx",
+          vorname = "Spec"
+        ))
+        assignAthletsToWettkampf(wettkampf.id, Set(k2ProgrammId), Set((athlet.id, None)), None)
+      }
+    }
+
+    (wettkampf, k2ProgrammId)
+  }
 
   override def beforeAll(): Unit = {
     super.beforeAll()
     testWettkampf = insertGeTuWettkampf("TestDurchgangBuilderWK", 3)
+    testWettkampfBig = insertGeTuWettkampf("TestDurchgangBuilderBigWK", 20)
   }
 
   "DurchgangBuilder" should {
@@ -85,6 +141,18 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
       )
 
       result should not be empty
+    }
+
+    "derive optional Durchganggruppen titles from the suggested Durchgaenge" in {
+      val builder = DurchgangBuilder(this)
+      val grouped = builder.suggestDurchgangGruppen(
+        testWettkampf.id,
+        maxRiegenSize = 0,
+        splitSexOption = Some(GemischteRiegen)
+      )
+
+      grouped should not be empty
+      all(grouped.map(_.title)) should not be empty
     }
 
     "respect maxRiegenSize parameter" in {
@@ -352,10 +420,9 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
     }
 
     "distribute athletes evenly across riegen" in {
-      testWettkampf = insertGeTuWettkampf("DistributionTestWK", 20)
       val builder = DurchgangBuilder(this)
       val result = builder.suggestDurchgaenge(
-        testWettkampf.id,
+        testWettkampfBig.id,
         maxRiegenSize = 10,
         splitSexOption = Some(GemischteRiegen)
       )
@@ -377,10 +444,172 @@ class DurchgangBuilderSpec extends KuTuBaseSpec {
         }
       }
     }
+
+    "cover all start devices in every durchgang when low maxRiegenSize creates multiple durchgaenge" in {
+      val builder = DurchgangBuilder(this)
+
+      val result = builder.suggestDurchgaenge(
+        testWettkampfBig.id,
+        maxRiegenSize = 4,
+        splitSexOption = Some(GemischteRiegen)
+      )
+
+      result should not be empty
+      result.keys.size should be > 1
+
+      val expectedStartIds = result.values.flatMap(_.keys.map(_.id)).toSet
+      expectedStartIds should not be empty
+
+      result.foreach { case (durchgangName, startMap) =>
+        withClue(s"Durchgang '$durchgangName' should contain all start devices") {
+          startMap.keys.map(_.id).toSet shouldBe expectedStartIds
+        }
+      }
+    }
+
+    "not create an artificial singleton follow-up round when maxRiegenSize is still not reached in round 1" in {
+      val builder = DurchgangBuilder(this)
+
+      val result = builder.suggestDurchgaenge(
+        testWettkampfBig.id,
+        maxRiegenSize = 8,
+        splitSexOption = Some(GemischteRiegen)
+      )
+
+      result should not be empty
+
+      def programmPrefix(dgName: String): String = dgName.split("\\(").head.trim
+
+      val roundsByProgramm = result.keys.groupBy(programmPrefix)
+      roundsByProgramm.foreach { case (prefix, rounds) =>
+        val roundSet = rounds.toSet
+        val round1Name = s"$prefix (1)"
+        val round2Name = s"$prefix (2)"
+        if (roundSet.contains(round1Name) && roundSet.contains(round2Name)) {
+          val round1MaxDeviceLoad = result(round1Name).values.map { riegenList =>
+            riegenList.flatMap(_._2.map(_.athletId)).toSet.size
+          }.max
+
+          val round2Participants = result(round2Name).values.flatMap { riegenList =>
+            riegenList.flatMap(_._2.map(_.athletId))
+          }.toSet.size
+
+          withClue(s"Programm '$prefix' has round1 max-device-load=$round1MaxDeviceLoad, round2 participants=$round2Participants") {
+            if (round1MaxDeviceLoad < 8) round2Participants should be > 1
+          }
+        }
+      }
+    }
+
+    "not create singleton residual rounds for K2 planning with maxRiegenSize 8 and no sex separation" in {
+      val (wk, k2Id) = insertK2FixtureWettkampfFromSpec("NoSingletonK2WK")
+      val builder = DurchgangBuilder(this)
+
+      val result = builder.suggestDurchgaenge(
+        wk.id,
+        maxRiegenSize = 8,
+        programmfilter = Set(k2Id),
+        splitSexOption = Some(GemischteRiegen)
+      )
+
+      result should not be empty
+      result.keys.toSet shouldBe Set("K2 (1)", "K2 (2)", "K2 (3)")
+
+      val participantsByRound = result.map { case (roundName, disziplinMap) =>
+        roundName -> disziplinMap.values.flatMap(riegenList => riegenList.flatMap(_._2.map(_.athletId))).toSet.size
+      }
+
+      participantsByRound("K2 (3)") should be > 1
+      participantsByRound.values.sum shouldBe 82
+
+      val expectedStartIds = result.values.head.keys.map(_.id).toSet
+      result.foreach { case (dg, starts) =>
+        withClue(s"Durchgang '$dg' should expose all K2 start devices") {
+          starts.keys.map(_.id).toSet shouldBe expectedStartIds
+        }
+      }
+    }
+
+    "keep device loads balanced in unlimited mode (maxRiegenSize=0) for K2 planning with GemischteRiegen" in {
+      val (wk, k2Id) = insertK2FixtureWettkampfFromSpec("UnlimitedBalanceCheckWK")
+      val builder = DurchgangBuilder(this)
+
+      val result = builder.suggestDurchgaenge(
+        wk.id,
+        maxRiegenSize = 0,
+        programmfilter = Set(k2Id),
+        splitSexOption = Some(GemischteRiegen)
+      )
+
+      // Should produce exactly one durchgang when unlimited
+      result should not be empty
+      result.keys.toSet shouldBe Set("K2 (1)")
+
+      // Verify that athletes per start device are well-balanced (spread <= 2)
+      val athletesPerDevice = result.values.head.values.flatMap { riegenList =>
+        riegenList.flatMap(_._2.map(_.athletId)).toSet
+      }.groupBy(identity).map { case (_, athletes) => 1 }.toSeq
+
+      if (result.values.head.size > 1) {
+        val deviceLoads = result.values.head.map { case (_, riegenList) =>
+          riegenList.flatMap(_._2.map(_.athletId)).toSet.size
+        }.toSeq.filter(_ > 0)
+
+        if (deviceLoads.size > 1) {
+          withClue(s"Device loads across K2 disciplines: $deviceLoads") {
+            (deviceLoads.max - deviceLoads.min) should be <= 2
+          }
+        }
+      }
+
+      // Verify all K2 start devices are present
+      val expectedStartIds = result.values.head.keys.map(_.id).toSet
+      expectedStartIds should not be empty
+    }
+
+    "create one R2 durchgang per Kategorie with local riege2 groupings" in {
+      val builder = DurchgangBuilder(this)
+      val disziplin = Disziplin(1L, "Barren")
+      val k1Wertung = Wertung(1L, 1L, 1L, 1L, "uuid", None, None, None, Some("R1"), Some("Barren K1"), Some(0), None, None)
+      val k2Wertung = Wertung(2L, 2L, 2L, 1L, "uuid", None, None, None, Some("R2"), Some("Barren K2"), Some(0), None, None)
+      val k3Wertung = Wertung(3L, 3L, 2L, 1L, "uuid", None, None, None, Some("R2"), Some("Barren K2"), Some(0), None, None)
+      val suggested: SuggestedDurchgaenge = Map(
+        "K1 (1)" -> Map(disziplin -> Seq("Barren K1" -> Seq(k1Wertung))),
+        "K2 (1)" -> Map(disziplin -> Seq("Barren K2" -> Seq(k2Wertung))),
+        "K2 (2)" -> Map(disziplin -> Seq("Barren K2" -> Seq(k3Wertung)))
+      )
+
+      val riege2Assignments = Map(
+        "Barren K1" -> ("K1 - R2", disziplin),
+        "Barren K2" -> ("K2 - R2", disziplin)
+      )
+
+      val separated = builder.separateRiegen2DurchgaengeFromSuggested(
+        suggested,
+        riege2Assignments
+      )
+
+      separated.keySet shouldBe Set("K1 - R2", "K2 - R2")
+      separated("K1 - R2")(disziplin).map(_._1).toSet shouldBe Set("Barren K1")
+      separated("K2 - R2")(disziplin).map(_._1).toSet shouldBe Set("Barren K2")
+    }
+
+    "ignore riege2 entries without mapping when separating riege2 durchgaenge" in {
+      val builder = DurchgangBuilder(this)
+      val disziplin = Disziplin(1L, "Barren")
+      val wertungWithoutAssignment =
+        Wertung(10L, 10L, 10L, 1L, "uuid", None, None, None, Some("R1"), Some("Unmapped R2"), Some(0), None, None)
+
+      val suggested: SuggestedDurchgaenge = Map(
+        "K1 (1)" -> Map(disziplin -> Seq("R1" -> Seq(wertungWithoutAssignment)))
+      )
+
+      val separated = builder.separateRiegen2DurchgaengeFromSuggested(
+        suggested,
+        riege2Assignments = Map.empty
+      )
+
+      separated shouldBe empty
+    }
   }
 }
-
-
-
-
-

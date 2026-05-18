@@ -218,14 +218,14 @@ object RegistrationAdmin {
 
       case _ => None
     }
-
+    lazy val hadRiege2 = service.hasWettkampfRiege2Assignments(wkInfo.wettkampf.id)
     val athleteLocalUpdates = for (renameAthlete: RenameAthletAction <- syncActions.flatMap {
       case mr: RenameAthletAction => Some(mr)
       case _ => None
     }) yield {
       val preparedUpdate = renameAthlete.applyLocalChange
       if renameAthlete.isSexChange then {
-        adjustWertungRiegen(wkInfo.wettkampf.toWettkampf, service, preparedUpdate)
+        adjustWertungRiegen(wkInfo.wettkampf.toWettkampf, service, preparedUpdate, hadRiege2)
       }
       (preparedUpdate.id.toString, preparedUpdate)
     }
@@ -343,17 +343,14 @@ object RegistrationAdmin {
     }
   }
 
-  def adjustWertungRiegen(wettkampf: Wettkampf, service: KutuService, changedAthlet: Athlet): Unit = {
+  def adjustWertungRiegen(wettkampf: Wettkampf, service: KutuService, changedAthlet: Athlet, hadRiege2: Boolean = true): Unit = {
     val newLocalWertungen = service.selectWertungen(athletId = Some(changedAthlet.id), wettkampfId = Some(wettkampf.id))
-      .map(w => w.copy(
-        riege = Some(generateRiegenName(
-          w.copy(athlet = changedAthlet.toAthletView(w.athlet.verein))
-        )),
-        riege2 = generateRiegen2Name(
-          w.copy(athlet = changedAthlet.toAthletView(w.athlet.verein))
-        )
-      ).toWertung
-      )
+      .map{w =>
+        val step1 =           w.copy(riege = Some(generateRiegenName(w.copy(athlet = changedAthlet.toAthletView(w.athlet.verein)))))
+        if hadRiege2 then step1.copy(riege2 = generateRiegen2Name(w.copy(athlet = changedAthlet.toAthletView(w.athlet.verein)))) else step1
+      }
+      .map(_.toWertung)
+
     Await.result(service.updateAllWertungenAsync(newLocalWertungen), Duration.Inf)
   }
 

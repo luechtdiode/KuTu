@@ -7,11 +7,21 @@ import scala.collection.mutable
 
 case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSplitter with StartGeraetGrouper {
   private val logger = LoggerFactory.getLogger(classOf[DurchgangBuilder])
-  
+
+  private case class ProgrammKontext(
+      programm: String,
+      wertungen: Map[AthletView, Seq[WertungView]],
+      startgeraete: List[Disziplin],
+      splitSex: SexDivideRule,
+      grouper: List[WertungView => String],
+      fullGrouper: List[WertungView => String],
+      jahrgangGroup: Boolean)
+
   def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 0,
       durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
       splitSexOption: Option[SexDivideRule] = None, splitPgm: Boolean = true,
-      onDisziplinList: Option[Set[Disziplin]] = None): Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]] = {
+      onDisziplinList: Option[Set[Disziplin]] = None,
+      separateRiegen2Durchgaenge: Boolean = false): SuggestedDurchgaenge = {
 
     implicit val cache: mutable.Map[String, Int] = scala.collection.mutable.Map[String, Int]()
     
@@ -21,72 +31,150 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       }
     
     if filteredWert.isEmpty then {
-      Map[String, Map[Disziplin, Iterable[(String,Seq[Wertung])]]]()
+      Map.empty
     }
     else {
       val programme = listProgramme(filteredWert)
       val progAthlWertungen = buildProgrammAthletWertungen(filteredWert, programme, splitPgm)
-      val riegencnt = 0 // riegencnt 0 is unlimited
-      val disziplinlist = service.listDisziplinesZuWettkampf(wettkampfId)
-      val wkdisziplinlist = service.listWettkampfDisziplines(wettkampfId)
-
-      val dzl = disziplinlist.filter(d => onDisziplinList.isEmpty || onDisziplinList.get.contains(d))
-
-      val riegen = progAthlWertungen.flatMap{x =>
-        val (programm, wertungen) = x
-        val pgmHead = wertungen.head._2.head.wettkampfdisziplin.programm
-        val dzlf = dzl.filter{ d =>
-          wkdisziplinlist.exists { wd => d.id == wd.disziplinId && wd.programmId == pgmHead.id }
-        }
-        val wdzlf = wkdisziplinlist.filter{d => d.programmId == pgmHead.id }
-        val startgeraete = wdzlf.filter(d => (onDisziplinList.isEmpty && d.startgeraet == 1) || (onDisziplinList.nonEmpty && onDisziplinList.get.map(_.id).contains(d.disziplinId)))
-        val dzlff = dzlf.filter(d => startgeraete.exists(wd => wd.disziplinId == d.id)).distinct
-        val dzlffm = dzlff.filter(d => startgeraete.find(wd => wd.disziplinId == d.id).exists(p => p.masculin == 1))
-        val dzlfff = dzlff.filter(d => startgeraete.find(wd => wd.disziplinId == d.id).exists(p => p.feminim == 1))
-        val splitSex = splitSexOption match {
-          case None => if dzlffm == dzlfff then GemischteRiegen else GetrennteDurchgaenge
-          case Some(option) => option
-        }
-        val wv = wertungen.head._2.head
-        val riegenmode = wv.wettkampfdisziplin.programm.riegenmode
-        val aks = wv.wettkampf.altersklassen match {
-          case Some(s: String) if s.nonEmpty => Some(s)
-          case _ => None
-        }
-        val jaks = wv.wettkampf.jahrgangsklassen match {
-          case Some(s: String) if s.nonEmpty => Some(s)
-          case _ => None
-        }
-        val (shortGrouper, fullGrouper, jgGroup) = RiegenBuilder.selectRiegenGrouper(riegenmode, aks, jaks).buildGrouper(riegencnt)
-        splitSex match {
-          case GemischteRiegen =>
-            groupWertungen(programm, wertungen, shortGrouper, fullGrouper, dzlff, maxRiegenSize, GemischteRiegen, jgGroup)
-          case GemischterDurchgang =>
-            groupWertungen(programm, wertungen, shortGrouper, fullGrouper, dzlff, maxRiegenSize, GemischterDurchgang, jgGroup)
-          case GetrennteDurchgaenge =>
-            val m = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("M"))
-            val w = wertungen.filter(w => w._1.geschlecht.equalsIgnoreCase("W"))
-            (m.nonEmpty,w.nonEmpty) match {
-              case (true, true) =>
-                groupWertungen(programm + "-Tu", m, shortGrouper, fullGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, jgGroup) ++
-                  groupWertungen(programm + "-Ti", w, shortGrouper, fullGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
-              case (false, true) =>
-                groupWertungen(programm, w, shortGrouper, fullGrouper, dzlfff, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
-              case (true,false) =>
-                groupWertungen(programm, m, shortGrouper, fullGrouper, dzlffm, maxRiegenSize, GetrennteDurchgaenge, jgGroup)
-              case _ => Seq.empty
-            }
-        }
+      val riegen = buildProgrammKontexte(wettkampfId, progAthlWertungen, splitSexOption, onDisziplinList).flatMap {
+        case ProgrammKontext(programm, wertungen, startgeraete, splitSex, grouper, fullGrouper, jahrgangGroup) =>
+          groupWertungen(programm, wertungen, grouper, fullGrouper, startgeraete, maxRiegenSize, splitSex, jahrgangGroup)
       }
 
-      rebuildDurchgangWertungen(riegen)
+      val suggested = rebuildDurchgangWertungen(riegen)
+      if separateRiegen2Durchgaenge then
+        val wettkampfdisziplinIdToKategorieUndStart = filteredWert.values.flatten
+          .map(_.wettkampfdisziplin).toSet
+          .map(w => w.id -> (w.programm.name, w.disziplin))
+          .toMap
+        val riege2Assignments = extractRiege2ToDurchgangMapping(suggested, wettkampfdisziplinIdToKategorieUndStart)
+        suggested ++ separateRiegen2DurchgaengeFromSuggested(suggested, riege2Assignments)
+      else suggested
     }
   }
 
+  def suggestDurchgangGruppen(wettkampfId: Long, maxRiegenSize: Int = 0,
+      durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
+      splitSexOption: Option[SexDivideRule] = None, splitPgm: Boolean = true,
+      onDisziplinList: Option[Set[Disziplin]] = None,
+      maxParallelProGruppe: Int = Int.MaxValue): Seq[SuggestedDurchgang] = {
+    val suggested = suggestDurchgaenge(wettkampfId, maxRiegenSize, durchgangfilter, programmfilter, splitSexOption, splitPgm, onDisziplinList)
+    DurchgangGrouper.groupDurchgaengeByKategorien(suggested, maxParallelProGruppe)
+  }
 
-  
+  private def extractRiege2ToDurchgangMapping(suggested: SuggestedDurchgaenge, wdToKategorieMap: Map[Long, (String, Disziplin)]): Map[String, (String, Disziplin)] = {
+    suggested.toSeq.sortBy(_._1).flatMap { case (durchgangName, startMap) =>
+      val riege2Names = startMap.values.toSeq
+        .flatMap(_.toSeq)
+        .flatMap(_._2)
+        .flatMap(w => w.riege2.map(r => r -> wdToKategorieMap(w.wettkampfdisziplinId))).toMap
+
+      riege2Names.map(r2 =>
+          val (r2Name, (kategorie, start)) = r2
+          r2Name -> (s"$kategorie (${start.name})", start)
+      )
+    }.toMap
+  }
+
+  private[squad] def separateRiegen2DurchgaengeFromSuggested(
+      suggested: SuggestedDurchgaenge,
+      riege2Assignments: Map[String, (String, Disziplin)]): SuggestedDurchgaenge = {
+
+    val grouped = suggested.values.toSeq
+      .flatMap(_.toSeq)
+      .flatMap { case (disziplin, riegenIter) =>
+        riegenIter.toSeq
+          .flatMap(_._2)
+          .flatMap { wertung =>
+            wertung.riege2.flatMap { riege2Name =>
+              riege2Assignments.get(riege2Name).map { target =>
+                val (targetDurchgang, start) = target
+                (targetDurchgang, start, riege2Name, Seq(wertung))
+              }
+            }
+          }
+      }
+
+    grouped
+      .groupBy(_._1)
+      .toSeq
+      .sortBy(_._1)
+      .map { case (durchgangName, tuples) =>
+        val diszMap: DurchgangStationZuteilung = tuples
+          .groupBy(_._2)
+          .toSeq
+          .sortBy(_._1.name)
+          .map { case (disziplin, diszTuples) =>
+            val byRiege2: Seq[(String, Seq[Wertung])] = diszTuples
+              .groupBy(_._3)
+              .toSeq
+              .sortBy(_._1)
+              .map { case (riege2Name, riege2Tuples) =>
+                (riege2Name, riege2Tuples.flatMap(_._4))
+              }
+            disziplin -> byRiege2
+          }
+          .toMap
+        durchgangName -> diszMap
+      }
+      .toMap
+  }
+
+
+
   private def listProgramme(x: Map[AthletView, Seq[WertungView]]) = x.flatMap(w => w._2.map(xx => xx.wettkampfdisziplin.programm.name)).toSet
-  
+
+  private def buildProgrammKontexte(
+      wettkampfId: Long,
+      progAthlWertungen: Map[String, Map[AthletView, Seq[WertungView]]],
+      splitSexOption: Option[SexDivideRule],
+      onDisziplinList: Option[Set[Disziplin]]): Seq[ProgrammKontext] = {
+    val riegencnt = 0
+    val disziplinlist = service.listDisziplinesZuWettkampf(wettkampfId)
+    val wkdisziplinlist = service.listWettkampfDisziplines(wettkampfId)
+    val filteredDisziplines = disziplinlist.filter(d => onDisziplinList.isEmpty || onDisziplinList.get.contains(d))
+
+    progAthlWertungen.toSeq.flatMap { case (programm, wertungen) =>
+      val pgmHead = wertungen.head._2.head.wettkampfdisziplin.programm
+      val programmDisziplinen = filteredDisziplines.filter { d =>
+        wkdisziplinlist.exists(wd => d.id == wd.disziplinId && wd.programmId == pgmHead.id)
+      }
+      val wettkampfDisziplinen = wkdisziplinlist.filter(_.programmId == pgmHead.id)
+      val startgeraeteMeta = wettkampfDisziplinen.filter(d =>
+        (onDisziplinList.isEmpty && d.startgeraet == 1) ||
+          (onDisziplinList.nonEmpty && onDisziplinList.get.map(_.id).contains(d.disziplinId)))
+      val startgeraete = programmDisziplinen.filter(d => startgeraeteMeta.exists(wd => wd.disziplinId == d.id)).distinct
+      val startgeraeteM = startgeraete.filter(d => startgeraeteMeta.find(wd => wd.disziplinId == d.id).exists(_.masculin == 1))
+      val startgeraeteW = startgeraete.filter(d => startgeraeteMeta.find(wd => wd.disziplinId == d.id).exists(_.feminim == 1))
+      val splitSex = splitSexOption match {
+        case None => if startgeraeteM == startgeraeteW then GemischteRiegen else GetrennteDurchgaenge
+        case Some(option) => option
+      }
+      val wv = wertungen.head._2.head
+      val riegenmode = wv.wettkampfdisziplin.programm.riegenmode
+      val aks = wv.wettkampf.altersklassen match {
+        case Some(s: String) if s.nonEmpty => Some(s)
+        case _ => None
+      }
+      val jaks = wv.wettkampf.jahrgangsklassen match {
+        case Some(s: String) if s.nonEmpty => Some(s)
+        case _ => None
+      }
+      val (shortGrouper, fullGrouper, jgGroup) = RiegenBuilder.selectRiegenGrouper(riegenmode, aks, jaks).buildGrouper(riegencnt)
+      splitSex match {
+        case GemischteRiegen | GemischterDurchgang =>
+          Seq(ProgrammKontext(programm, wertungen, startgeraete, splitSex, shortGrouper, fullGrouper, jgGroup))
+        case GetrennteDurchgaenge =>
+          val maenner = wertungen.filter(_._1.geschlecht.equalsIgnoreCase("M"))
+          val frauen = wertungen.filter(_._1.geschlecht.equalsIgnoreCase("W"))
+          Seq(
+            if maenner.nonEmpty then Some(ProgrammKontext(if frauen.nonEmpty then programm + "-Tu" else programm, maenner, startgeraeteM, GetrennteDurchgaenge, shortGrouper, fullGrouper, jgGroup)) else None,
+            if frauen.nonEmpty then Some(ProgrammKontext(if maenner.nonEmpty then programm + "-Ti" else programm, frauen, startgeraeteW, GetrennteDurchgaenge, shortGrouper, fullGrouper, jgGroup)) else None
+          ).flatten
+      }
+    }
+  }
+
   private def makeDurchgangMap(wettkampfId: Long): Map[String, String] = service.selectRiegenRaw(wettkampfId)
       .filter(rr => rr.durchgang.isDefined)
       .map(rr => rr.r -> rr.durchgang.get)
@@ -135,3 +223,4 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
 
     
 }
+

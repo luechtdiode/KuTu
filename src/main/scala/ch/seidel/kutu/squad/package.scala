@@ -40,7 +40,9 @@ package object squad {
   }
 
   type WertungenZuRiege = (String, Seq[Wertung])
-  
+  type DurchgangStationZuteilung = Map[Disziplin, Iterable[(String, Seq[Wertung])]]
+  type SuggestedDurchgaenge = Map[String, DurchgangStationZuteilung]
+
   type WertungViewsZuAthletView = (AthletView, Seq[WertungView])
   
   type RiegeAthletWertungen = Map[String, Seq[WertungViewsZuAthletView]]
@@ -56,7 +58,9 @@ package object squad {
     lazy val quality: Int = sizeOfAll*sizeOfAll - geraeteRiegen.foldLeft(0)((acc, item) => acc + abs(item.size - averageSize))
     def + (geraeteRiege: GeraeteRiege): GeraeteRiegen = geraeteRiegen + geraeteRiege
   }
-  
+
+  case class SuggestedDurchgang(name: String, title: String, startgeraete: DurchgangStationZuteilung)
+
   implicit class ShortableString(s: String) {
     lazy val shorten: String = " " + s.split(" ").map(_.take(3) + ".").mkString(" ")
   }

@@ -6,7 +6,7 @@ import scala.collection.immutable.Seq
 
 ThisBuild / scalaVersion := "3.8.3"
 ThisBuild / organization := "ch.seidel"
-ThisBuild / version := "2.3.23"
+ThisBuild / version := "2.3.24"
 
 // logLevel := Level.Error
 
@@ -51,7 +51,8 @@ Compile / scalacOptions ++= {
 Compile / compileOrder := CompileOrder.JavaThenScala
 
 // JVM options for forked runs/tests
-Test / fork := true
+Test / fork := true // FIXME ev. auf false stellen, wenn die Tests nicht funktionieren.
+Test / parallelExecution := false
 Test / javaOptions ++= Seq(
   "-server",
   "-Xss2m",
