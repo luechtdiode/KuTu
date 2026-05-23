@@ -25,6 +25,7 @@ import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 
 import java.io.*
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import scala.concurrent.Promise
 import scala.language.implicitConversions
@@ -390,6 +391,69 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
 
     def extractFilterText = normalizeFilterText(buildGrouper.toRestQuery)
 
+    def flattenCols(cols: Seq[WKCol], parentGroup: Option[String] = None): List[WKLeafCol[ResultRow]] = {
+      cols.toList.flatMap {
+        case c: WKLeafCol[?] =>
+          val label = parentGroup.map(p => s"$p ${c.text}").getOrElse(c.text)
+          List(c.copy(text = label).asInstanceOf[WKLeafCol[ResultRow]])
+        case gc: WKGroupCol =>
+          flattenCols(gc.cols, Some(gc.text))
+      }
+    }
+
+    def csvEsc(value: String): String = {
+      val plain = Option(value).getOrElse("")
+      val escaped = plain.replace("\"", "\"\"")
+      if escaped.exists(ch => ch == ';' || ch == '\n' || ch == '\r' || ch == '"') then s"\"$escaped\"" else escaped
+    }
+
+    def csvRow(values: Seq[String]): String = values.map(csvEsc).mkString(";")
+
+    def writeBlockRows[T <: ResultRow](
+        out: StringBuilder,
+        title: String,
+        cols: List[WKLeafCol[T]],
+        rows: List[T]
+    ): Unit = {
+      if rows.nonEmpty then {
+        out.append(csvRow(Seq("Rangliste", title))).append("\n")
+        out.append(csvRow(cols.map(_.text))).append("\n")
+        rows.foreach { row =>
+          val vals = cols.map { c =>
+            val v = c.valueMapper(row)
+            if v.raw.nonEmpty then v.raw else v.text
+          }
+          out.append(csvRow(vals)).append("\n")
+        }
+        out.append("\n")
+      }
+    }
+
+    def toCsv(gs: List[GroupSection], sortAlphabetically: Boolean, avgOnMultiCompetitions: Boolean): String = {
+      val out = new StringBuilder()
+      def pathText(path: List[String]): String = path.filter(_.nonEmpty).mkString(" / ")
+      def appendSections(items: List[GroupSection], path: List[String]): Unit = {
+        items.foreach {
+          case gl: GroupLeaf[?] =>
+            val title = pathText(path :+ gl.groupKey.capsulatedprint)
+            val cols = flattenCols(gl.buildColumns(avgOnMultiCompetitions)).asInstanceOf[List[WKLeafCol[GroupRow]]]
+            val rows = gl.getTableData(sortAlphabetically, avgOnMultiCompetitions)
+            writeBlockRows(out, title, cols, rows)
+          case ts: TeamSums =>
+            val base = pathText(path :+ ts.groupKey.capsulatedprint)
+            val cols = flattenCols(ts.buildColumns).asInstanceOf[List[WKLeafCol[TeamRow]]]
+            ts.getTableData().groupBy(_.team.rulename).foreach { case (ruleName, teamRows) =>
+              writeBlockRows(out, pathText(List(base, ruleName)), cols, teamRows.toList)
+            }
+          case gn: GroupNode =>
+            appendSections(gn.next.toList, path :+ gn.groupKey.capsulatedprint)
+          case _ =>
+        }
+      }
+      appendSections(gs, List.empty)
+      out.toString()
+    }
+
     def getFilterSaveAsFilenameDefault: FilenameDefault = {
       val default = getSaveAsFilenameDefault
       FilenameDefault(extractFilterText + ".scoredef", default.dir)
@@ -483,6 +547,41 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
       }
     }
+
+    val btnExportCsv = new Button {
+      text = "Als CSV exportieren ..."
+      onAction = _ => {
+        val defaults = getSaveAsFilenameDefault
+        val defaultFilename = extractFilterText + ".csv"
+        val dir = defaults.dir
+        if !dir.exists() then {
+          dir.mkdirs()
+        }
+        val fileChooser = new FileChooser() {
+          initialDirectory = dir
+          this.title = "Rangliste als CSV exportieren ..."
+          extensionFilters.addAll(
+            new ExtensionFilter("CSV", "*.csv"))
+          initialFileName = defaultFilename
+        }
+        val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage)
+        if selectedFile != null then {
+          val file = if !selectedFile.getName.endsWith(".csv") then {
+            new java.io.File(selectedFile.getAbsolutePath + ".csv")
+          } else selectedFile
+          KuTuApp.invokeWithBusyIndicator {
+            val query = buildGrouper
+            val content = toCsv(query.select(getData).toList, query.isAlphanumericOrdered, query.isAvgOnMultipleCompetitions)
+            val writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))
+            try {
+              writer.write(content)
+            } finally {
+              writer.close()
+            }
+          }
+        }
+      }
+    }
     lastPublishedScoreView.onChange {
       lastPublishedScoreView.value match {
         case Some(filter) =>
@@ -560,7 +659,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           if wettkampfmode.value then {
             children = List(
               new ToolBar {
-                content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint)
+                content = List(cbfSaved) ++ getActionButtons ++ List(btnExportCsv, btnPrint)
               },
               new ToolBar {
                 content = List(cbKind, cbBestN, cbModus, cbAvg)
@@ -571,7 +670,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           } else {
             children = List(
               new ToolBar {
-                content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint)
+                content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnExportCsv, btnPrint)
               },
               new ToolBar {
                 content = List(cbKind, cbBestN, cbModus, cbAvg)
