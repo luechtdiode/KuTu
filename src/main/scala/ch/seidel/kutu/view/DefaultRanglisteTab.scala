@@ -25,7 +25,7 @@ import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 
 import java.io.*
-import java.nio.charset.StandardCharsets
+import java.nio.charset.Charset
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import scala.concurrent.Promise
 import scala.language.implicitConversions
@@ -509,7 +509,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           KuTuApp.invokeWithBusyIndicator {
             val query = buildGrouper
             val content = ScoreToCSVRenderer.toCsv(query.select(getData).toList, query.isAlphanumericOrdered, query.isAvgOnMultipleCompetitions)
-            val writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))
+            val writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), Charset.defaultCharset()))
             try {
               writer.write(content)
             } finally {
