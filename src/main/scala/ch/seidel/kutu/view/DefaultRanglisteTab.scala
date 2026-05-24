@@ -6,7 +6,7 @@ import ch.seidel.kutu.actors.{AthletWertungUpdated, AthletWertungUpdatedSequence
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.renderer.{FilenameDefault, ServerPrintUtil, ScoreToHtmlRenderer}
+import ch.seidel.kutu.renderer.{FilenameDefault, ScoreToExcelRenderer, ScoreToHtmlRenderer, ServerPrintUtil}
 import javafx.collections.ObservableList
 import javafx.scene.text.FontSmoothingType
 import org.controlsfx.control.CheckComboBox
@@ -29,6 +29,8 @@ import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import scala.concurrent.Promise
 import scala.language.implicitConversions
 import ch.seidel.kutu.renderer.ServerPrintUtil.*
+
+import java.awt.Desktop
 
 abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
 
@@ -483,6 +485,42 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
         }
       }
     }
+
+    val btnExportExcel = new Button {
+      text = "Als Excel exportieren ..."
+      onAction = _ => {
+        val defaults = getSaveAsFilenameDefault
+        val defaultFilename = extractFilterText + ".xlsx"
+        val dir = defaults.dir
+        if !dir.exists() then {
+          dir.mkdirs()
+        }
+        val fileChooser = new FileChooser() {
+          initialDirectory = dir
+          this.title = "Rangliste als Excel exportieren ..."
+          extensionFilters.addAll(
+            new ExtensionFilter("Excel", "*.xlsx"))
+          initialFileName = defaultFilename
+        }
+        val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage)
+        if selectedFile != null then {
+          val file = if !selectedFile.getName.endsWith(".xlsx") then {
+            new java.io.File(selectedFile.getAbsolutePath + ".xlsx")
+          } else selectedFile
+          KuTuApp.invokeWithBusyIndicator {
+            val query = buildGrouper
+            val content = ScoreToExcelRenderer.
+              toExcel(query.select(getData).toList, query.isAlphanumericOrdered, query.isAvgOnMultipleCompetitions)
+            val writer = new FileOutputStream(file)
+            try writer.write(content)
+            finally writer.close()
+            if (Desktop.isDesktopSupported) {
+              Desktop.getDesktop.open(file)
+            }
+          }
+        }
+      }
+    }
     lastPublishedScoreView.onChange {
       lastPublishedScoreView.value match {
         case Some(filter) =>
@@ -560,7 +598,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           if wettkampfmode.value then {
             children = List(
               new ToolBar {
-                content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint)
+                content = List(cbfSaved) ++ getActionButtons ++ List(btnPrint, btnExportExcel)
               },
               new ToolBar {
                 content = List(cbKind, cbBestN, cbModus, cbAvg)
@@ -571,7 +609,7 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
           } else {
             children = List(
               new ToolBar {
-                content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint)
+                content = List(cbfSaved, btnSaveFilter) ++ getActionButtons ++ List(btnPrint, btnExportExcel)
               },
               new ToolBar {
                 content = List(cbKind, cbBestN, cbModus, cbAvg)
