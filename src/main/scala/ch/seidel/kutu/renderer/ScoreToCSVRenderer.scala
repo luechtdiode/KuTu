@@ -3,14 +3,20 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.{GroupRow, ResultRow, TeamRow}
 
+import java.util.Locale
+
+
 object ScoreToCSVRenderer {
 
-  private val sep = ";"
+  val sep: String =
+    if (Locale.getDefault.getLanguage.equalsIgnoreCase("de")) ";" else ","
 
   private def csvEsc(value: String): String = {
-    val plain = Option(value).getOrElse("")
-    val escaped = plain.replace("\"", "\"\"")
-    if escaped.exists(ch => ch == ';' || ch == '\n' || ch == '\r' || ch == '"') then s"\"$escaped\"" else escaped
+    val v = Option(value).getOrElse("")
+    val mustQuote =
+      v.indexOf(sep) >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0 || v.indexOf('\r') >= 0
+    val escaped = v.replace("\"", "\"\"")
+    if (mustQuote) s""""$escaped"""" else escaped
   }
 
   private def csvRow(values: Seq[String]): String = values.map(csvEsc).mkString(sep)
@@ -47,6 +53,7 @@ object ScoreToCSVRenderer {
 
   def toCsv(gs: List[GroupSection], sortAlphabetically: Boolean, avgOnMultiCompetitions: Boolean): String = {
     val out = new StringBuilder()
+    out.append("\uFEFF") // UTF-8 BOM
     out.append(s"sep=$sep\n")
     def pathText(path: List[String]): String = path.filter(_.nonEmpty).mkString(" / ")
     def appendSections(items: List[GroupSection], path: List[String]): Unit = {
