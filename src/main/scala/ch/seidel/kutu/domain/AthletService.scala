@@ -238,23 +238,23 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
       }
     }
 
-    val preselect = if cache.isEmpty then {
+    val preselect = (if cache.isEmpty then {
       Await.result(database.run {
           (wettkampf match {
             case None => sql"""
-             select id, name, vorname, gebdat, verein
+             select id, name, vorname, geschlecht, gebdat, verein
              from athlet
            """
             case Some(wkid) => sql"""
-             select id, name, vorname, gebdat, verein
+             select id, name, vorname, geschlecht, gebdat, verein
              from athlet a
              where exists (select w.id from wertung w where w.wettkampf_id = $wkid and w.athlet_id = a.id)
            """
-          }).as[(Long, String, String, Option[Date], Long)].withPinnedSession
+          }).as[(Long, String, String, String, Option[Date], Long)].withPinnedSession
         }, Duration.Inf).
         flatMap { x =>
-          val (id, name, vorname, gebdat, verein) = x
-          val mc1 = MatchCode(id, name, vorname, gebdat, verein)
+          val (id, name, vorname, geschlecht, gebdat, verein) = x
+          val mc1 = MatchCode(id, name, vorname, geschlecht, gebdat, verein)
           if Surname.isSurname(mc1.name).isDefined then {
             List(mc1, mc1.swappednames)
           } else {
@@ -268,14 +268,16 @@ trait AthletService extends DBService with AthletResultMapper with VereinService
     }
     else {
       cache
-    }
-    val presel2 = preselect.asScala.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
+    }).asScala.filter(mc => mc.sex.equals(athlet.geschlecht))
+
+    val presel2 = preselect
+      .filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
       (matchcode.id, similarAthletFactor(matchcode, exactVereinFlag = true))
     }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
     val severity = if (exclusive && presel2.size == 1) 230 else 0
     presel2.find(p => p._2 >= severity).flatMap(k => loadAthlet(k._1)).getOrElse {
       if (!athlet.equals(Athlet()) && !exactVerein) {
-        val presel3 = preselect.asScala.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
+        val presel3 = preselect.filter(mc => !exclusive || mc.id != athlet.id).map { matchcode =>
           (matchcode.id, similarAthletFactor(matchcode, exactVereinFlag = false))
         }.filter(p => p._2 > 0).toList.sortBy(_._2).reverse
         val maybeAthlet = presel3.headOption.flatMap(k => loadAthlet(k._1))

@@ -86,7 +86,7 @@ class AthletIndexActor extends Actor with JsonSupport with KutuService {
       case Some(mc) =>
         index.set(
           index.indexOf(mc),
-          MatchCode(athlet.id, athlet.name, athlet.vorname, athlet.gebdat, athlet.verein.getOrElse(0)))
+          MatchCode(athlet.id, athlet.name, athlet.vorname, athlet.geschlecht, athlet.gebdat, athlet.verein.getOrElse(0)))
         sender() ! AthletIndexChanged(athlet)
     }
     case RemoveAthlet(athlet) =>

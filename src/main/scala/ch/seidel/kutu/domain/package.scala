@@ -1393,7 +1393,7 @@ package object domain {
     }
   }
 
-  case class MatchCode(id: Long, name: String, vorname: String, gebdat: Option[java.sql.Date], verein: Long) {
+  case class MatchCode(id: Long, name: String, vorname: String, sex: String, gebdat: Option[java.sql.Date], verein: Long) {
 
     import MatchCode.*
 
@@ -1401,7 +1401,7 @@ package object domain {
     val encodedNamen: Seq[String] = encode(name)
     val encodedVorNamen: Seq[String] = encode(vorname)
 
-    def swappednames = MatchCode(id, vorname, name, gebdat, verein)
+    def swappednames = MatchCode(id, vorname, name, sex, gebdat, verein)
 
     def nameSimilarFactor(other: MatchCode): Int = {
       similarFactor(encodedNamen, other.encodedNamen)

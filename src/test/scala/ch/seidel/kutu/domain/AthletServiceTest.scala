@@ -58,7 +58,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     val cache = new util.ArrayList[MatchCode]
     athletes.values
       .foreach(a =>
-        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.geschlecht, a.gebdat, a.verein.getOrElse(0))))
 
     assert(findAthleteLike(cache, exclusive = false)(athletes(2L)) === athletes(2L))
     assert(findAthleteLike(cache, exclusive = false)(athletes(4L)) === athletes(4L))
@@ -94,7 +94,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     athletes.values
       .filter(a => a.id != 21L)
       .foreach(a =>
-        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.geschlecht, a.gebdat, a.verein.getOrElse(0))))
 
     assert(findAthleteLike(cache, exclusive = false)(athletes(20L)) === athletes(20L))
     assert(findAthleteLike(cache, exclusive = false)(athletes(21L)) === athletes(21L))
@@ -104,7 +104,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     val cache = new util.ArrayList[MatchCode]
     athletes.values
       .foreach(a =>
-        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.geschlecht, a.gebdat, a.verein.getOrElse(0))))
 
     assert(findAthleteLike(cache, exclusive = true)(athletes(2L)) === athletes(1L))
     assert(findAthleteLike(cache, exclusive = true)(athletes(4L)) !== athletes(3L))
@@ -129,7 +129,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     val cache = new util.ArrayList[MatchCode]
     athleteList
       .foreach(a =>
-        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.geschlecht, a.gebdat, a.verein.getOrElse(0))))
 
     assert(findAthleteLike(cache, exclusive = true)(athletes(18)) !== athletes(19))
   }
@@ -139,7 +139,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     val cache = new util.ArrayList[MatchCode]
     athleteList
       .foreach(a =>
-        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.geschlecht, a.gebdat, a.verein.getOrElse(0))))
 
     assert(findAthleteLike(cache, exclusive = true)(athletes(21)) !== athletes(22))
   }
@@ -153,7 +153,7 @@ class AthletServiceTest extends AnyFunSuite with AthletService {
     val cache = new util.ArrayList[MatchCode]
     athleteList
       .foreach(a =>
-        cache.add(MatchCode(a.id, a.name, a.vorname, a.gebdat, a.verein.getOrElse(0))))
+        cache.add(MatchCode(a.id, a.name, a.vorname, a.geschlecht, a.gebdat, a.verein.getOrElse(0))))
 
     assert(findAthleteLike(cache, exclusive = true)(a1) !== a2)
   }

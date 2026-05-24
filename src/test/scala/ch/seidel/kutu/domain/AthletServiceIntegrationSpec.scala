@@ -161,7 +161,7 @@ class AthletServiceIntegrationSpec extends KuTuBaseSpec {
         ))
 
         val cache = new java.util.ArrayList[MatchCode]()
-        cache.add(MatchCode(athlete1.id, athlete1.name, athlete1.vorname, athlete1.gebdat, athlete1.verein.getOrElse(0L)))
+        cache.add(MatchCode(athlete1.id, athlete1.name, athlete1.vorname, athlete1.geschlecht, athlete1.gebdat, athlete1.verein.getOrElse(0L)))
 
         val searchAthlet = Athlet(testVereinId).copy(
           name = "Muller", // Another variation
