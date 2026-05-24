@@ -104,7 +104,7 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
 
   def preparePdfPreviewRowsFromTableData(tableData: Seq[Seq[String]], progrm: ProgrammView): Seq[(Long, Athlet, AthletView, List[Wertung])] = {
     val scoreImporter = new ScoreImporter()
-    val rowfields = scoreImporter.mapStructuredRows(tableData)(buildPdfAthletMapper(), buildPdfWertungMapper(progrm))
+    val rowfields = scoreImporter.mapStructuredRows(tableData)(buildPdfAthletMapper("M"), buildPdfWertungMapper(progrm))
 
     val cache = new java.util.ArrayList[MatchCode]()
     val vereineList = service.selectVereine
@@ -157,14 +157,14 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
     }
   }
 
-  private def buildPdfAthletMapper(): (String, String, String) => (Verein, Athlet) = {
+  private def buildPdfAthletMapper(defaultgeschlecht: String): (String, String, String, String) => (Verein, Athlet) = {
     val verbandPartsResolver: Verein => Set[String] = _.verband match {
       case Some(verband) => verband.split(",").toSet + verband
       case None => Set.empty
     }
     val knownVerbandList = service.selectVereine.flatMap(verbandPartsResolver).toSet
 
-    (name: String, jahrgang: String, vereinText: String) => {
+    (geschlecht: String, name: String, jahrgang: String, vereinText: String) => {
       val guessedVerband = vereinText.split(" ").last
       val fallbackVerein = Verein(0, vereinText.replace(guessedVerband, "").replace("/", ", ").trim, Some(guessedVerband))
       val v = knownVerbandList
@@ -178,7 +178,7 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
       val a = Athlet(
         id = 0,
         js_id = 0,
-        geschlecht = "M",
+        geschlecht = if geschlecht.isEmpty then defaultgeschlecht else geschlecht,
         name = ns.last,
         vorname = ns.reverse.tail.reverse.mkString(" ").trim,
         gebdat = Some(service.getSQLDate("01.01." + jahrgang)),

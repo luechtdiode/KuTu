@@ -45,12 +45,12 @@ class ScoreImporter {
   }
 
   def mapStructuredRows[A, V, W](tableData: Seq[Seq[String]])(
-      mapAthlet: (String, String, String) => (V, A),
+      mapAthlet: (String, String, String, String) => (V, A),
       mapWertung: (String, String, String) => W): Seq[(A, V, List[W])] = {
     tableData
       .flatMap(parseScoreRow)
       .map { row =>
-        val (verein, athlet) = mapAthlet(row.name, row.jahrgang, row.verein)
+        val (verein, athlet) = mapAthlet(row.geschlecht, row.name, row.jahrgang, row.verein)
         val wertungen = List(
           mapWertung("Boden", row.bodenD, row.bodenE),
           mapWertung("Pferd Pauschen", row.pferdD.mkString(","), row.pferdE),
@@ -145,6 +145,7 @@ class ScoreImporter {
     if !hasValidAthletPrefix(values) || !matchesFullDFields(values.drop(4)) then None
     else
       Some(StructuredScoreRow(
+        geschlecht = "", // Geschlecht is not explicitly provided in the PDF, can be derived from other data if needed
         rang = values(0),
         name = values(1),
         jahrgang = values(2),
@@ -170,6 +171,7 @@ class ScoreImporter {
     if !hasValidAthletPrefix(values) || !matchesPartialDFields(values.drop(4)) then None
     else
       Some(StructuredScoreRow(
+        geschlecht = "", // Geschlecht is not explicitly provided in the PDF, can be derived from other data if needed
         rang = values(0),
         name = values(1),
         jahrgang = values(2),
@@ -196,6 +198,7 @@ class ScoreImporter {
     else
       Some(StructuredScoreRow(
         rang = values(0),
+        geschlecht = "", // Geschlecht is not explicitly provided in the PDF, can be derived from other data if needed
         name = values(1),
         jahrgang = values(2),
         verein = values(3),
@@ -266,6 +269,7 @@ class ScoreImporter {
 
 private case class StructuredScoreRow(
     rang: String,
+    geschlecht: String,
     name: String,
     jahrgang: String,
     verein: String,
