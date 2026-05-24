@@ -6,7 +6,7 @@ import ch.seidel.kutu.actors.{AthletWertungUpdated, AthletWertungUpdatedSequence
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.WebSocketClient
-import ch.seidel.kutu.renderer.{FilenameDefault, ScoreToCSVRenderer, ServerPrintUtil, ScoreToHtmlRenderer}
+import ch.seidel.kutu.renderer.{FilenameDefault, ScoreToExcelRenderer, ScoreToHtmlRenderer, ServerPrintUtil}
 import javafx.collections.ObservableList
 import javafx.scene.text.FontSmoothingType
 import org.controlsfx.control.CheckComboBox
@@ -25,11 +25,12 @@ import scalafx.stage.FileChooser.ExtensionFilter
 import scalafx.util.StringConverter
 
 import java.io.*
-import java.nio.charset.Charset
 import java.util.concurrent.{ScheduledFuture, TimeUnit}
 import scala.concurrent.Promise
 import scala.language.implicitConversions
 import ch.seidel.kutu.renderer.ServerPrintUtil.*
+
+import java.awt.Desktop
 
 abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val service: KutuService) extends Tab with TabWithService with ScoreToHtmlRenderer {
 
@@ -486,34 +487,34 @@ abstract class DefaultRanglisteTab(wettkampfmode: BooleanProperty, override val 
     }
 
     val btnExportCsv = new Button {
-      text = "Als CSV exportieren ..."
+      text = "Als Excel exportieren ..."
       onAction = _ => {
         val defaults = getSaveAsFilenameDefault
-        val defaultFilename = extractFilterText + ".csv"
+        val defaultFilename = extractFilterText + ".xlsx"
         val dir = defaults.dir
         if !dir.exists() then {
           dir.mkdirs()
         }
         val fileChooser = new FileChooser() {
           initialDirectory = dir
-          this.title = "Rangliste als CSV exportieren ..."
+          this.title = "Rangliste als Excel exportieren ..."
           extensionFilters.addAll(
-            new ExtensionFilter("CSV", "*.csv"))
+            new ExtensionFilter("Excel", "*.xlsx"))
           initialFileName = defaultFilename
         }
         val selectedFile = fileChooser.showSaveDialog(KuTuApp.getStage)
         if selectedFile != null then {
-          val file = if !selectedFile.getName.endsWith(".csv") then {
-            new java.io.File(selectedFile.getAbsolutePath + ".csv")
+          val file = if !selectedFile.getName.endsWith(".xlsx") then {
+            new java.io.File(selectedFile.getAbsolutePath + ".xlsx")
           } else selectedFile
           KuTuApp.invokeWithBusyIndicator {
             val query = buildGrouper
-            val content = ScoreToCSVRenderer.toCsv(query.select(getData).toList, query.isAlphanumericOrdered, query.isAvgOnMultipleCompetitions)
-            val writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), Charset.defaultCharset()))
-            try {
-              writer.write(content)
-            } finally {
-              writer.close()
+            val content = ScoreToExcelRenderer.toExcel(query.select(getData).toList, query.isAlphanumericOrdered, query.isAvgOnMultipleCompetitions)
+            val writer = new FileOutputStream(file)
+            try writer.write(content)
+            finally writer.close()
+            if (Desktop.isDesktopSupported) {
+              Desktop.getDesktop.open(file)
             }
           }
         }
