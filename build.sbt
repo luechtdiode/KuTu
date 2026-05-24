@@ -129,6 +129,7 @@ libraryDependencies ++= Seq(
   "commons-codec" % "commons-codec" % "1.22.0",
   "org.apache.commons" % "commons-lang3" % "3.20.0",
   "org.apache.commons" % "commons-text" % "1.15.0",
+  "technology.tabula" % "tabula" % "1.0.5",
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.3",
