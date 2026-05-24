@@ -3,7 +3,6 @@ package ch.seidel.kutu.renderer
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.{GroupRow, ResultRow, TeamRow}
 import org.apache.poi.ss.usermodel.*
-import org.apache.poi.ss.usermodel.IndexedColors.GREY_25_PERCENT
 import org.apache.poi.xssf.usermodel.{XSSFCellStyle, XSSFFont, XSSFWorkbook}
 
 import java.io.ByteArrayOutputStream
@@ -17,7 +16,7 @@ object ScoreToExcelRenderer {
 class ScoreToExcelRenderer {
 
   private val styleCache = new scala.collection.mutable.HashMap[String, XSSFCellStyle]()
-  private val workbook = new XSSFWorkbook()
+  private[renderer] val workbook = new XSSFWorkbook()
   private val dataFormat = workbook.createDataFormat()
 
   private val titleFont = workbook.createFont()
@@ -30,6 +29,42 @@ class ScoreToExcelRenderer {
   private val headerStyle = style(titleFont, HorizontalAlignment.LEFT, IndexedColors.LIGHT_CORNFLOWER_BLUE)
   private val subHeaderStyle = style(titleFont, HorizontalAlignment.LEFT, IndexedColors.LIGHT_BLUE)
   private val textStyle = style(workbook.createFont(), HorizontalAlignment.LEFT, IndexedColors.AUTOMATIC)
+
+  private def decoratedCellStyle(
+      isNumeric: Boolean,
+      formatIndex: Option[Short],
+      styleClasses: Seq[String]
+  ): XSSFCellStyle = {
+    val classes = styleClasses.toSet
+    val key = {
+      val base = s"${formatIndex.getOrElse(-1)}|${if isNumeric || classes.contains("hintdata") || classes.contains("valuedata") then "R" else "L"}"
+      val best = if classes.contains("best") then "|B" else ""
+      val stroke = if classes.contains("stroke") then "|S" else ""
+      val detail = if classes.contains("detail") then "|D" else ""
+      base + best + stroke + detail
+    }
+    styleCache.getOrElseUpdate(key, {
+      val cellStyle = workbook.createCellStyle()
+      cellStyle.cloneStyleFrom(textStyle)
+      if isNumeric || classes.contains("hintdata") || classes.contains("valuedata") then {
+        cellStyle.setAlignment(HorizontalAlignment.RIGHT)
+      }
+      if classes.contains("detail") then {
+        cellStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex)
+        cellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
+      }
+      formatIndex.foreach(cellStyle.setDataFormat)
+
+      if classes.contains("best") || classes.contains("stroke") then {
+        val decoratedFont = workbook.createFont()
+        decoratedFont.setBold(classes.contains("best"))
+        decoratedFont.setStrikeout(classes.contains("stroke"))
+        if classes.contains("stroke") then decoratedFont.setColor(IndexedColors.RED.getIndex)
+        cellStyle.setFont(decoratedFont)
+      }
+      cellStyle
+    })
+  }
 
   private def style(font: XSSFFont, alignment: HorizontalAlignment, color: IndexedColors): CellStyle = {
     val s = workbook.createCellStyle()
@@ -56,10 +91,11 @@ class ScoreToExcelRenderer {
     if trimmed.isEmpty then None
     else {
       // Accept common score notations from DE/EN exports (e.g. 12,55 or 1.234,56).
-      val normalizedBase = trimmed.replace("\u00A0", "").replace("'", "").replace(" ", "")
+      val normalizedBase = trimmed.replace("\u00A0", "").replace("'", "")
         .replace("1 G", "1")
-        .replace("2 B", "2")
-        .replace("3 S", "3")
+        .replace("2 S", "2")
+        .replace("3 B", "3")
+        .replace(" ", "")
       val normalized = {
         val hasComma = normalizedBase.contains(',')
         val hasDot = normalizedBase.contains('.')
@@ -98,22 +134,20 @@ class ScoreToExcelRenderer {
     cell
   }
 
-  private def writeDataCell(row: Row, index: Int, value: String) = {
+  private def writeDataCell(row: Row, index: Int, value: WKColValue, colStyleClasses: Seq[String]) = {
     val cell = row.createCell(index)
-    parseNumeric(value) match {
-      case Some((n, formatIndex)) =>
+    val mergedStyleClasses = (colStyleClasses ++ value.styleClass).distinct
+    val renderDecoratedValue = value.styleClass.nonEmpty
+    val displayValue = if value.raw.nonEmpty then value.raw else value.text
+
+    parseNumeric(displayValue) match {
+      case Some((n, formatIndex)) if !renderDecoratedValue =>
         cell.setCellValue(n.toDouble)
-        val cellStyle = styleCache.getOrElseUpdate(dataFormat.getFormat(formatIndex), {
-          val numericStyle: XSSFCellStyle = workbook.createCellStyle()
-          numericStyle.cloneStyleFrom(textStyle)
-          numericStyle.setAlignment(HorizontalAlignment.RIGHT)
-          numericStyle.setDataFormat(formatIndex)
-          numericStyle
-        })
+        val cellStyle = decoratedCellStyle(isNumeric = true, Some(formatIndex), mergedStyleClasses)
         cell.setCellStyle(cellStyle)
-      case None =>
-        cell.setCellValue(Option(value).getOrElse(""))
-        cell.setCellStyle(textStyle)
+      case _ =>
+        cell.setCellValue(Option(displayValue).getOrElse(""))
+        cell.setCellStyle(decoratedCellStyle(isNumeric = false, None, mergedStyleClasses))
     }
     cell
   }
@@ -126,7 +160,7 @@ class ScoreToExcelRenderer {
     style.setVerticalAlignment(VerticalAlignment.CENTER)
   }
 
-  private def writeBlockRows[T <: ResultRow](
+  private[renderer] def writeBlockRows[T <: ResultRow](
       sheet: org.apache.poi.ss.usermodel.Sheet,
       title: String,
       cols: List[WKLeafCol[T]],
@@ -150,7 +184,7 @@ class ScoreToExcelRenderer {
         val row = sheet.createRow(rowIndex)
         cols.zipWithIndex.foreach { case (c, colIdx) =>
           val v = c.valueMapper(rowData)
-          writeDataCell(row, colIdx, if v.raw.nonEmpty then v.raw else v.text)
+          writeDataCell(row, colIdx, v, c.styleClass)
         }
         rowIndex += 1
       }
@@ -254,7 +288,7 @@ class ScoreToExcelRenderer {
         val row = sheet.createRow(rowIndex)
         teamCols.zipWithIndex.foreach { case (c, colIdx) =>
           val v = c.valueMapper(teamRow)
-          writeDataCell(row, colIdx, if v.raw.nonEmpty then v.raw else v.text)
+          writeDataCell(row, colIdx, v, c.styleClass)
         }
         rowIndex += 1
 
@@ -264,17 +298,17 @@ class ScoreToExcelRenderer {
         val memberData = teamGroupLeaf.getTableData()
 
         // Member sub-header (optional but helps readability)
-        val memberHeaderRow = sheet.createRow(rowIndex)
+        /*val memberHeaderRow = sheet.createRow(rowIndex)
         memberCols.zipWithIndex.foreach { case (col, colIdx) =>
           writeCell(memberHeaderRow, colIdx + 1, col.text, headerStyle) // +1 to indent
         }
         rowIndex += 1
-
+*/
         memberData.foreach { memberRow =>
           val mRow = sheet.createRow(rowIndex)
           memberCols.zipWithIndex.foreach { case (c, colIdx) =>
             val v = c.valueMapper(memberRow)
-            writeDataCell(mRow, colIdx + 1, if v.raw.nonEmpty then v.raw else v.text)
+            writeDataCell(mRow, colIdx + 1, v, c.styleClass :+ "detail") // +1 to indent, add "detail" style class for visual distinction
           }
           rowIndex += 1
         }
