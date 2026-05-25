@@ -1,7 +1,7 @@
 package ch.seidel.kutu.view
 
 import ch.seidel.commons.{DisplayablePage, PageDisplayer}
-import ch.seidel.kutu.domain.{Athlet, AthletView, ProgrammView, Verein, Wertung}
+import ch.seidel.kutu.domain.{Athlet, AthletView, ProgrammView, Verein, Wertung, WettkampfImportService}
 import scalafx.Includes.*
 import scalafx.beans.property.ReadOnlyStringWrapper
 import scalafx.collections.ObservableBuffer
@@ -99,39 +99,46 @@ class WettkampfImportPreviewUI {
   }
 
   def showCsvImportPreview(
-      rows: Seq[(Long, Athlet, AthletView, Long)],
+      rows: Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow],
       programmColumnCaption: String,
       programms: Seq[ProgrammView],
-      onSelected: Seq[(Long, Athlet, AthletView, Long)] => Unit,
-      onAll: Seq[(Long, Athlet, AthletView, Long)] => Unit)(using event: ActionEvent): Unit = {
+      onSelected: Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow] => Unit,
+      onAll: Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow] => Unit)(using event: ActionEvent): Unit = {
+    type ImportRow = ch.seidel.kutu.domain.WettkampfImportService#ImportRow
     val sourceModel = ObservableBuffer.from(rows)
     val filteredModel = ObservableBuffer.from(sourceModel)
-    val athletTable = new TableView[(Long, Athlet, AthletView, Long)](filteredModel) {
+    val athletTable = new TableView[ImportRow](filteredModel) {
       columns ++= List(
-        new TableColumn[(Long, Athlet, AthletView, Long), String] {
+        new TableColumn[ImportRow, String] {
           text = "Athlet (Name, Vorname, JG)"
           cellValueFactory = { x =>
-            new ReadOnlyStringWrapper(x.value, "athlet", s"${x.value._2.shortPrint}")
+            new ReadOnlyStringWrapper(x.value, "athlet", s"${x.value.athlet.shortPrint}")
           }
           minWidth = 250
         },
-        new TableColumn[(Long, Athlet, AthletView, Long), String] {
+        new TableColumn[ImportRow, String] {
           text = programmColumnCaption
           cellValueFactory = { x =>
             new ReadOnlyStringWrapper(x.value, "programm", {
-              programms.find(p => p.id == x.value._1 || p.aggregatorHead.id == x.value._1) match {
-                case Some(programm) => if x.value._4 > 0 then "Umteilen auf " + programm.name else programm.name
+              programms.find(p => p.id == x.value.progId || p.aggregatorHead.id == x.value.progId) match {
+                case Some(programm) => if x.value.oldProg > 0 then "Umteilen auf " + programm.name else programm.name
                 case _ => "unbekannt"
               }
             })
           }
         },
-        new TableColumn[(Long, Athlet, AthletView, Long), String] {
+        new TableColumn[ImportRow, String] {
+          text = "Team"
+          cellValueFactory = { x =>
+            new ReadOnlyStringWrapper(x.value, "team", if x.value.team > 0 then x.value.team.toString else "")
+          }
+        },
+        new TableColumn[ImportRow, String] {
           text = "Import-Vorschlag"
           cellValueFactory = { x =>
             new ReadOnlyStringWrapper(x.value, "dbmatch", {
-              if x.value._1 == 0L then "wird entfernt"
-              else if x.value._3.id > 0 then "als " + x.value._3.easyprint
+              if x.value.progId == 0L then "wird entfernt"
+              else if x.value.athletView.id > 0 then "als " + x.value.athletView.easyprint
               else "wird neu importiert"
             })
           }
@@ -140,10 +147,10 @@ class WettkampfImportPreviewUI {
     }
     athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
 
-    val filter = buildSearchFilter(sourceModel, filteredModel, athletTable, (row, search) => {
-      row._2.name.toUpperCase.contains(search) ||
-      row._2.vorname.toUpperCase.contains(search) ||
-      row._3.verein.exists(_.name.toUpperCase.contains(search))
+    val filter = buildSearchFilter(sourceModel, filteredModel, athletTable, (row: ImportRow, search) => {
+      row.athlet.name.toUpperCase.contains(search) ||
+      row.athlet.vorname.toUpperCase.contains(search) ||
+      row.athletView.verein.exists(_.name.toUpperCase.contains(search))
     })
 
     PageDisplayer.showInDialog("Aus CSV laden ...", new DisplayablePage() {
@@ -171,41 +178,48 @@ class WettkampfImportPreviewUI {
 
   def showCsvImportPreviewWithVerein(
       title: String,
-      rows: Seq[(Long, Athlet, AthletView, Long)],
+      rows: Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow],
       programmColumnCaption: String,
       programms: Seq[ProgrammView],
       vereine: Seq[Verein],
       initialVerein: Option[Verein],
-      onSelected: (Seq[(Long, Athlet, AthletView, Long)], Verein) => Unit,
-      onAll: (Seq[(Long, Athlet, AthletView, Long)], Verein) => Unit)(using event: ActionEvent): Unit = {
+      onSelected: (Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow], Verein) => Unit,
+      onAll: (Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow], Verein) => Unit)(using event: ActionEvent): Unit = {
+    type ImportRow = ch.seidel.kutu.domain.WettkampfImportService#ImportRow
     val sourceModel = ObservableBuffer.from(rows)
     val filteredModel = ObservableBuffer.from(sourceModel)
-    val athletTable = new TableView[(Long, Athlet, AthletView, Long)](filteredModel) {
+    val athletTable = new TableView[ImportRow](filteredModel) {
       columns ++= List(
-        new TableColumn[(Long, Athlet, AthletView, Long), String] {
+        new TableColumn[ImportRow, String] {
           text = "Athlet (Name, Vorname, JG)"
           cellValueFactory = { x =>
-            new ReadOnlyStringWrapper(x.value, "athlet", s"${x.value._2.shortPrint}")
+            new ReadOnlyStringWrapper(x.value, "athlet", s"${x.value.athlet.shortPrint}")
           }
           minWidth = 250
         },
-        new TableColumn[(Long, Athlet, AthletView, Long), String] {
+        new TableColumn[ImportRow, String] {
           text = programmColumnCaption
           cellValueFactory = { x =>
             new ReadOnlyStringWrapper(x.value, "programm", {
-              programms.find(p => p.id == x.value._1 || p.aggregatorHead.id == x.value._1) match {
-                case Some(programm) => if x.value._4 > 0 then "Umteilen auf " + programm.name else programm.name
+              programms.find(p => p.id == x.value.progId || p.aggregatorHead.id == x.value.progId) match {
+                case Some(programm) => if x.value.oldProg > 0 then "Umteilen auf " + programm.name else programm.name
                 case _ => "unbekannt"
               }
             })
           }
         },
-        new TableColumn[(Long, Athlet, AthletView, Long), String] {
+        new TableColumn[ImportRow, String] {
+          text = "Team"
+          cellValueFactory = { x =>
+            new ReadOnlyStringWrapper(x.value, "team", if x.value.team > 0 then x.value.team.toString else "")
+          }
+        },
+        new TableColumn[ImportRow, String] {
           text = "Import-Vorschlag"
           cellValueFactory = { x =>
             new ReadOnlyStringWrapper(x.value, "dbmatch", {
-              if x.value._1 == 0L then "wird entfernt"
-              else if x.value._3.id > 0 then "als " + x.value._3.easyprint
+              if x.value.progId == 0L then "wird entfernt"
+              else if x.value.athletView.id > 0 then "als " + x.value.athletView.easyprint
               else "wird neu importiert"
             })
           }
@@ -214,10 +228,10 @@ class WettkampfImportPreviewUI {
     }
     athletTable.selectionModel.value.setSelectionMode(SelectionMode.Multiple)
 
-    val filter = buildSearchFilter(sourceModel, filteredModel, athletTable, (row, search) => {
-      row._2.name.toUpperCase.contains(search) ||
-      row._2.vorname.toUpperCase.contains(search) ||
-      row._3.verein.exists(_.name.toUpperCase.contains(search))
+    val filter = buildSearchFilter(sourceModel, filteredModel, athletTable, (row: ImportRow, search) => {
+      row.athlet.name.toUpperCase.contains(search) ||
+      row.athlet.vorname.toUpperCase.contains(search) ||
+      row.athletView.verein.exists(_.name.toUpperCase.contains(search))
     })
 
     val cbVereine = new ComboBox[Verein] {

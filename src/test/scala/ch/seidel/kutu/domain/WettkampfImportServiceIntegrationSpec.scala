@@ -53,7 +53,8 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
         ),
         context = importService.StructuredPreviewContext(
           existingAthlets = existingAthlets,
-          existingProgramsByAthletEasyprint = Map.empty
+          existingProgramsByAthletEasyprint = Map.empty,
+          existingTeamsByAthletEasyprint = Map.empty
         )
       )
 
@@ -94,7 +95,8 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
         ),
         context = importService.StructuredPreviewContext(
           existingAthlets = Seq(AthletView(0, 0, "M", "Alt", "Athlet", None, "", "", "", None, activ = true)),
-          existingProgramsByAthletEasyprint = Map.empty
+          existingProgramsByAthletEasyprint = Map.empty,
+          existingTeamsByAthletEasyprint = Map.empty
         )
       )
 
@@ -131,7 +133,7 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
           genderValueMapping = Map("M" -> "M"),
           resolveVereinFromFields = false
         ),
-        context = importService.StructuredPreviewContext(Seq.empty, Map.empty)
+        context = importService.StructuredPreviewContext(Seq.empty, Map.empty, Map.empty)
       )
 
       result should have size 1
@@ -184,11 +186,67 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
         ),
         context = importService.StructuredPreviewContext(
           existingAthlets = Seq(expectedAthlet),
-          existingProgramsByAthletEasyprint = Map(expectedAthlet.easyprint -> programms.head.id)
+          existingProgramsByAthletEasyprint = Map(expectedAthlet.easyprint -> programms.head.id),
+          existingTeamsByAthletEasyprint = Map.empty
         )
       )
 
       result.shouldBe(Seq.empty)
+    }
+
+    "keep rows when only team assignment changes" in {
+      val wettkampf = insertGeTuWettkampf(s"ImportServiceTeamChanged-${System.currentTimeMillis()}", anzvereine = 1)
+      val programms = readWettkampfLeafs(wettkampf.programmId)
+      val wettkampfView = wettkampf.toView(programms.head)
+      val importService = new WettkampfImportService(this, wettkampfView)
+
+      val expectedAthlet = AthletView(
+        id = 0,
+        js_id = 0,
+        geschlecht = "M",
+        name = "Neu",
+        vorname = "Teamwechsel",
+        gebdat = Some(getSQLDate("01.01.2015")),
+        strasse = "",
+        plz = "",
+        ort = "",
+        verein = None,
+        activ = true
+      )
+
+      val result = importService.prepareStructuredPreviewRows(
+        rowfields = Seq(
+          Map(
+            "NAME" -> "Neu",
+            "VORNAME" -> "Teamwechsel",
+            "JAHRGANG" -> "2015",
+            "KATEGORIE" -> "",
+            "TEAM" -> "2",
+            "VERBAND" -> "",
+            "VEREIN" -> "",
+            "RLZ_TZ" -> "",
+            "VERBAND_RLZ" -> "",
+            "GESCHLECHT" -> "M"
+          )
+        ),
+        programms = programms,
+        progrm = Some(programms.head),
+        options = importService.StructuredPreviewOptions(
+          removeMissingAthletes = true,
+          fixedVerein = None,
+          genderValueMapping = Map("M" -> "M"),
+          resolveVereinFromFields = false
+        ),
+        context = importService.StructuredPreviewContext(
+          existingAthlets = Seq(expectedAthlet),
+          existingProgramsByAthletEasyprint = Map(expectedAthlet.easyprint -> programms.head.id),
+          existingTeamsByAthletEasyprint = Map(expectedAthlet.easyprint -> 1)
+        )
+      )
+
+      result should have size 1
+      result.head._1 shouldBe programms.head.id
+      result.head._5 shouldBe 2
     }
   }
 
@@ -239,23 +297,26 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
       val removeIds = before.filter(w => w.athlet.id == athleteToRemove.id).map(_.id).toSet
 
       val rows = Seq(
-        (
-          programms.head.id,
-          Athlet(0L).copy(name = "Insert", vorname = "Athlet", verein = Some(vereinId)),
-          AthletView(0, 0, "M", "Insert", "Athlet", None, "", "", "", Some(verein), activ = true),
-          0L
+        importService.ImportRow(
+          progId = programms.head.id,
+          athlet = Athlet(0L).copy(name = "Insert", vorname = "Athlet", verein = Some(vereinId)),
+          athletView = AthletView(0, 0, "M", "Insert", "Athlet", None, "", "", "", Some(verein), activ = true),
+          oldProg = 0L,
+          team = 3
         ),
-        (
-          programms.last.id,
-          moveView.toAthlet,
-          moveView,
-          programms.head.id
+        importService.ImportRow(
+          progId = programms.last.id,
+          athlet = moveView.toAthlet,
+          athletView = moveView,
+          oldProg = programms.head.id,
+          team = 2
         ),
-        (
-          0L,
-          removeView.toAthlet,
-          removeView,
-          0L
+        importService.ImportRow(
+          progId = 0L,
+          athlet = removeView.toAthlet,
+          athletView = removeView,
+          oldProg = 0L,
+          team = 0
         )
       )
 
@@ -264,6 +325,7 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
       val after = selectWertungen(wettkampfId = Some(wettkampf.id))
 
       after.exists(w => w.athlet.name == "Insert" && w.athlet.vorname == "Athlet" && w.wettkampfdisziplin.programm.id == programms.head.id) shouldBe true
+      after.exists(w => w.athlet.name == "Insert" && w.athlet.vorname == "Athlet" && w.team == 3) shouldBe true
       after.exists(w => w.athlet.id == athleteToMove.id && w.wettkampfdisziplin.programm.id == programms.last.id) shouldBe true
       after.exists(w => w.athlet.id == athleteToMove.id && w.wettkampfdisziplin.programm.id == programms.head.id) shouldBe false
       after.exists(w => w.athlet.id == athleteToRemove.id) shouldBe false
@@ -331,4 +393,3 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
     }
   }
 }
-
