@@ -16,3 +16,5 @@ parsers:
       loop: true
       macro: false
       method: true
+ignore:
+  - "src/main/scala/ch/seidel/kutu/view"  # no tests for this package
