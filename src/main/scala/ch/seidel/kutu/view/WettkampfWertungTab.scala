@@ -1253,24 +1253,38 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   private lazy val importPreviewUi = new WettkampfImportPreviewUI()
   private lazy val wettkampfImportService = new WettkampfImportService(service, wettkampf)
 
+  private type ImportRow = wettkampfImportService.ImportRow
+
   private def existingAthletsInCompetition: Seq[AthletView] = wertungen.map(_.head.init.athlet).distinct
 
   private def existingProgramsByAthletEasyprint: Map[String, Long] =
     wertungen.map(w => w.head.init.athlet.easyprint -> w.head.init.wettkampfdisziplin.programm.id).toMap
 
-  private def wertungIdsByAthletEasyprint: Map[String, Set[Long]] =
+  private def existingTeamsByAthletEasyprint: Map[String, Int] =
+    wertungen.map(w => w.head.init.athlet.easyprint -> w.head.init.team).toMap
+
+  private def wertungIdsByAthletEasyprint: Map[String, Set[Long]] = {
     wertungen
       .groupBy(_.head.init.athlet.easyprint)
       .map { case (easyprint, rows) => easyprint -> rows.flatMap(_.map(_.init.id)).toSet }
+  }
 
   private def persistPdfImportRows(rows: Seq[(Long, Athlet, AthletView, List[Wertung])]): Unit = {
     wettkampfImportService.applyPdfImportSelection(rows)
     reloadData()
   }
 
-  private def persistStructuredImportRows(rows: Seq[(Long, Athlet, AthletView, Long)]): Unit = {
+  private def persistStructuredImportRows(rows: Seq[ImportRow]): Unit = {
     wettkampfImportService.applyStructuredImportSelection(rows, wertungIdsByAthletEasyprint)
     reloadData()
+  }
+
+  private def persistStructuredImportRowsGeneric(rows: Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow]): Unit = {
+    persistStructuredImportRows(rows.asInstanceOf[Seq[ImportRow]])
+  }
+
+  private def assignSelectedVereinGeneric(rows: Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow], verein: Verein): Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow] = {
+    wettkampfImportService.assignSelectedVerein(rows.asInstanceOf[Seq[ImportRow]], verein).asInstanceOf[Seq[ch.seidel.kutu.domain.WettkampfImportService#ImportRow]]
   }
 
   private def doLoadFaxeKuTuRanglisteFromPDF(filename: URI, progrm: ProgrammView)(implicit event: ActionEvent): Unit = {
@@ -1311,7 +1325,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             resolveVereinFromFields = true),
           context = wettkampfImportService.StructuredPreviewContext(
             existingAthlets = existingAthletsInCompetition,
-            existingProgramsByAthletEasyprint = existingProgramsByAthletEasyprint)
+            existingProgramsByAthletEasyprint = existingProgramsByAthletEasyprint,
+            existingTeamsByAthletEasyprint = existingTeamsByAthletEasyprint)
         )
       }
     }
@@ -1323,8 +1338,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             rows = clipraw,
             programmColumnCaption = progrm.map(p => if p.head.name.toUpperCase.contains("GETU") then "Kategorie" else "Programm").getOrElse("."),
             programms = programms,
-            onSelected = selected => persistStructuredImportRows(selected),
-            onAll = filtered => persistStructuredImportRows(filtered)
+            onSelected = selected => persistStructuredImportRowsGeneric(selected),
+            onAll = filtered => persistStructuredImportRowsGeneric(filtered)
           )
       }
     }
@@ -1353,7 +1368,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           ),
           context = wettkampfImportService.StructuredPreviewContext(
             existingAthlets = existingAthletsInCompetition,
-            existingProgramsByAthletEasyprint = existingProgramsByAthletEasyprint)
+            existingProgramsByAthletEasyprint = existingProgramsByAthletEasyprint,
+            existingTeamsByAthletEasyprint = existingTeamsByAthletEasyprint)
         )
       }
     }
@@ -1361,15 +1377,15 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       case Failure(t) => logger.debug(t.toString)
       case Success(clipraw) => Platform.runLater {
         if clipraw.nonEmpty then
-          importPreviewUi.showCsvImportPreviewWithVerein(
-            title = "Aus Excel einfügen ...",
-            rows = clipraw,
-            programmColumnCaption = progrm.map(p => if p.head.name.toUpperCase.contains("GETU") then "Kategorie" else "Programm").getOrElse("."),
-            programms = programms,
-            vereine = vereineList,
-            initialVerein = clipraw.flatMap(_._3.verein).headOption,
-            onSelected = (selected, verein) => persistStructuredImportRows(wettkampfImportService.assignSelectedVerein(selected, verein)),
-            onAll = (filtered, verein) => persistStructuredImportRows(wettkampfImportService.assignSelectedVerein(filtered, verein))
+           importPreviewUi.showCsvImportPreviewWithVerein(
+             title = "Aus Excel einfügen ...",
+             rows = clipraw,
+             programmColumnCaption = progrm.map(p => if p.head.name.toUpperCase.contains("GETU") then "Kategorie" else "Programm").getOrElse("."),
+             programms = programms,
+             vereine = vereineList,
+             initialVerein = clipraw.flatMap(_.athletView.verein).headOption,
+            onSelected = (selected, verein) => persistStructuredImportRowsGeneric(assignSelectedVereinGeneric(selected, verein)),
+            onAll = (filtered, verein) => persistStructuredImportRowsGeneric(assignSelectedVereinGeneric(filtered, verein))
           )
       }
     }

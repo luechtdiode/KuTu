@@ -14,14 +14,41 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
 
   case class StructuredPreviewContext(
       existingAthlets: Seq[AthletView],
-      existingProgramsByAthletEasyprint: Map[String, Long])
+      existingProgramsByAthletEasyprint: Map[String, Long],
+      existingTeamsByAthletEasyprint: Map[String, Int])
+
+  case class ImportRow(
+      progId: Long,
+      athlet: Athlet,
+      athletView: AthletView,
+      oldProg: Long,
+      team: Int)
+
+  private val TeamNumberPattern = """.*?(\d+).*""".r
+
+  // Accept plain ints and common spreadsheet formats (1.0 / 1,0 / text with number).
+  private def parseTeamNumber(raw: String): Int = {
+    val trimmed = Option(raw).map(_.trim).getOrElse("")
+    if trimmed.isEmpty then 0
+    else {
+      val normalized = trimmed.replace(',', '.')
+      val parsed =
+        if normalized.matches("^[+-]?\\d+$") then scala.util.Try(java.lang.Integer.parseInt(normalized)).toOption
+        else if normalized.matches("^[+-]?\\d+\\.0+$") then scala.util.Try(BigDecimal(normalized).toInt).toOption
+        else normalized match {
+          case TeamNumberPattern(digits) => scala.util.Try(java.lang.Integer.parseInt(digits)).toOption
+          case _ => None
+        }
+      parsed.filter(_ > 0).getOrElse(0)
+    }
+  }
 
   def prepareStructuredPreviewRows(
       rowfields: Seq[Map[String, String]],
       programms: Seq[ProgrammView],
       progrm: Option[ProgrammView],
       options: StructuredPreviewOptions,
-      context: StructuredPreviewContext): Seq[(Long, Athlet, AthletView, Long)] = {
+      context: StructuredPreviewContext): Seq[ImportRow] = {
     val cache = new java.util.ArrayList[MatchCode]()
     val vereineList = service.selectVereine
     val vereineMap = vereineList.map(v => v.id -> v).toMap
@@ -65,6 +92,7 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
       )
       val candidate = service.findAthleteLike(cache = cache, exclusive = false)(parsed)
       val progId = resolveProgramId(fields.getOrElse("KATEGORIE", ""), programms, progrm)
+      val team: Int = parseTeamNumber(fields.getOrElse("TEAM", ""))
       val suggestedVerein = options.fixedVerein
         .orElse(candidate.verein.filter(_ > 0L).flatMap(vereineMap.get))
         .orElse(if verein.id > 0 then vereineMap.get(verein.id) else None)
@@ -76,23 +104,30 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
       val oldProg: Long =
         if options.removeMissingAthletes then context.existingProgramsByAthletEasyprint.getOrElse(suggestion.easyprint, 0L)
         else 0L
-      (progId, parsed, suggestion, oldProg)
+      ImportRow(progId, parsed, suggestion, oldProg, team)
     }
 
     val toRemove = if options.removeMissingAthletes then {
       context.existingAthlets
-        .filter(a => !importedRows.exists(csv => csv._3.easyprint == a.easyprint))
-        .map(a => (0L, a.toAthlet, a, 0L))
+        .filter(a => !importedRows.exists(row => row.athletView.easyprint == a.easyprint))
+        .map(a => ImportRow(0L, a.toAthlet, a, 0L, 0))
         .toList
     } else List.empty
 
-    val changed = if options.removeMissingAthletes then importedRows.filter(item => item._4 != item._1) else importedRows
+    val changed = if options.removeMissingAthletes then {
+      importedRows.filter(item =>
+        item.oldProg != item.progId ||
+          context.existingTeamsByAthletEasyprint.getOrElse(item.athletView.easyprint, 0) != item.team)
+    } else importedRows
     changed ++ toRemove
   }
 
-  def assignSelectedVerein(rows: Seq[(Long, Athlet, AthletView, Long)], verein: Verein): Seq[(Long, Athlet, AthletView, Long)] = {
+  def assignSelectedVerein(rows: Seq[ImportRow], verein: Verein): Seq[ImportRow] = {
     rows.map { row =>
-      (row._1, row._2.copy(verein = Some(verein.id)), row._3.copy(verein = Some(verein)), row._4)
+      row.copy(
+        athlet = row.athlet.copy(verein = Some(verein.id)),
+        athletView = row.athletView.copy(verein = Some(verein))
+      )
     }
   }
 
@@ -196,33 +231,31 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
     athletList
       .groupBy(_._3.verein)
       .filter(_._1.nonEmpty)
-      .map { grp =>
+      .foreach { grp =>
         val v = insertVereinIfMissing(grp._1.get)
-        (v.id, grp._2.map { c =>
+        val selectedAthleten = grp._2.map { c =>
           val a = c._2.copy(verein = Some(v.id))
           val av: AthletView = c._3.copy(verein = Some(v))
-          (c._1, a, av, c._4)
-        })
-      }
-      .foreach { grp =>
-        insertAssignments(grp._1, grp._2)
+          (c._1, a, av, c._4, 0)
+        }
+        insertAssignments(v.id, selectedAthleten)
       }
   }
 
   def applyStructuredImportSelection(
-      athletList: Seq[(Long, Athlet, AthletView, Long)],
+      athletList: Seq[ImportRow],
       wertungIdsByAthletEasyprint: Map[String, Set[Long]]): Unit = {
     insertImportedAthletListToCompetition(athletList)
     athletList
-      .filter(_._1 > 0L)
-      .filter(_._4 > 0)
-      .foreach { grp =>
-        service.moveToProgram(wettkampf.id, grp._1, 0, grp._3)
+      .filter(_.progId > 0L)
+      .filter(_.oldProg > 0)
+      .foreach { row =>
+        service.moveToProgram(wettkampf.id, row.progId, row.team, row.athletView)
       }
     athletList
-      .filter(_._1 == 0L)
-      .foreach { grp =>
-        service.unassignAthletFromWettkampf(wertungIdsByAthletEasyprint.getOrElse(grp._3.easyprint, Set.empty))
+      .filter(_.progId == 0L)
+      .foreach { row =>
+        service.unassignAthletFromWettkampf(wertungIdsByAthletEasyprint.getOrElse(row.athletView.easyprint, Set.empty))
       }
   }
 
@@ -246,28 +279,26 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
     else service.insertVerein(verein)
   }
 
-  private def insertImportedAthletListToCompetition(athletList: Seq[(Long, Athlet, AthletView, Long)]): Unit = {
+  private def insertImportedAthletListToCompetition(athletList: Seq[ImportRow]): Unit = {
     athletList
-      .filter(_._1 > 0L)
-      .filter(_._4 == 0)
-      .groupBy(_._3.verein)
+      .filter(_.progId > 0L)
+      .filter(_.oldProg == 0)
+      .groupBy(_.athletView.verein)
       .filter(_._1.nonEmpty)
-      .map { grp =>
-        val v = insertVereinIfMissing(grp._1.get)
-        (v.id, grp._2.map { c =>
-          val a = c._2.copy(verein = Some(v.id))
-          val av: AthletView = c._3.copy(verein = Some(v))
-          (c._1, a, av, List.empty[Wertung])
-        })
-      }
       .foreach { grp =>
-        insertAssignments(grp._1, grp._2)
+        val v = insertVereinIfMissing(grp._1.get)
+        val selectedAthleten = grp._2.map { row =>
+          val a = row.athlet.copy(verein = Some(v.id))
+          val av: AthletView = row.athletView.copy(verein = Some(v))
+          (row.progId, a, av, List.empty[Wertung], row.team)
+        }
+        insertAssignments(v.id, selectedAthleten)
       }
   }
 
-  private def insertAssignments(vereinId: Long, selectedAthleten: Seq[(Long, Athlet, AthletView, List[Wertung])]): Unit = {
+  private def insertAssignments(vereinId: Long, selectedAthleten: Seq[(Long, Athlet, AthletView, List[Wertung], Int)]): Unit = {
     val clip = selectedAthleten.map { x =>
-      val (progrId, importathlet, candidateView, wertungen) = x
+      val (progrId, importathlet, candidateView, wertungen, team) = x
       val id = if candidateView.id > 0 &&
         (importathlet.gebdat match {
           case Some(_) =>
@@ -309,13 +340,15 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
           activ = true
         )).id
       }
-      (progrId, id, wertungen.map(wertung => wertung.copy(athletId = id)))
+      (progrId, id, wertungen.map(wertung => wertung.copy(athletId = id)), team)
     }
     if clip.nonEmpty then {
-      for (progId, athletes) <- clip.groupBy(_._1).map(x => (x._1, x._2.map(x => (x._2, x._3)))) do {
+      // Group by (progId, team) tuple to keep athletes with same prog/team together
+      for ((progId, team), athletes) <- clip.groupBy(x => (x._1, x._4)).map(x => (x._1, x._2.map(x => (x._2, x._3)))) do {
         if athletes.exists(_._2.isEmpty) then {
           val athletMediaList: Set[(Long, Option[Media])] = athletes.map(s => (s._1, None)).toSet
-          service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletMediaList, None)
+          val teamOpt = if team > 0 then Some(team) else None
+          service.assignAthletsToWettkampf(wettkampf.id, Set(progId), athletMediaList, teamOpt)
         }
         else {
           athletes.flatMap(_._2).foreach(service.updateOrinsertWertung)
@@ -324,5 +357,4 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
     }
   }
 }
-
 

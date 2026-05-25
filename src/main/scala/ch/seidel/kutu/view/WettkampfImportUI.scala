@@ -19,14 +19,14 @@ import scala.collection.mutable
 import ch.seidel.kutu.data.WettkampfImportSupport.*
 
 class WettkampfImportUI(homedir: String) {
-  private case class CsvImportConfig(fieldMapping: Map[String, String], genderValueMapping: Map[String, String])
+  private case class CsvImportConfig(fieldMapping: Map[String, Option[String]], genderValueMapping: Map[String, String])
 
   def createImportMenu(
       progrm: Option[ProgrammView],
       onExcelImport: ActionEvent => Unit,
       onCsvImport: (URI, ActionEvent) => Unit,
       onPdfImport: (URI, ProgrammView, ActionEvent) => Unit): MenuButton = {
-    val excelImportItem = new MenuItem("Aus Excel einfügen ...") {
+    val excelImportItem = new MenuItem("Aus Excel Clipboard einfügen ...") {
       onAction = (actionEvent: ActionEvent) => onExcelImport(actionEvent)
     }
 
@@ -61,7 +61,10 @@ class WettkampfImportUI(homedir: String) {
     }
 
     new MenuButton("Import") {
-      items ++= Seq(excelImportItem, csvImportItem, pdfImportItem)
+      if progrm.exists(_.name.equalsIgnoreCase("KUTU")) then
+        items ++= Seq(excelImportItem, csvImportItem, pdfImportItem)
+      else
+        items ++= Seq(excelImportItem, csvImportItem)
     }
   }
 
@@ -99,9 +102,9 @@ class WettkampfImportUI(homedir: String) {
 
     CsvDefaultFieldMapping.keys.toSeq.zipWithIndex.foreach { case (logicalField, row) =>
       val selector = new ComboBox[String] {
-        items = ObservableBuffer.from(csvHeaders)
+        items = ObservableBuffer.from(csvHeaders :+ "")
         prefWidth = 280
-        value = csvHeaders.find(_.equalsIgnoreCase(CsvDefaultFieldMapping(logicalField))).orNull
+        value = csvHeaders.find(h => CsvDefaultFieldMapping(logicalField).exists(_.equalsIgnoreCase(h))).orNull
       }
       fieldSelectors += logicalField -> selector
       grid.add(new Label(logicalField), 0, row)
@@ -131,7 +134,8 @@ class WettkampfImportUI(homedir: String) {
     dialog.setResultConverter(dialogButton => {
       if dialogButton == jfxsc.ButtonType.OK then {
         val selectedFieldMapping = fieldSelectors.map { case (logicalField, selector) =>
-          logicalField -> Option(selector.value.value).getOrElse(CsvDefaultFieldMapping(logicalField))
+          if selector.value == null || selector.value.value.trim.isEmpty then logicalField -> None
+          else logicalField -> Option(selector.value.value)
         }.toMap
         val effectiveGenderMap = effectiveGenderValueMapping(genderMappingArea.text.value)
         CsvImportConfig(selectedFieldMapping, effectiveGenderMap)

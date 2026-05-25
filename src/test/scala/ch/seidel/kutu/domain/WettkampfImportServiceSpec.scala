@@ -41,21 +41,21 @@ class WettkampfImportServiceSpec extends AnyWordSpec with Matchers {
   "WettkampfImportService.assignSelectedVerein" should {
     "set selected verein on Athlet and AthletView rows" in {
       val verein = Verein(42L, "TV Test", Some("ZH"))
-      val row = (
-        100L,
-        Athlet(verein.id).copy(name = "Muster", vorname = "Max"),
-        AthletView(0, 0, "M", "Muster", "Max", None, "", "", "", None, activ = true),
-        0L
+      val row = service.ImportRow(
+        progId = 100L,
+        athlet = Athlet(verein.id).copy(name = "Muster", vorname = "Max"),
+        athletView = AthletView(0, 0, "M", "Muster", "Max", None, "", "", "", None, activ = true),
+        oldProg = 0L,
+        team = 0
       )
 
       val assigned = service.assignSelectedVerein(Seq(row), verein)
 
       assigned should have size 1
-      assigned.head._2.verein shouldBe Some(42L)
-      assigned.head._3.verein.map(_.id) shouldBe Some(42L)
-      assigned.head._3.verein.map(_.name) shouldBe Some("TV Test")
+      assigned.head.athlet.verein shouldBe Some(42L)
+      assigned.head.athletView.verein.map(_.id) shouldBe Some(42L)
+      assigned.head.athletView.verein.map(_.name) shouldBe Some("TV Test")
     }
   }
 
 }
-
