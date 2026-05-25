@@ -1293,8 +1293,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
-  private def doLoadFromCSV(filename: URI, progrm: Option[ProgrammView])(implicit event: ActionEvent): Unit = {
-    val importData = importUi.prepareCsvImport(filename)
+  private def doLoadFromTabularFile(filename: URI, progrm: Option[ProgrammView])(implicit event: ActionEvent): Unit = {
+    val importData = importUi.prepareTabularImport(filename)
     if importData.isEmpty then return
 
     val programms = progrm.map(p => service.readWettkampfLeafs(p.head.id)).toSeq.flatten
@@ -1801,23 +1801,23 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         }
         List[Button](addButton, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateVereinsTeilnehmerListe, generateNotenblaetter)
 
-      case _ => // andere
-        val importMenu = importUi.createImportMenu(
-          progrm = Some(wettkampf.programm),
-          onExcelImport = actionEvent => {
-            given ActionEvent = actionEvent
-            doPasteFromExcel(Some(wettkampf.programm))
-          },
-          onCsvImport = (uri, actionEvent) => {
-            given ActionEvent = actionEvent
-            doLoadFromCSV(uri, Some(wettkampf.programm))
-          },
-          onPdfImport = (uri, progrm, actionEvent) => {
-            given ActionEvent = actionEvent
-            doLoadFaxeKuTuRanglisteFromPDF(uri, progrm)
-          }
-        )
-        List(importMenu, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateVereinsTeilnehmerListe, generateNotenblaetter)
+       case _ => // andere
+         val importMenu = importUi.createImportMenu(
+           progrm = Some(wettkampf.programm),
+           onExcelImport = actionEvent => {
+             given ActionEvent = actionEvent
+             doPasteFromExcel(Some(wettkampf.programm))
+           },
+           onCsvImport = (uri, actionEvent) => {
+             given ActionEvent = actionEvent
+             doLoadFromTabularFile(uri, Some(wettkampf.programm))
+           },
+           onPdfImport = (uri, progrm, actionEvent) => {
+             given ActionEvent = actionEvent
+             doLoadFaxeKuTuRanglisteFromPDF(uri, progrm)
+           }
+         )
+         List(importMenu, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateVereinsTeilnehmerListe, generateNotenblaetter)
     }
     case Some(progrm) =>
       val addButton = new Button {
@@ -1842,15 +1842,15 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
           ).execute(event)
         }
       }
-      val importMenu = importUi.createImportMenu(
-        progrm = Some(progrm),
-        onExcelImport = actionEvent => {
-          given ActionEvent = actionEvent
-          doPasteFromExcel(Some(progrm))
-        },
-        onCsvImport = (uri, actionEvent) => {
-          given ActionEvent = actionEvent
-          doLoadFromCSV(uri, Some(wettkampf.programm))
+       val importMenu = importUi.createImportMenu(
+         progrm = Some(progrm),
+         onExcelImport = actionEvent => {
+           given ActionEvent = actionEvent
+           doPasteFromExcel(Some(progrm))
+         },
+         onCsvImport = (uri, actionEvent) => {
+           given ActionEvent = actionEvent
+           doLoadFromTabularFile(uri, Some(wettkampf.programm))
         },
         onPdfImport = (uri, selectedProgrm, actionEvent) => {
           given ActionEvent = actionEvent

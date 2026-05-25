@@ -30,11 +30,15 @@ class WettkampfImportUI(homedir: String) {
       onAction = (actionEvent: ActionEvent) => onExcelImport(actionEvent)
     }
 
-    val csvImportItem = new MenuItem("CSV importieren ...") {
+    val csvImportItem = new MenuItem("CSV/Excel importieren ...") {
       onAction = (actionEvent: ActionEvent) => {
         val selectedCsv = chooseImportFile(
-          titleText = "CSV-Datei importieren",
-          filters = Seq(new ExtensionFilter("CSV Dateien", "*.csv"), new ExtensionFilter("Alle Dateien", "*.*")),
+          titleText = "CSV/Excel-Datei importieren",
+          filters = Seq(
+            new ExtensionFilter("CSV/Excel Dateien", Seq("*.csv", "*.xlsx", "*.xls")),
+            new ExtensionFilter("CSV Dateien", "*.csv"),
+            new ExtensionFilter("Excel Dateien", Seq("*.xlsx", "*.xls")),
+            new ExtensionFilter("Alle Dateien", "*.*")),
           initialFileName = Some("excelinput.csv")
         )
         selectedCsv.foreach(file => onCsvImport(file.toURI, actionEvent))
@@ -61,16 +65,16 @@ class WettkampfImportUI(homedir: String) {
     }
   }
 
-  def prepareCsvImport(filename: URI): Option[CsvImportData] = {
-    val csvFileData = readCsvFile(filename)
-    if csvFileData.isEmpty then {
-      PageDisplayer.showWarnDialog("Aus CSV laden ...", "Die gewaehlte CSV-Datei ist leer.")
+  def prepareTabularImport(filename: URI): Option[CsvImportData] = {
+    val tableData = readTabularFile(filename)
+    if tableData.isEmpty then {
+      PageDisplayer.showWarnDialog("Aus CSV/Excel laden ...", "Die gewaehlte Datei ist leer oder enthaelt keine Header-Zeile.")
       return None
     }
 
-    val (csvHeaders, rows) = csvFileData.get
+    val (csvHeaders, sourceRows) = tableData.get
     showCsvImportConfigDialog(csvHeaders).map { config =>
-      val mappedRows = mapCsvRows(csvHeaders, rows, config.fieldMapping)
+      val mappedRows = mapFieldRows(sourceRows, config.fieldMapping)
       CsvImportData(mappedRows, config.genderValueMapping)
     }
   }
@@ -104,7 +108,7 @@ class WettkampfImportUI(homedir: String) {
       grid.add(selector, 1, row)
     }
 
-    val mappingInfo = new Label("Geschlecht-Mapping (CSV=Wert=KuTu-Wert M/W, eine Zeile pro Mapping):")
+    val mappingInfo = new Label("Geschlecht-Mapping (Dateiwert=KuTu-Wert M/W, eine Zeile pro Mapping):")
     val genderMappingArea = new TextArea {
       prefRowCount = 6
       text = DefaultGenderValueMappingRaw
@@ -113,7 +117,7 @@ class WettkampfImportUI(homedir: String) {
     val contentPane = new VBox {
       spacing = 10
       children = Seq(
-        new Label("CSV Feldzuordnung"),
+        new Label("CSV/Excel Feldzuordnung"),
         grid,
         mappingInfo,
         genderMappingArea
@@ -121,7 +125,7 @@ class WettkampfImportUI(homedir: String) {
     }
 
     val dialog = new jfxsc.Dialog[CsvImportConfig]()
-    dialog.setTitle("CSV-Import konfigurieren")
+    dialog.setTitle("CSV/Excel-Import konfigurieren")
     dialog.getDialogPane.getButtonTypes.addAll(jfxsc.ButtonType.CANCEL, jfxsc.ButtonType.OK)
     dialog.getDialogPane.setContent(contentPane.delegate)
     dialog.setResultConverter(dialogButton => {

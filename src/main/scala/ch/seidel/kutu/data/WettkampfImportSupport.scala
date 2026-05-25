@@ -1,8 +1,11 @@
 package ch.seidel.kutu.data
 
+import org.apache.poi.ss.usermodel.{DataFormatter, WorkbookFactory}
+
 import java.io.File
 import java.net.URI
 import scala.io.{Codec, Source}
+import scala.util.Using
 
 object WettkampfImportSupport {
   private val YearPattern = ".*(\\d{4}).*".r
@@ -12,6 +15,7 @@ object WettkampfImportSupport {
     "VORNAME" -> "VORNAME",
     "JAHRGANG" -> "JAHRGANG",
     "KATEGORIE" -> "KATEGORIE",
+    "TEAM" -> "TEAM",
     "VERBAND" -> "VERBAND",
     "VEREIN" -> "VEREIN",
     "RLZ_TZ" -> "RLZ_TZ",
@@ -69,16 +73,15 @@ object WettkampfImportSupport {
   }
 
   def mapCsvRows(csvHeaders: Seq[String], rows: Seq[String], fieldMapping: Map[String, String]): Seq[Map[String, String]] = {
-    val fieldnames = csvHeaders.zipWithIndex.map { case (name, idx) => idx.toString.trim -> name }.toMap
-    rows
-      .map(r => r.split(";", -1).zipWithIndex.flatMap {
-        case (value, idx) => fieldnames.get(idx.toString.trim).map(_ -> value.replace("\"", "").trim)
-      }.toMap)
-      .map { row =>
-        fieldMapping.map { case (logicalField, sourceField) =>
-          logicalField -> row.getOrElse(sourceField, "")
-        }
+    mapFieldRows(parseCsvRows(csvHeaders, rows), fieldMapping)
+  }
+
+  def mapFieldRows(rows: Seq[Map[String, String]], fieldMapping: Map[String, String]): Seq[Map[String, String]] = {
+    rows.map { row =>
+      fieldMapping.map { case (logicalField, sourceField) =>
+        logicalField -> row.getOrElse(sourceField, "")
       }
+    }
   }
 
   def readCsvFile(filename: URI): Option[(Seq[String], Seq[String])] = {
@@ -88,6 +91,60 @@ object WettkampfImportSupport {
       case Nil => None
       case header :: rows => Some((header.split(";").map(_.trim).toSeq, rows))
     }
+  }
+
+  def readTabularFile(filename: URI): Option[(Seq[String], Seq[Map[String, String]])] = {
+    val file = new File(filename)
+    if isExcelFile(file) then readExcelFile(file)
+    else readCsvFile(filename).map { case (headers, rows) =>
+      (headers, parseCsvRows(headers, rows))
+    }
+  }
+
+  private def parseCsvRows(csvHeaders: Seq[String], rows: Seq[String]): Seq[Map[String, String]] = {
+    val fieldnames = csvHeaders.zipWithIndex.map { case (name, idx) => idx.toString.trim -> name }.toMap
+    rows.map { r =>
+      r.split(";", -1).zipWithIndex.flatMap {
+        case (value, idx) => fieldnames.get(idx.toString.trim).map(_ -> value.replace("\"", "").trim)
+      }.toMap
+    }
+  }
+
+  private def readExcelFile(file: File): Option[(Seq[String], Seq[Map[String, String]])] = {
+    Using.resource(WorkbookFactory.create(file)) { workbook =>
+      if workbook.getNumberOfSheets < 1 then None
+      else {
+        val sheet = workbook.getSheetAt(0)
+        val formatter = new DataFormatter()
+        val headerRow = Option(sheet.getRow(sheet.getFirstRowNum))
+        headerRow
+          .map { row =>
+            val headers = (0 until row.getLastCellNum).map { cellIdx =>
+              Option(row.getCell(cellIdx)).map(cell => formatter.formatCellValue(cell)).getOrElse("").trim
+            }.toSeq
+
+            val normalizedHeaders = headers.map(_.trim)
+            val rows = ((sheet.getFirstRowNum + 1) to sheet.getLastRowNum)
+              .flatMap { rowIdx =>
+                Option(sheet.getRow(rowIdx)).map { row =>
+                  normalizedHeaders.zipWithIndex.map { case (header, cellIdx) =>
+                    val value = Option(row.getCell(cellIdx)).map(cell => formatter.formatCellValue(cell)).getOrElse("").trim
+                    header -> value
+                  }.toMap
+                }
+              }
+              .filter(_.values.exists(_.nonEmpty))
+
+            (normalizedHeaders, rows)
+          }
+          .filter(_._1.nonEmpty)
+      }
+    }
+  }
+
+  private def isExcelFile(file: File): Boolean = {
+    val name = file.getName.toLowerCase
+    name.endsWith(".xlsx") || name.endsWith(".xls")
   }
 
   def mapExcelClipboardRows(tsvContent: String): Seq[Map[String, String]] = {
@@ -108,7 +165,7 @@ object WettkampfImportSupport {
           "VERBAND_RLZ" -> ""
         )
       }
-      .toSeq
+      .toVector
   }
 
   private def extractYear(raw: String): String = {

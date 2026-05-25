@@ -1,10 +1,12 @@
 package ch.seidel.kutu.data
 
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.io.FileOutputStream
 
 class WettkampfImportSupportSpec extends AnyWordSpec with Matchers {
 
@@ -101,6 +103,58 @@ class WettkampfImportSupportSpec extends AnyWordSpec with Matchers {
         val (headers, rows) = read.get
         headers shouldBe Seq("NAME", "VORNAME")
         rows shouldBe Seq("Muster;Max")
+      } finally {
+        Files.deleteIfExists(tempFile)
+      }
+    }
+  }
+
+  "WettkampfImportSupport.readTabularFile" should {
+    "read CSV file content as source-row maps" in {
+      val tempFile = Files.createTempFile("kutu-tabular", ".csv")
+      try {
+        Files.writeString(tempFile, "NAME;KATEGORIE\nMuster;P4\n", StandardCharsets.ISO_8859_1)
+
+        val read = WettkampfImportSupport.readTabularFile(tempFile.toUri)
+
+        read should not be empty
+        val (headers, rows) = read.get
+        headers shouldBe Seq("NAME", "KATEGORIE")
+        rows should have size 1
+        rows.head("NAME") shouldBe "Muster"
+        rows.head("KATEGORIE") shouldBe "P4"
+      } finally {
+        Files.deleteIfExists(tempFile)
+      }
+    }
+
+    "read XLSX file content as source-row maps" in {
+      val tempFile = Files.createTempFile("kutu-tabular", ".xlsx")
+      try {
+        val workbook = new XSSFWorkbook()
+        try {
+          val sheet = workbook.createSheet("Import")
+          val header = sheet.createRow(0)
+          header.createCell(0).setCellValue("NAME")
+          header.createCell(1).setCellValue("KATEGORIE")
+
+          val row = sheet.createRow(1)
+          row.createCell(0).setCellValue("Meier")
+          row.createCell(1).setCellValue("P5")
+
+          val out = new FileOutputStream(tempFile.toFile)
+          try workbook.write(out)
+          finally out.close()
+        } finally workbook.close()
+
+        val read = WettkampfImportSupport.readTabularFile(tempFile.toUri)
+
+        read should not be empty
+        val (headers, rows) = read.get
+        headers shouldBe Seq("NAME", "KATEGORIE")
+        rows should have size 1
+        rows.head("NAME") shouldBe "Meier"
+        rows.head("KATEGORIE") shouldBe "P5"
       } finally {
         Files.deleteIfExists(tempFile)
       }
