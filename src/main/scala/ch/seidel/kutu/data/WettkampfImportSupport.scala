@@ -105,6 +105,23 @@ object WettkampfImportSupport {
     }
   }
 
+  private def createExcelHeaderStyle(workbook: XSSFWorkbook) = {
+    val headerFont = workbook.createFont()
+    headerFont.setBold(true)
+
+    val headerStyle = workbook.createCellStyle()
+    headerStyle.setFont(headerFont)
+    headerStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.LEFT)
+    headerStyle.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER)
+    headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex)
+    headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND)
+    headerStyle.setBorderTop(org.apache.poi.ss.usermodel.BorderStyle.THIN)
+    headerStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN)
+    headerStyle.setBorderLeft(org.apache.poi.ss.usermodel.BorderStyle.THIN)
+    headerStyle.setBorderRight(org.apache.poi.ss.usermodel.BorderStyle.THIN)
+    headerStyle
+  }
+
   def writeExcelFile(targetFile: File, headers: Seq[String], rows: Seq[Map[String, String]]): Unit = {
     val parent = targetFile.getParentFile
     if parent != null && !parent.exists() then {
@@ -112,10 +129,13 @@ object WettkampfImportSupport {
     }
 
     Using.resources(new XSSFWorkbook(), new FileOutputStream(targetFile)) { (workbook, outputStream) =>
-      val sheet = workbook.createSheet("Import")
+      val sheet = workbook.createSheet("Teilnehmerliste")
+      val headerStyle = createExcelHeaderStyle(workbook)
       val headerRow = sheet.createRow(0)
       headers.zipWithIndex.foreach { case (header, idx) =>
-        headerRow.createCell(idx).setCellValue(header)
+        val cell = headerRow.createCell(idx)
+        cell.setCellValue(header)
+        cell.setCellStyle(headerStyle)
       }
 
       rows.zipWithIndex.foreach { case (rowValues, rowIdx) =>
@@ -125,7 +145,8 @@ object WettkampfImportSupport {
         }
       }
 
-      headers.indices.foreach(sheet.autoSizeColumn)
+      // Keep the header visible while scrolling, like ranking Excel exports.
+      sheet.createFreezePane(0, 1)
       workbook.write(outputStream)
     }
   }
@@ -205,4 +226,3 @@ object WettkampfImportSupport {
     }
   }
 }
-
