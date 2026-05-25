@@ -1,6 +1,7 @@
 package ch.seidel.kutu.data
 
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import org.apache.poi.ss.usermodel.{BorderStyle, FillPatternType, HorizontalAlignment, IndexedColors}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -183,5 +184,39 @@ class WettkampfImportSupportSpec extends AnyWordSpec with Matchers {
       mapped(1)("VEREIN") shouldBe ""
     }
   }
-}
 
+  "WettkampfImportSupport.writeExcelFile" should {
+    "style exported header cells like Excel ranking headers" in {
+      val tempFile = Files.createTempFile("kutu-export", ".xlsx")
+      try {
+        val headers = Seq("NAME", "VORNAME")
+        val rows = Seq(Map("NAME" -> "Muster", "VORNAME" -> "Max"))
+
+        WettkampfImportSupport.writeExcelFile(tempFile.toFile, headers, rows)
+
+        val workbook = new XSSFWorkbook(Files.newInputStream(tempFile))
+        try {
+          val sheet = workbook.getSheetAt(0)
+          val headerCell = sheet.getRow(0).getCell(0)
+          val style = headerCell.getCellStyle
+          val font = workbook.getFontAt(style.getFontIndex)
+          val pane = sheet.getPaneInformation
+
+          headerCell.getStringCellValue shouldBe "NAME"
+          font.getBold shouldBe true
+          style.getAlignment shouldBe HorizontalAlignment.LEFT
+          style.getFillPattern shouldBe FillPatternType.SOLID_FOREGROUND
+          style.getFillForegroundColor shouldBe IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex
+          style.getBorderTop shouldBe BorderStyle.THIN
+          style.getBorderBottom shouldBe BorderStyle.THIN
+          style.getBorderLeft shouldBe BorderStyle.THIN
+          style.getBorderRight shouldBe BorderStyle.THIN
+          pane should not be null
+          pane.getHorizontalSplitTopRow shouldBe 1
+        } finally workbook.close()
+      } finally {
+        Files.deleteIfExists(tempFile)
+      }
+    }
+  }
+}
