@@ -130,6 +130,8 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-lang3" % "3.20.0",
   "org.apache.commons" % "commons-text" % "1.15.0",
   "technology.tabula" % "tabula" % "1.0.5",
+  "org.apache.poi" % "poi" % "5.4.1",
+  "org.apache.poi" % "poi-ooxml" % "5.4.1",
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.3",

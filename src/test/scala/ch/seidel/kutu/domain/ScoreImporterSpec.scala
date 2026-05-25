@@ -16,7 +16,7 @@ class ScoreImporterSpec extends AnyWordSpec with Matchers {
       )
 
       val rowfields = importer.mapStructuredRows(tableData)(
-        (name: String, jahrgang: String, verein: String) => (s"verein:$verein", s"athlet:$name/$jahrgang"),
+        (geschlecht: String, name: String, jahrgang: String, verein: String) => (s"verein:$verein", s"athlet:$name/$jahrgang"),
         (geraet: String, valueD: String, valueE: String) => s"$geraet:$valueD/$valueE"
       )
 
@@ -47,7 +47,7 @@ class ScoreImporterSpec extends AnyWordSpec with Matchers {
       )
 
       val rowfields = importer.mapStructuredRows(tableData)(
-        (name: String, jahrgang: String, verein: String) => (s"verein:$verein", s"athlet:$name/$jahrgang"),
+        (name: String, jahrgang: String, verein: String, _: String) => (s"verein:$verein", s"athlet:$name/$jahrgang"),
         (geraet: String, valueD: String, valueE: String) => s"$geraet:$valueD/$valueE"
       )
 
@@ -69,7 +69,7 @@ class ScoreImporterSpec extends AnyWordSpec with Matchers {
       )
 
       val rowfields = importer.mapStructuredRows(tableData)(
-        (name: String, jahrgang: String, verein: String) => (s"verein:$verein", s"athlet:$name/$jahrgang"),
+        (name: String, jahrgang: String, verein: String, _: String) => (s"verein:$verein", s"athlet:$name/$jahrgang"),
         (geraet: String, valueD: String, valueE: String) => s"$geraet:$valueD/$valueE"
       )
 
@@ -98,7 +98,7 @@ class ScoreImporterSpec extends AnyWordSpec with Matchers {
       val tableData = Seq(normalized)
 
       val rowfields = importer.mapStructuredRows(tableData)(
-        (name: String, jahrgang: String, verein: String) => (s"verein:$verein", s"athlet:$name/$jahrgang"),
+        (name: String, jahrgang: String, verein: String, _: String) => (s"verein:$verein", s"athlet:$name/$jahrgang"),
         (geraet: String, valueD: String, valueE: String) => s"$geraet:$valueD/$valueE"
       )
 
