@@ -71,7 +71,7 @@ class ScoreToExcelRenderer {
     s.setFont(font)
     s.setAlignment(alignment)
     s.setFillForegroundColor(color.getIndex)
-    s.setFillPattern(FillPatternType.SOLID_FOREGROUND)
+    if (color.getIndex != IndexedColors.AUTOMATIC.getIndex) then s.setFillPattern(FillPatternType.SOLID_FOREGROUND)
     applyTableBorders(s)
     s
   }
