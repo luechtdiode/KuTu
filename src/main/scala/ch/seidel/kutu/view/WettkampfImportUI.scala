@@ -106,6 +106,7 @@ class WettkampfImportUI(homedir: String) {
     val (csvHeaders, sourceRows) = tableData.get
     showCsvImportConfigDialog(csvHeaders).map { config =>
       val mappedRows = mapFieldRows(sourceRows, config.fieldMapping)
+        .filter(row => !(row.getOrElse("NAME", "").equals("Mustermann") && row.getOrElse("VERBAND", "").equals("Musterverband")  && (row.getOrElse("VORNAME", "").startsWith("Max") || row.getOrElse("VORNAME", "").startsWith("Klara"))))
       CsvImportData(mappedRows, config.genderValueMapping)
     }
   }
@@ -179,7 +180,7 @@ class WettkampfImportUI(homedir: String) {
     dialog.setResultConverter(dialogButton => {
       if dialogButton == jfxsc.ButtonType.OK then {
         val selectedFieldMapping = fieldSelectors.map { case (logicalField, selector) =>
-          if selector.value == null || selector.value.value.trim.isEmpty then logicalField -> None
+          if selector.value == null || selector.value.value == null || selector.value.value.trim.isEmpty then logicalField -> None
           else logicalField -> Option(selector.value.value)
         }.toMap
         val effectiveGenderMap = effectiveGenderValueMapping(genderMappingArea.text.value)
