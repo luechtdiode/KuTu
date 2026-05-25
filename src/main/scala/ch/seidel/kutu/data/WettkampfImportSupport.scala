@@ -1,14 +1,18 @@
 package ch.seidel.kutu.data
 
 import org.apache.poi.ss.usermodel.{DataFormatter, WorkbookFactory}
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 
 import java.io.File
+import java.io.FileOutputStream
 import java.net.URI
 import scala.io.{Codec, Source}
 import scala.util.Using
 
 object WettkampfImportSupport {
   private val YearPattern = ".*(\\d{4}).*".r
+
+  val ImportExcelHeaders: Seq[String] = Seq("NAME", "VORNAME", "JAHRGANG", "GESCHLECHT", "VEREIN", "VERBAND", "KATEGORIE", "TEAM", "RLZ_TZ", "VERBAND_RLZ")
 
   val CsvDefaultFieldMapping: Map[String, Seq[String]] = Map(
     "NAME" -> Seq("NAME", "NAME_TURNER", "NACHNAME"),
@@ -98,6 +102,31 @@ object WettkampfImportSupport {
     if isExcelFile(file) then readExcelFile(file)
     else readCsvFile(filename).map { case (headers, rows) =>
       (headers, parseCsvRows(headers, rows))
+    }
+  }
+
+  def writeExcelFile(targetFile: File, headers: Seq[String], rows: Seq[Map[String, String]]): Unit = {
+    val parent = targetFile.getParentFile
+    if parent != null && !parent.exists() then {
+      parent.mkdirs()
+    }
+
+    Using.resources(new XSSFWorkbook(), new FileOutputStream(targetFile)) { (workbook, outputStream) =>
+      val sheet = workbook.createSheet("Import")
+      val headerRow = sheet.createRow(0)
+      headers.zipWithIndex.foreach { case (header, idx) =>
+        headerRow.createCell(idx).setCellValue(header)
+      }
+
+      rows.zipWithIndex.foreach { case (rowValues, rowIdx) =>
+        val row = sheet.createRow(rowIdx + 1)
+        headers.zipWithIndex.foreach { case (header, colIdx) =>
+          row.createCell(colIdx).setCellValue(rowValues.getOrElse(header, ""))
+        }
+      }
+
+      headers.indices.foreach(sheet.autoSizeColumn)
+      workbook.write(outputStream)
     }
   }
 

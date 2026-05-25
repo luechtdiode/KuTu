@@ -22,18 +22,21 @@ class WettkampfImportUI(homedir: String) {
   private case class CsvImportConfig(fieldMapping: Map[String, Option[String]], genderValueMapping: Map[String, String])
 
   def createImportMenu(
-      progrm: Option[ProgrammView],
-      onExcelImport: ActionEvent => Unit,
-      onCsvImport: (URI, ActionEvent) => Unit,
-      onPdfImport: (URI, ProgrammView, ActionEvent) => Unit): MenuButton = {
+                        progrm: Option[ProgrammView],
+                        exportInitialDirectory: File,
+                        onExcelImport: ActionEvent => Unit,
+                        onCsvImport: (URI, ActionEvent) => Unit,
+                        onPdfImport: (URI, ProgrammView, ActionEvent) => Unit,
+                        onExcelExportEmpty: (URI, ActionEvent) => Unit,
+                        onExcelExportWithData: (URI, ActionEvent) => Unit): MenuButton = {
     val excelImportItem = new MenuItem("Aus Excel Clipboard einfügen ...") {
       onAction = (actionEvent: ActionEvent) => onExcelImport(actionEvent)
     }
 
-    val csvImportItem = new MenuItem("CSV/Excel importieren ...") {
+    val csvImportItem = new MenuItem("Aus CSV/Excel importieren ...") {
       onAction = (actionEvent: ActionEvent) => {
         val selectedCsv = chooseImportFile(
-          titleText = "CSV/Excel-Datei importieren",
+          titleText = "Aus CSV/Excel-Datei importieren",
           filters = Seq(
             new ExtensionFilter("CSV/Excel Dateien", Seq("*.csv", "*.xlsx", "*.xls")),
             new ExtensionFilter("CSV Dateien", "*.csv"),
@@ -45,7 +48,7 @@ class WettkampfImportUI(homedir: String) {
       }
     }
 
-    val pdfImportItem = new MenuItem("Faxe KuTu Rangliste-PDF importieren ...") {
+    val pdfImportItem = new MenuItem("Aus Faxe KuTu Rangliste-PDF importieren ...") {
       disable = progrm.isEmpty || progrm.size > 1 || progrm.forall(_.parent.isEmpty)
       onAction = (actionEvent: ActionEvent) => {
         progrm.foreach { p =>
@@ -60,11 +63,36 @@ class WettkampfImportUI(homedir: String) {
       }
     }
 
-    new MenuButton("Import") {
-      if progrm.exists(_.name.equalsIgnoreCase("KUTU")) then
-        items ++= Seq(excelImportItem, csvImportItem, pdfImportItem)
-      else
-        items ++= Seq(excelImportItem, csvImportItem)
+    val exportEmptyItem = new MenuItem("Excelvorlage für Datenimport erstellen ...") {
+      onAction = (actionEvent: ActionEvent) => {
+        val selectedFile = chooseExportFile(
+          titleText = "Excel-Vorlage erstellen",
+          defaultDirectory = exportInitialDirectory,
+          initialFileName = Some("athleten-import-vorlage.xlsx")
+        )
+        selectedFile.foreach(file => onExcelExportEmpty(file.toURI, actionEvent))
+      }
+    }
+
+    val exportWithDataItem = new MenuItem("Als Excel exportieren ...") {
+      onAction = (actionEvent: ActionEvent) => {
+        val selectedFile = chooseExportFile(
+          titleText = "Athletendaten als Excel exportieren",
+          defaultDirectory = exportInitialDirectory,
+          initialFileName = Some("athleten-import.xlsx")
+        )
+        selectedFile.foreach(file => onExcelExportWithData(file.toURI, actionEvent))
+      }
+    }
+
+    new MenuButton("Import/Export") {
+      if progrm.exists(_.toPath.contains("KuTu")) then {
+        items ++= Seq(csvImportItem, pdfImportItem, new SeparatorMenuItem(), exportEmptyItem, exportWithDataItem)
+      } else if progrm.exists(_.toPath.contains("GeTu")) then {
+        items ++= Seq(excelImportItem, csvImportItem, new SeparatorMenuItem(), exportEmptyItem, exportWithDataItem)
+      } else {
+        items ++= Seq(csvImportItem, new SeparatorMenuItem(), exportEmptyItem, exportWithDataItem)
+      }
     }
   }
 
@@ -92,6 +120,23 @@ class WettkampfImportUI(homedir: String) {
     Option(fileChooser.showOpenDialog(null))
   }
 
+  private def chooseExportFile(titleText: String, defaultDirectory: File, initialFileName: Option[String] = None): Option[File] = {
+    val effectiveDirectory = if defaultDirectory.exists() then defaultDirectory else new java.io.File(homedir)
+    val fileChooser = new FileChooser {
+      title = titleText
+      initialDirectory = effectiveDirectory
+      extensionFilters ++= Seq(
+        new ExtensionFilter("Excel Dateien", Seq("*.xlsx")),
+        new ExtensionFilter("Alle Dateien", "*.*")
+      ).map(_.delegate)
+    }
+    initialFileName.foreach(name => fileChooser.initialFileName = name)
+    Option(fileChooser.showSaveDialog(null)).map { file =>
+      if file.getName.toLowerCase.endsWith(".xlsx") then file
+      else new File(file.getAbsolutePath + ".xlsx")
+    }
+  }
+
   private def showCsvImportConfigDialog(csvHeaders: Seq[String]): Option[CsvImportConfig] = {
     val fieldSelectors = mutable.LinkedHashMap[String, ComboBox[String]]()
     val grid = new GridPane {
@@ -111,7 +156,7 @@ class WettkampfImportUI(homedir: String) {
       grid.add(selector, 1, row)
     }
 
-    val mappingInfo = new Label("Geschlecht-Mapping (Dateiwert=KuTu-Wert M/W, eine Zeile pro Mapping):")
+    val mappingInfo = new Label("Geschlecht-Mapping (Dateiwert=KuTu-App Wert M/W, eine Zeile pro Mapping):")
     val genderMappingArea = new TextArea {
       prefRowCount = 6
       text = DefaultGenderValueMappingRaw

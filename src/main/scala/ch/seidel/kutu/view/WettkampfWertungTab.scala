@@ -43,7 +43,7 @@ import scala.concurrent.{Await, Future}
 import scala.util.matching.Regex
 import scala.util.{Failure, Success}
 
-import ch.seidel.kutu.data.WettkampfImportSupport.{DefaultGenderValueMappingRaw, effectiveGenderValueMapping, mapExcelClipboardRows}
+import ch.seidel.kutu.data.WettkampfImportSupport.{DefaultGenderValueMappingRaw, ImportExcelHeaders, effectiveGenderValueMapping, mapExcelClipboardRows, writeExcelFile}
 
 class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[ProgrammView], riege: Option[GeraeteRiege], wettkampfInfo: WettkampfInfo, override val service: KutuService, athleten: => IndexedSeq[WertungView]) extends Tab with TabWithService {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -1345,6 +1345,80 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
     }
   }
 
+  private def createExampleValues(vorname: String, geschlecht: String, kategorie: String): Map[String, String] = {
+    Map(
+      "NAME" -> "Mustermann",
+      "VORNAME" -> vorname,
+      "JAHRGANG" -> LocalDate.now().minus(Period.ofYears(10)).getYear.toString,
+      "GESCHLECHT" -> geschlecht,
+      "VEREIN" -> "TV Musterstadt",
+      "VERBAND" -> "Musterverband",
+      "KATEGORIE" -> kategorie,
+      "TEAM" -> "",
+      "RLZ_TZ" -> "",
+      "VERBAND_RLZ" -> ""
+    )
+  }
+
+  private def toStructuredExportRow(row: IndexedSeq[WertungEditor]): Map[String, String] = {
+    val athlet = row.head.init.athlet
+    val (verein, rlz, verband) = athlet.verein.map {
+      case v if v.name.contains(", ") =>
+        val parts = v.name.split(",").map(_.trim)
+        (parts(0), parts(1), v.verband.getOrElse(""))
+      case v =>
+        (v.name, "", v.verband.getOrElse(""))
+    }.getOrElse(("", "", ""))
+
+    val teamNo = row.head.init.team
+    Map(
+      "NAME" -> athlet.name,
+      "VORNAME" -> athlet.vorname,
+      "JAHRGANG" -> athlet.gebdat.map(d => f"$d%tY").getOrElse(""),
+      "GESCHLECHT" -> athlet.geschlecht,
+      "VEREIN" -> verein,
+      "VERBAND" -> verband,
+      // Keep the exact program name so resolveProgramId can match it on import.
+      "KATEGORIE" -> row.head.init.wettkampfdisziplin.programm.name,
+      "TEAM" -> (if teamNo > 0 then teamNo.toString else ""),
+      "RLZ_TZ" -> rlz,
+      "VERBAND_RLZ" -> ""
+    )
+  }
+
+  private def exportBaseDir: File = {
+    val dir = new File(homedir + "/" + encodeFileName(wettkampf.easyprint))
+    if !dir.exists() then {
+      dir.mkdirs()
+    }
+    dir
+  }
+
+  private def exportTabularExcel(filename: URI, includeData: Boolean): Unit = {
+    val targetFile = new File(filename)
+    val exportRows = if includeData then {
+      wkModel.toSeq.filter(_.nonEmpty).map(toStructuredExportRow)
+        .sortBy(r =>
+          (r.getOrElse("VEREIN", ""), r.getOrElse("KATEGORIE", ""), r.getOrElse("JAHRGANG", ""), r.getOrElse("NAME", "")))
+    } else {
+      Seq.empty[Map[String, String]]
+    }
+
+    if exportRows.nonEmpty then writeExcelFile(targetFile, ImportExcelHeaders, exportRows)
+    else writeExcelFile(targetFile, ImportExcelHeaders, wettkampfInfo.leafprograms
+      .zipWithIndex
+      .map(pgmWithIndex =>
+        val (pgm, idx) = pgmWithIndex
+        if idx % 2 == 0 then createExampleValues(s"Max ${idx+1}", "M", pgm.name) 
+        else createExampleValues(s"Klara ${idx + 1}", "W", pgm.name)
+      )
+    )
+    KuTuApp.hostServices.showDocument(targetFile.toURI.toString)
+    if includeData && exportRows.isEmpty then {
+      PageDisplayer.showWarnDialog("Excel exportieren ...", "Es wurden keine gefilterten Athleten gefunden. Es wurde eine leere Vorlage mit Beispielwerten exportiert.")
+    }
+  }
+
   private def doPasteFromExcel(progrm: Option[ProgrammView])(implicit event: ActionEvent): Unit = {
     val vereineList = service.selectVereine
     val rowfields = mapExcelClipboardRows(Clipboard.systemClipboard.getString + "")
@@ -1820,6 +1894,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
        case _ => // andere
          val importMenu = importUi.createImportMenu(
            progrm = Some(wettkampf.programm),
+           exportInitialDirectory = exportBaseDir,
            onExcelImport = actionEvent => {
              given ActionEvent = actionEvent
              doPasteFromExcel(Some(wettkampf.programm))
@@ -1831,6 +1906,14 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
            onPdfImport = (uri, progrm, actionEvent) => {
              given ActionEvent = actionEvent
              doLoadFaxeKuTuRanglisteFromPDF(uri, progrm)
+           },
+           onExcelExportEmpty = (uri, actionEvent) => {
+             given ActionEvent = actionEvent
+             exportTabularExcel(uri, includeData = false)
+           },
+           onExcelExportWithData = (uri, actionEvent) => {
+             given ActionEvent = actionEvent
+             exportTabularExcel(uri, includeData = true)
            }
          )
          List(importMenu, removeButton, setRiege2ForAllButton, riegeRenameButton, riegenRemoveButton, generateTeilnehmerListe, generateVereinsTeilnehmerListe, generateNotenblaetter)
@@ -1860,6 +1943,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       }
        val importMenu = importUi.createImportMenu(
          progrm = Some(progrm),
+         exportInitialDirectory = exportBaseDir,
          onExcelImport = actionEvent => {
            given ActionEvent = actionEvent
            doPasteFromExcel(Some(progrm))
@@ -1871,6 +1955,14 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         onPdfImport = (uri, selectedProgrm, actionEvent) => {
           given ActionEvent = actionEvent
           doLoadFaxeKuTuRanglisteFromPDF(uri, selectedProgrm)
+        },
+        onExcelExportEmpty = (uri, actionEvent) => {
+          given ActionEvent = actionEvent
+          exportTabularExcel(uri, includeData = false)
+        },
+        onExcelExportWithData = (uri, actionEvent) => {
+          given ActionEvent = actionEvent
+          exportTabularExcel(uri, includeData = true)
         }
       )
       val buttons = List(importMenu, moveToOtherProgramButton, removeButton, setRiege2ForAllButton, riegenRemoveButton, generateTeilnehmerListe, generateNotenblaetter)
