@@ -10,17 +10,17 @@ import scala.util.Using
 object WettkampfImportSupport {
   private val YearPattern = ".*(\\d{4}).*".r
 
-  val CsvDefaultFieldMapping: Map[String, String] = Map(
-    "NAME" -> "NAME",
-    "VORNAME" -> "VORNAME",
-    "JAHRGANG" -> "JAHRGANG",
-    "KATEGORIE" -> "KATEGORIE",
-    "TEAM" -> "TEAM",
-    "VERBAND" -> "VERBAND",
-    "VEREIN" -> "VEREIN",
-    "RLZ_TZ" -> "RLZ_TZ",
-    "VERBAND_RLZ" -> "VERBAND_RLZ",
-    "GESCHLECHT" -> "GESCHLECHT"
+  val CsvDefaultFieldMapping: Map[String, Seq[String]] = Map(
+    "NAME" -> Seq("NAME", "NAME_TURNER", "NACHNAME"),
+    "VORNAME" -> Seq("VORNAME", "VORNAME_TURNER", "SURNAME"),
+    "JAHRGANG" -> Seq("JAHRGANG", "JG", "JG_TURNER", "GEBURTSDATUM"),
+    "KATEGORIE" -> Seq("KATEGORIE", "PROGRAMM", "WETTKAMPF_TEIL"),
+    "TEAM" -> Seq("TEAM", "MANNSCHAFT"),
+    "VERBAND" -> Seq("VERBAND"),
+    "VEREIN" -> Seq("VEREIN", "CLUB"),
+    "RLZ_TZ" -> Seq("RLZ_TZ", "LEISTUNGSZENTRUM", "POOL"),
+    "VERBAND_RLZ" -> Seq("VERBAND_RLZ"),
+    "GESCHLECHT" -> Seq("GESCHLECHT", "SEX")
   )
 
   val DefaultGenderValueMappingRaw: String =
@@ -72,14 +72,14 @@ object WettkampfImportSupport {
     if parsedGenderMap.nonEmpty then parsedGenderMap else parseGenderValueMapping(DefaultGenderValueMappingRaw)
   }
 
-  def mapCsvRows(csvHeaders: Seq[String], rows: Seq[String], fieldMapping: Map[String, String]): Seq[Map[String, String]] = {
+  def mapCsvRows(csvHeaders: Seq[String], rows: Seq[String], fieldMapping: Map[String, Option[String]]): Seq[Map[String, String]] = {
     mapFieldRows(parseCsvRows(csvHeaders, rows), fieldMapping)
   }
 
-  def mapFieldRows(rows: Seq[Map[String, String]], fieldMapping: Map[String, String]): Seq[Map[String, String]] = {
+  def mapFieldRows(rows: Seq[Map[String, String]], fieldMapping: Map[String, Option[String]]): Seq[Map[String, String]] = {
     rows.map { row =>
       fieldMapping.map { case (logicalField, sourceField) =>
-        logicalField -> row.getOrElse(sourceField, "")
+        logicalField -> sourceField.map(m => row.getOrElse(m, "")).getOrElse("")
       }
     }
   }
@@ -89,7 +89,7 @@ object WettkampfImportSupport {
     val lines = try source.getLines().toList finally source.close()
     lines match {
       case Nil => None
-      case header :: rows => Some((header.split(";").map(_.trim).toSeq, rows))
+      case header :: rows => Some((header.split("[;\\t]").map(_.trim).toSeq, rows))
     }
   }
 
@@ -104,7 +104,7 @@ object WettkampfImportSupport {
   private def parseCsvRows(csvHeaders: Seq[String], rows: Seq[String]): Seq[Map[String, String]] = {
     val fieldnames = csvHeaders.zipWithIndex.map { case (name, idx) => idx.toString.trim -> name }.toMap
     rows.map { r =>
-      r.split(";", -1).zipWithIndex.flatMap {
+      r.split("[;\\t]", -1).zipWithIndex.flatMap {
         case (value, idx) => fieldnames.get(idx.toString.trim).map(_ -> value.replace("\"", "").trim)
       }.toMap
     }
@@ -159,6 +159,7 @@ object WettkampfImportSupport {
           "JAHRGANG" -> extractYear(fields.lift(2).getOrElse("")),
           "KATEGORIE" -> fields.lift(3).getOrElse(""),
           "GESCHLECHT" -> (if fields.lift(4).exists(_.nonEmpty) then "W" else "M"),
+          "TEAM" -> "",
           "VERBAND" -> "",
           "VEREIN" -> "",
           "RLZ_TZ" -> "",

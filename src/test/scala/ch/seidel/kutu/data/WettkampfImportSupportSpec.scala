@@ -49,10 +49,10 @@ class WettkampfImportSupportSpec extends AnyWordSpec with Matchers {
       val headers = Seq("SURNAME", "FIRST", "YEAR", "CAT")
       val rows = Seq("Muster;Max;2010;P4", "Meier;Tom;2011;P5")
       val fieldMapping = Map(
-        "NAME" -> "SURNAME",
-        "VORNAME" -> "FIRST",
-        "JAHRGANG" -> "YEAR",
-        "KATEGORIE" -> "CAT"
+        "NAME" -> Some("SURNAME"),
+        "VORNAME" -> Some("FIRST"),
+        "JAHRGANG" -> Some("YEAR"),
+        "KATEGORIE" -> Some("CAT")
       )
 
       val mapped = WettkampfImportSupport.mapCsvRows(headers, rows, fieldMapping)
@@ -69,8 +69,8 @@ class WettkampfImportSupportSpec extends AnyWordSpec with Matchers {
       val headers = Seq("SURNAME", "FIRST")
       val rows = Seq("Muster;Max")
       val fieldMapping = Map(
-        "NAME" -> "SURNAME",
-        "KATEGORIE" -> "CAT"
+        "NAME" -> Some("SURNAME"),
+        "KATEGORIE" -> Some("CAT")
       )
 
       val mapped = WettkampfImportSupport.mapCsvRows(headers, rows, fieldMapping)
