@@ -749,6 +749,51 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
             evt.tableView.requestFocus()
           }
         }
+      },
+      new WKTableColumn[String](-1) {
+        text = "Reserve"
+        cellFactory.value = { (_: Any) =>
+          new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+        }
+
+        cellValueFactory = { x =>
+          new ReadOnlyStringWrapper(x.value, "reserve", {
+            val reserve = x.value.head.init.reserve
+            if reserve > 0 then reserve.toString else ""
+          })
+        }
+
+        editable <== when(Bindings.createBooleanBinding(() => {
+          !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
+        },
+          wettkampfmode
+        )) choose true otherwise false
+
+        visible = wettkampfInfo.teamRegel.teamsAllowed
+        prefWidth = 80
+
+        onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+          if !wettkampfmode.value && evt.rowValue != null then {
+            val rowIndex = wkModel.indexOf(evt.rowValue)
+            val newReserve = if isNumeric(evt.newValue) then str2Int(evt.newValue).max(0) else 0
+            logger.debug("start reserve-update")
+            service.updateAllWertungenAsync(
+              evt.rowValue.map(wertung => wertung.init.copy(reserve = newReserve).toWertung)).andThen {
+              case Success(ws) => logger.debug("saved reserve-update")
+                KuTuApp.invokeWithBusyIndicator {
+                  val selected = wkview.selectionModel.value.selectedCells
+                  refreshOtherLazyPanes()
+                  wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                  selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], ?]]))
+                  logger.debug("finished reserve-update")
+                }
+              case Failure(e) => logger.error("not saved", e)
+            }
+
+            evt.tableView.selectionModel.value.select(rowIndex, this)
+            evt.tableView.requestFocus()
+          }
+        }
       })
   } else {
     val cols: List[jfxsc.TableColumn[IndexedSeq[WertungEditor], ?]] = wettkampfInfo.groupHeadPrograms
@@ -897,6 +942,50 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
                         updateRiegen()
                         //updateEditorPane(Some(evt.tableView))
                         logger.debug("finished team-reassignment")
+                      }
+                    case Failure(e) => logger.error("not saved", e)
+                  }
+
+                  evt.tableView.selectionModel.value.select(rowIndex, this)
+                  evt.tableView.requestFocus()
+                }
+              }
+            },
+            new WKTableColumn[String](-1) {
+              text = "Reserve"
+              cellFactory.value = { (_: Any) =>
+                new AutoCommitTextFieldTableCell[IndexedSeq[WertungEditor], String](new DefaultStringConverter())
+              }
+
+              cellValueFactory = { x =>
+                new ReadOnlyStringWrapper(x.value, "reserve", {
+                  val reserve = x.value.head.init.reserve
+                  if reserve > 0 then reserve.toString else ""
+                })
+              }
+              editable <== when(Bindings.createBooleanBinding(() => {
+                !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin) && !wettkampfmode.value
+              },
+                wettkampfmode
+              )) choose true otherwise false
+
+              visible = wettkampfInfo.teamRegel.teamsAllowed
+              prefWidth = 80
+
+              onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], String]) => {
+                if !wettkampfmode.value && evt.rowValue != null then {
+                  val rowIndex = wkModel.indexOf(evt.rowValue)
+                  val newReserve = if isNumeric(evt.newValue) then str2Int(evt.newValue).max(0) else 0
+                  logger.debug("start reserve-update")
+                  service.updateAllWertungenAsync(
+                    evt.rowValue.map(wertung => wertung.init.copy(reserve = newReserve).toWertung)).andThen {
+                    case Success(ws) => logger.debug("saved reserve-update")
+                      KuTuApp.invokeWithBusyIndicator {
+                        val selected = wkview.selectionModel.value.selectedCells
+                        refreshOtherLazyPanes()
+                        wkModel.update(rowIndex, ws.map(w => WertungEditor(w)).toIndexedSeq)
+                        selected.foreach(c => wkview.selectionModel.value.select(c.row, c.tableColumn.asInstanceOf[jfxsc.TableColumn[IndexedSeq[WertungEditor], ?]]))
+                        logger.debug("finished reserve-update")
                       }
                     case Failure(e) => logger.error("not saved", e)
                   }

@@ -58,6 +58,7 @@ object TestDBService {
       , "AddAltersklassenToWettkampf-sqllite.sql"
       , "AddPunktegleichstandsregelToWettkampf-sqllite.sql"
       , "teamwertung-ddl.sql"
+      , "AddReserveToTeamAssignment-sqllite.sql"
       , "AddTeamToWettkampf-ddl.sql"
       , "tg-allgaeu-wk4ak0-15.sql"
       , "wettkampf-metadata-ddl.sql"

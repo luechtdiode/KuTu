@@ -1270,8 +1270,8 @@ class RegistrationAdminSpec extends KuTuBaseSpec with PatienceConfiguration {
       remoteAthletesUpdated ++= athleteRemoteUpdates
     }
 
-    override def assignAthletsToWettkampf(wId: Long, pgmIds: Set[Long], athletIds: Set[(Long, Option[Media])], team: Option[Int]): Unit = {
-      baseService.assignAthletsToWettkampf(wId, pgmIds, athletIds, team)
+    override def assignAthletsToWettkampf(wId: Long, pgmIds: Set[Long], athletIds: Set[(Long, Option[Media])], team: Option[Int], reserve: Option[Int]): Unit = {
+      baseService.assignAthletsToWettkampf(wId, pgmIds, athletIds, team, reserve)
       assignedAthletes += ((wId, pgmIds, athletIds, team))
     }
 

@@ -886,13 +886,13 @@ trait WettkampfService extends DBService
     }
   }
 
-  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[(Long, Option[Media])] = Set.empty, team: Option[Int]): Unit = {
+  def assignAthletsToWettkampf(wettkampfId: Long, programmIds: Set[Long], withAthlets: Set[(Long, Option[Media])] = Set.empty, team: Option[Int], reserve: Option[Int] = None): Unit = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmIds map (p => readProgramm(p, cache))
-    assignAthletsToWettkampfS(wettkampfId, programs, withAthlets, team)
+    assignAthletsToWettkampfS(wettkampfId, programs, withAthlets, team, reserve)
   }
 
-  private def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[(Long, Option[Media])] = Set.empty, team: Option[Int]): Unit = {
+  private def assignAthletsToWettkampfS(wettkampfId: Long, programs: Set[ProgrammView], withAthlets: Set[(Long, Option[Media])] = Set.empty, team: Option[Int], reserve: Option[Int] = None): Unit = {
     if withAthlets.nonEmpty then {
       val disciplines = Await.result(database.run {
         sql"""
@@ -913,8 +913,8 @@ trait WettkampfService extends DBService
                  """ >>
               sqlu"""
                      insert into wertung
-                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, team, media_id)
-                     values ($aid, $disciplin, $wettkampfId, ${team.getOrElse(0)}, ${media.map(_.id)})
+                     (athlet_Id, wettkampfdisziplin_Id, wettkampf_Id, team, media_id, reserve)
+                     values ($aid, $disciplin, $wettkampfId, ${team.getOrElse(0)}, ${media.map(_.id)}, ${reserve.getOrElse(0)})
                 """).transactionally
           }, Duration.Inf)
         }
@@ -978,16 +978,16 @@ trait WettkampfService extends DBService
     val athlet = event.athlet
     val existingriegen = selectRiegenRaw(wettkampf.id)
     val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
-    val wertungen: Seq[(Long, Long, String, String, Option[String], String, Int, Int)] = Await.result(database.run {
+    val wertungen: Seq[(Long, Long, String, String, Option[String], String, Int, Int, Int)] = Await.result(database.run {
         sql"""
-                   select wd.disziplin_id, w.id, w.riege, w.riege2, w.team from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
+                   select wd.disziplin_id, w.id, w.riege, w.riege2, w.team, w.reserve from wertung w inner join wettkampfdisziplin wd on (w.wettkampfdisziplin_Id = wd.id)
                    where
                      athlet_id = ${athlet.id}
                      and wettkampf_Id = ${wettkampf.id}
-              """.as[(Long, Long, String, String, Int)].transactionally
+              """.as[(Long, Long, String, String, Int, Int)].transactionally
       }, Duration.Inf)
       .map { t =>
-        val (wkdId, wertungId, oldRiegenName, oldRiegen2Name, oldTeam) = t
+        val (wkdId, wertungId, oldRiegenName, oldRiegen2Name, oldTeam, reserve) = t
         val newWettkampfDisziplinId = wkdIDs(wkdId)
         val wkDiszView = readWettkampfDisziplinView(wettkampf.id, newWettkampfDisziplinId, cache2)
         val wertung = getWertung(wertungId)
@@ -995,7 +995,7 @@ trait WettkampfService extends DBService
         (newWertung.id, newWertung.wettkampfdisziplin.id,
           generateRiegenName(newWertung), oldRiegenName,
           if oldRiegen2Name != null && oldRiegen2Name.nonEmpty then generateRiegen2Name(newWertung) else None, oldRiegen2Name,
-          newWertung.team, oldTeam
+          newWertung.team, oldTeam, reserve
         )
       }
 
@@ -1022,6 +1022,7 @@ trait WettkampfService extends DBService
                      , riege2=$riegeText2
                      , wettkampfdisziplin_Id=${w._2}
                      , team=${w._7}
+                     , reserve=${w._9}
                    WHERE id=${w._1}
           """
         case _ =>
@@ -1029,6 +1030,7 @@ trait WettkampfService extends DBService
                    SET riege=$riegeText
                      , wettkampfdisziplin_Id=${w._2}
                      , team=${w._7}
+                     , reserve=${w._9}
                    WHERE id=${w._1}
           """
       }
