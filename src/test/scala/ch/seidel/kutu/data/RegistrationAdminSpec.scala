@@ -1275,8 +1275,8 @@ class RegistrationAdminSpec extends KuTuBaseSpec with PatienceConfiguration {
       assignedAthletes += ((wId, pgmIds, athletIds, team))
     }
 
-    override def moveToProgram(wId: Long, pgmId: Long, team: Int, athleteView: AthletView): Unit = {
-      baseService.moveToProgram(wId, pgmId, team, athleteView)
+    override def moveToProgram(wId: Long, pgmId: Long, team: Int, reserve: Int, athleteView: AthletView): Unit = {
+      baseService.moveToProgram(wId, pgmId, team, reserve, athleteView)
       movedToProgram += ((wId, pgmId, team, athleteView))
     }
 

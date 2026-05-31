@@ -114,6 +114,7 @@ export interface AthletRegistration {
   gebdat: string;
   programId: number;
   team: number;
+  reserve: number;
   registrationTime: number;
   mediafile: Media;
 }
@@ -169,6 +170,7 @@ export interface Wertung {
   noteE: number;
   noteD: number;
   team: number;
+  reserve: number;
   variables?: ScoreCalcVariables
   mediafile?: Media;
 }

@@ -46,7 +46,8 @@ class WettkampfImportServiceSpec extends AnyWordSpec with Matchers {
         athlet = Athlet(verein.id).copy(name = "Muster", vorname = "Max"),
         athletView = AthletView(0, 0, "M", "Muster", "Max", None, "", "", "", None, activ = true),
         oldProg = 0L,
-        team = 0
+        team = 0,
+        reserve = 0
       )
 
       val assigned = service.assignSelectedVerein(Seq(row), verein)

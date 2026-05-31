@@ -22,12 +22,13 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
       athlet: Athlet,
       athletView: AthletView,
       oldProg: Long,
-      team: Int)
+      team: Int,
+      reserve: Int)
 
   private val TeamNumberPattern = """.*?(\d+).*""".r
 
   // Accept plain ints and common spreadsheet formats (1.0 / 1,0 / text with number).
-  private def parseTeamNumber(raw: String): Int = {
+  private def parseSpreadSheetNumber(raw: String): Int = {
     val trimmed = Option(raw).map(_.trim).getOrElse("")
     if trimmed.isEmpty then 0
     else {
@@ -92,7 +93,8 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
       )
       val candidate = service.findAthleteLike(cache = cache, exclusive = false)(parsed)
       val progId = resolveProgramId(fields.getOrElse("KATEGORIE", ""), programms, progrm)
-      val team: Int = parseTeamNumber(fields.getOrElse("TEAM", ""))
+      val team: Int = parseSpreadSheetNumber(fields.getOrElse("TEAM", ""))
+      val reserve: Int = parseSpreadSheetNumber(fields.getOrElse("RESERVE", ""))
       val suggestedVerein = options.fixedVerein
         .orElse(candidate.verein.filter(_ > 0L).flatMap(vereineMap.get))
         .orElse(if verein.id > 0 then vereineMap.get(verein.id) else None)
@@ -104,13 +106,13 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
       val oldProg: Long =
         if options.removeMissingAthletes then context.existingProgramsByAthletEasyprint.getOrElse(suggestion.easyprint, 0L)
         else 0L
-      ImportRow(progId, parsed, suggestion, oldProg, team)
+      ImportRow(progId, parsed, suggestion, oldProg, team, reserve)
     }
 
     val toRemove = if options.removeMissingAthletes then {
       context.existingAthlets
         .filter(a => !importedRows.exists(row => row.athletView.easyprint == a.easyprint))
-        .map(a => ImportRow(0L, a.toAthlet, a, 0L, 0))
+        .map(a => ImportRow(0L, a.toAthlet, a, 0L, 0, 0))
         .toList
     } else List.empty
 
@@ -250,7 +252,7 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
       .filter(_.progId > 0L)
       .filter(_.oldProg > 0)
       .foreach { row =>
-        service.moveToProgram(wettkampf.id, row.progId, row.team, row.athletView)
+        service.moveToProgram(wettkampf.id, row.progId, row.team, row.reserve, row.athletView)
       }
     athletList
       .filter(_.progId == 0L)

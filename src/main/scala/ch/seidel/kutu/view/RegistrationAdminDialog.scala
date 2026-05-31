@@ -189,13 +189,14 @@ object RegistrationAdminDialog {
                 case RenameVereinAction(verein, _) => ""
                 case RenameAthletAction(verein, _, _, _) => ""
                 case AddRegistration(reg, programId, athlet, suggestion, team, media, _) => "hinzufügen"
-                case MoveRegistration(reg, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion, _) =>
+                case MoveRegistration(reg, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion, reserve) =>
+                  val reserveText = if reserve > 0 then s", Reserve $reserve" else ""
                   val teamText = if fromTeam != toTeam then s", von Team $fromTeam auf $toTeam" else ""
                   val pgmText = programms.find { p => p.id == fromProgramId || p.aggregatorHead.id == fromProgramId } match {
                     case Some(programm) => programm.name
                     case _ => "unbekannt"
                   }
-                  s"umteilen von $pgmText$teamText"
+                  s"umteilen von $pgmText$teamText$reserveText"
                 case RemoveRegistration(reg, programId, athlet, suggestion) =>
                   s"entfernen"
                 case ua:UpdateAthletMediaAction =>
