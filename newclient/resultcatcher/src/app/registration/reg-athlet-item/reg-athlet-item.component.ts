@@ -69,7 +69,11 @@ export class RegAthletItemComponent implements OnInit {
     const team = this.athletregistration().team;
     if (team) {
       const pgmtext = this.getProgrammText();
-      return 'Team ' + this.mapTeam(this.athletregistration().team) + " (bei " + this.athletregistration().geschlecht + "/" + pgmtext + ")";
+      if (this.athletregistration().reserve) {
+        return 'Team ' + this.mapTeam(this.athletregistration().team) + ', ' + this.athletregistration().reserve + ' Reserve (bei ' + this.athletregistration().geschlecht + '/' + pgmtext + ')';
+      } else {
+        return 'Team ' + this.mapTeam(this.athletregistration().team) + ' (bei ' + this.athletregistration().geschlecht + '/' + pgmtext + ')';
+      }
     } else {
       return '';
     }

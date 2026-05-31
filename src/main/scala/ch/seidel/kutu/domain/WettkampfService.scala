@@ -991,11 +991,11 @@ trait WettkampfService extends DBService
         val newWettkampfDisziplinId = wkdIDs(wkdId)
         val wkDiszView = readWettkampfDisziplinView(wettkampf.id, newWettkampfDisziplinId, cache2)
         val wertung = getWertung(wertungId)
-        val newWertung = wertung.copy(wettkampfdisziplin = wkDiszView, team = event.team)
+        val newWertung = wertung.copy(wettkampfdisziplin = wkDiszView, team = event.team, reserve = event.reserve)
         (newWertung.id, newWertung.wettkampfdisziplin.id,
           generateRiegenName(newWertung), oldRiegenName,
           if oldRiegen2Name != null && oldRiegen2Name.nonEmpty then generateRiegen2Name(newWertung) else None, oldRiegen2Name,
-          newWertung.team, oldTeam, reserve
+          newWertung.team, oldTeam, newWertung.reserve
         )
       }
 
@@ -1067,9 +1067,9 @@ trait WettkampfService extends DBService
     }
   }
 
-  def moveToProgram(wId: Long, pgmId: Long, team: Int, athelteView: AthletView): Unit = {
+  def moveToProgram(wId: Long, pgmId: Long, team: Int, reserve: Int, athelteView: AthletView): Unit = {
     val wettkampf = readWettkampf(wId)
-    val movedInWettkampf = AthletMovedInWettkampf(athelteView, wettkampf.uuid.getOrElse(""), pgmId, team)
+    val movedInWettkampf = AthletMovedInWettkampf(athelteView, wettkampf.uuid.getOrElse(""), pgmId, team, reserve)
     val durchgaenge = moveToProgram(movedInWettkampf)
 
     WebSocketClient.publish(movedInWettkampf)

@@ -90,7 +90,7 @@ object RegistrationAdmin {
           existingPgmAthletes.get(wertung.wettkampfdisziplin.programm.id) match {
             case Some(athletList: Map[Long, AthletRegistration]) => athletList.get(wertung.athlet.id) match {
               case Some(athletReistration) =>
-                if athletReistration.team.getOrElse(0) == wertung.team then {
+                if athletReistration.team.getOrElse(0) == wertung.team && athletReistration.reserve == wertung.reserve then {
                   "Unverändert"
                 } else {
                   "Umteilen"
@@ -252,7 +252,7 @@ object RegistrationAdmin {
       case _ => None
     }) {
       // implicit pushing to ws-client
-      service.moveToProgram(wkInfo.wettkampf.id, moveRegistration.toProgramid, moveRegistration.toTeam, moveRegistration.suggestion)
+      service.moveToProgram(wkInfo.wettkampf.id, moveRegistration.toProgramid, moveRegistration.toTeam, moveRegistration.toReserve, moveRegistration.suggestion)
     }
 
     for (wertungenIds: Set[Long] <- syncActions.flatMap {

@@ -1610,7 +1610,7 @@ package object domain {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
 
-  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, fromTeam: Int, toProgramid: Long, toTeam: Int, athlet: Athlet, suggestion: AthletView, reserve: Int = 0) extends SyncAction {
+  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, fromTeam: Int, toProgramid: Long, toTeam: Int, athlet: Athlet, suggestion: AthletView, toReserve: Int = 0) extends SyncAction {
     override val caption: String = if fromTeam != toTeam && fromProgramId == toProgramid then s"Team Einteilung verarbeiten: ${suggestion.easyprint}"
     else s"Program-Umteilung verarbeiten: ${suggestion.easyprint}"
   }

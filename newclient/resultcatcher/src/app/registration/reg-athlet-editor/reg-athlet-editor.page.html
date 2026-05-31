@@ -77,6 +77,14 @@
               <ion-select-option *ngFor='let team of teams' [value]='team.index'>{{mapTeam(team.index)}}</ion-select-option>
             </ion-select>
           </ion-row>
+          @if (registration.team > 0) {
+          <ion-row>
+            <ion-select label="Reserve-Position" placeholder='Reserve' [(ngModel)]='registration.reserve' name="reserve" okText='Okay' cancelText='Abbrechen'>
+              <ion-select-option [value]='0'>Fix im Team</ion-select-option>
+              <ion-select-option *ngFor='let reserve of [1,2,3,4]' [value]='reserve'>Reserve {{reserve}}</ion-select-option>
+            </ion-select>
+          </ion-row>
+          }
         </ion-grid>
       </ion-item>
       }

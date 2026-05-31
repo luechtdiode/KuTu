@@ -191,7 +191,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     }
   }
   given athletRemovedFromWettkampf: RootJsonFormat[AthletRemovedFromWettkampf] = jsonFormat2(AthletRemovedFromWettkampf.apply)
-  given athletMovedInWettkampf: RootJsonFormat[AthletMovedInWettkampf] = jsonFormat4(AthletMovedInWettkampf.apply)
+  given athletMovedInWettkampf: RootJsonFormat[AthletMovedInWettkampf] = jsonFormat5(AthletMovedInWettkampf.apply)
   given durchgangChangedFormat: RootJsonFormat[DurchgangChanged] = jsonFormat3(DurchgangChanged.apply)
   given athletAddedToettkampf: RootJsonFormat[AthletsAddedToWettkampf] = jsonFormat4(AthletsAddedToWettkampf.apply)
   given messageAckFormat: RootJsonFormat[MessageAck] = jsonFormat1(MessageAck.apply)

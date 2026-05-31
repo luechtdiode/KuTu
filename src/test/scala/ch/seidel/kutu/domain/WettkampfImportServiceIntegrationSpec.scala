@@ -222,6 +222,7 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
             "JAHRGANG" -> "2015",
             "KATEGORIE" -> "",
             "TEAM" -> "2",
+            "RESERVE" -> "0",
             "VERBAND" -> "",
             "VEREIN" -> "",
             "RLZ_TZ" -> "",
@@ -302,21 +303,24 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
           athlet = Athlet(0L).copy(name = "Insert", vorname = "Athlet", verein = Some(vereinId)),
           athletView = AthletView(0, 0, "M", "Insert", "Athlet", None, "", "", "", Some(verein), activ = true),
           oldProg = 0L,
-          team = 3
+          team = 3,
+          reserve = 0
         ),
         importService.ImportRow(
           progId = programms.last.id,
           athlet = moveView.toAthlet,
           athletView = moveView,
           oldProg = programms.head.id,
-          team = 2
+          team = 2,
+          reserve = 0
         ),
         importService.ImportRow(
           progId = 0L,
           athlet = removeView.toAthlet,
           athletView = removeView,
           oldProg = 0L,
-          team = 0
+          team = 0,
+          reserve = 0
         )
       )
 

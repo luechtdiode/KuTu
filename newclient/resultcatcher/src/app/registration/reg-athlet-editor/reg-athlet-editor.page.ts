@@ -162,6 +162,7 @@ export class RegAthletEditorPage implements OnInit {
       this.registration.gebdat = toDateString(this.registration.gebdat);
       if (!this.registration.team) {
         this.registration.team = 0;
+        this.registration.reserve = 0;
       }
     });
   }
@@ -251,6 +252,7 @@ export class RegAthletEditorPage implements OnInit {
     const reg = Object.assign({}, this.registration, {
       gebdat: new Date(form.value.gebdat).toJSON(),
       team: form.value.team ? form.value.team : 0,
+      reserve: form.value.reserve ? form.value.reserve : 0,
       athletId: this.registration.athletId > 0 ? this.registration.athletId : 0
     });
 

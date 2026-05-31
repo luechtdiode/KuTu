@@ -179,10 +179,10 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           refresher(sender, awm)
           logger.info(s"${athlets.size} assigned to competition ${awm.wettkampfUUID} to Program-Id:${awm.pgmId}")
         }
-      case (sender, awm@AthletMovedInWettkampf(athlet, wettkampfUUID, programm, team)) =>
+      case (sender, awm@AthletMovedInWettkampf(athlet, wettkampfUUID, programm, team, reserve)) =>
         if wettkampf.uuid.contains(wettkampfUUID) then /*Future*/ {
           logger.info(s"received for ${awm.athlet.vorname} ${awm.athlet.name} (${awm.athlet.verein.getOrElse(() => "")}) " +
-            s"to be moved in competition ${awm.wettkampfUUID} to Program-Id:$programm, to Team: $team")
+            s"to be moved in competition ${awm.wettkampfUUID} to Program-Id:$programm, to Team: $team/$reserve")
           val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
           val mappedEvent = awm.copy(athlet = mappedAthletView)
           for durchgang <- moveToProgram(mappedEvent) do {
