@@ -130,7 +130,8 @@ object RegistrationAdmin {
             t._2.team,
             r._2.programId,
             r._2.team.getOrElse(0),
-            r._3, r._4))
+            r._3, r._4,
+            r._2.reserve))
           case _ => None
         }
         case _ => None
@@ -139,7 +140,7 @@ object RegistrationAdmin {
         case Some(moveRegistration) =>
           Some(moveRegistration)
         case None if !r._2.isEmptyRegistration =>
-          Some(AddRegistration(r._1, r._2.programId, r._3, r._4, r._2.team.getOrElse(0), r._2.mediafile))
+          Some(AddRegistration(r._1, r._2.programId, r._3, r._4, r._2.team.getOrElse(0), r._2.mediafile, r._2.reserve))
         case None => None
       }
     }
@@ -200,7 +201,7 @@ object RegistrationAdmin {
       service.insertVerein(addVereinAction.verein.toVerein)
     }
     val addRegistrations: immutable.Seq[AddRegistration] = syncActions.flatMap {
-      case ar@AddRegistration(reg, _, _, candidateView, _, media) =>
+      case ar@AddRegistration(reg, _, _, candidateView, _, media, _) =>
         if candidateView.verein.isEmpty then {
           newClubs.find(c => c.name.equals(reg.vereinname) && c.verband.getOrElse("").equals(reg.verband)) match {
             case Some(verein) =>
@@ -295,18 +296,18 @@ object RegistrationAdmin {
       service.doMediaDownloadRemote(wkInfo.wettkampf.toWettkampf, requestMediaList)
     }
 
-    for (((progId, team), idAndathletes) <- addRegistrations.map {
-      case AddRegistration(_, programId, _, candidateView, team, media) =>
+    for (((progId, team, reserve), idAndathletes) <- addRegistrations.map {
+      case AddRegistration(_, programId, _, candidateView, team, media, reserve) =>
         val (pgmId, athlId) = mapAddRegistration(service, programId, candidateView)
-        (pgmId, team, media.map(_.toMedia), athlId)
-    }.groupBy(t => (t._1, t._2))) {
+        (pgmId, team, reserve, media.map(_.toMedia), athlId)
+    }.groupBy(t => (t._1, t._2, t._3))) {
       // NOT implicit pushing to ws-client
-      val athletIds = idAndathletes.map(x => (x._4, x._3)).toSet
-      service.assignAthletsToWettkampf(wkInfo.wettkampf.id, Set(progId), athletIds, Some(team))
+      val athletIds = idAndathletes.map(x => (x._5, x._4)).toSet
+      service.assignAthletsToWettkampf(wkInfo.wettkampf.id, Set(progId), athletIds, Some(team), Some(reserve))
     }
 
     for (((progId, team), addActions) <- addRegistrations.groupBy {
-      case AddRegistration(_, programId, _, _, team, _) => (programId, team)
+      case AddRegistration(_, programId, _, _, team, _, _) => (programId, team)
     }) {
       WebSocketClient.publish(AthletsAddedToWettkampf(
         addActions.map(aa => (aa.suggestion, aa.media.map(_.toMedia))).toList,

@@ -35,6 +35,6 @@ trait AthletResultMapper extends VereinResultMapper {
       activ = r.<<,
       verein = getVereinOptionResult(r)
     ))
-    case _ => r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; None
+    case _ => r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; None
   })
 }

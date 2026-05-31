@@ -76,6 +76,26 @@ sealed trait TeamRegel {
     group
   }
 
+  private def sortedAthletIdsByActivation(teamwertungen: Iterable[WertungView]): List[Long] = {
+    val perAthlet = teamwertungen
+      .groupBy(_.athlet.id)
+      .map { case (athletId, ws) =>
+        (athletId, ws.map(_.reserve).min)
+      }
+      .toList
+    val fixed = perAthlet.filter(_._2 <= 0)
+    val reserves = perAthlet.filter(_._2 > 0).sortBy(x => x._2)
+    (fixed ++ reserves).map(_._1).distinct
+  }
+
+  protected def activatedTeamWertungen(teamwertungen: Iterable[WertungView], max: Int): List[WertungView] = {
+    if max == 0 then teamwertungen.toList
+    else {
+      val activeAthletIds = sortedAthletIdsByActivation(teamwertungen).take(max).toSet
+      teamwertungen.filter(w => activeAthletIds.contains(w.athlet.id)).toList
+    }
+  }
+
   def extractTeams(wertungen: Iterable[WertungView]): List[Team]
   def extractExtraTeams(wertungen: Iterable[WertungView]): List[String] = wertungen.map(_.wettkampf).toList.distinct.flatMap(_.extraTeams)
 
@@ -139,10 +159,11 @@ case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String, grou
       .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
         val (teamname, teamwertungen) = team
-        val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
+        val activeTeamwertungen = activatedTeamWertungen(teamwertungen, max)
+        val athletCount = activeTeamwertungen.map(w => w.athlet.id).toSet.size
         if ((min == 0 && athletCount > 0) || athletCount >= min) && (max == 0 || athletCount <= max) then {
           val takeCnt = if min == 0 then athletCount else min
-          val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = teamwertungen
+          val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = activeTeamwertungen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
             .flatMap { case (disciplin, wtgs) =>
               val relevantDisciplineValues = wtgs
@@ -159,13 +180,7 @@ case class TeamRegelVereinGeraet(min: Int, max: Int, extraTeamsDef: String, grou
                 .sortBy(_.resultat.endnote).reverse.take(takeCnt)
               if relevantDisciplineValues.isEmpty then None else Some((disciplin, relevantDisciplineValues))
             }
-          val limitedTeamwertungen = if max > 0 then teamwertungen else {
-            val allRelevantWertungen = perDisciplinWertungen.values.flatten.map(_.athlet).toSet
-            teamwertungen.filter { w =>
-              allRelevantWertungen.contains(w.athlet)
-            }
-          }
-          List(Team(s"$teamname", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
+          List(Team(s"$teamname", toRuleName, activeTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
         } else {
           List.empty
         }
@@ -194,10 +209,11 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grou
       .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
         val (teamname, teamwertungen) = team
-        val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
+        val activeTeamwertungen = activatedTeamWertungen(teamwertungen, max)
+        val athletCount = activeTeamwertungen.map(w => w.athlet.id).toSet.size
         if ((min == 0 && athletCount > 0) || athletCount >= min) && (max == 0 || athletCount <= max) then {
           val takeCnt = if min == 0 then athletCount else min
-          val perAthletWertungen = teamwertungen
+          val perAthletWertungen = activeTeamwertungen
             .groupBy(w => w.athlet)
             .map{ case (athlet, wtgs) =>
               val wtgsum = wtgs.filter(_.showInScoreList).map(_.resultat).reduce(_+_)
@@ -207,13 +223,7 @@ case class TeamRegelVereinGesamt(min: Int, max: Int, extraTeamsDef: String, grou
             .sortBy(_._3).reverse.take(takeCnt) // sortiert auf Gesamtresultat
             .flatMap(_._2) // mit wertungen die Disziplin-Map aufbauen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
-          val limitedTeamwertungen = if max > 0 then teamwertungen else {
-            val allRelevantWertungen = perAthletWertungen.values.flatten.toSet
-            teamwertungen.filter {
-              allRelevantWertungen.contains
-            }
-          }
-          List(Team(s"$teamname", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
+          List(Team(s"$teamname", toRuleName, activeTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
         } else {
           List.empty
         }
@@ -243,10 +253,11 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String, gro
       .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
         val (teamname, teamwertungen) = team
-        val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
+        val activeTeamwertungen = activatedTeamWertungen(teamwertungen, max)
+        val athletCount = activeTeamwertungen.map(w => w.athlet.id).toSet.size
         if ((min == 0 && athletCount > 0) || athletCount >= min) && (max == 0 || athletCount <= max) then {
           val takeCnt = if min == 0 then athletCount else min
-          val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = teamwertungen
+          val perDisciplinWertungen: Map[Disziplin, List[WertungView]] = activeTeamwertungen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
             .flatMap { case (disciplin, wtgs) =>
               val relevantDisciplineValues = wtgs
@@ -263,14 +274,7 @@ case class TeamRegelVerbandGeraet(min: Int, max: Int, extraTeamsDef: String, gro
                 .sortBy(_.resultat.endnote).reverse.take(takeCnt)
               if relevantDisciplineValues.isEmpty then None else Some((disciplin, relevantDisciplineValues))
             }
-          val limitedTeamwertungen = if max > 0 then teamwertungen else {
-            val allRelevantWertungen = perDisciplinWertungen.values.flatten
-              .map(_.athlet).toSet
-            teamwertungen.filter { w =>
-              allRelevantWertungen.contains(w.athlet)
-            }
-          }
-          List(Team(s"$teamname", toRuleName, limitedTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
+          List(Team(s"$teamname", toRuleName, activeTeamwertungen, perDisciplinCountingWertungen, perDisciplinWertungen, aggregateFun))
         } else {
           List.empty
         }
@@ -298,10 +302,11 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String, gro
       .groupBy(w => w.getTeamName(extraTeams))
       .flatMap { team =>
         val (teamname, teamwertungen) = team
-        val athletCount = teamwertungen.map(w => w.athlet.id).toSet.size
+        val activeTeamwertungen = activatedTeamWertungen(teamwertungen, max)
+        val athletCount = activeTeamwertungen.map(w => w.athlet.id).toSet.size
         if ((min == 0 && athletCount > 0) || athletCount >= min) && (max == 0 || athletCount <= max) then {
           val takeCnt = if min == 0 then athletCount else min
-          val perAthletWertungen = teamwertungen
+          val perAthletWertungen = activeTeamwertungen
             .groupBy(w => w.athlet)
             .map{ case (athlet, wtgs) =>
               val wtgsum = wtgs.filter(_.showInScoreList).map(_.resultat).reduce(_+_)
@@ -311,13 +316,7 @@ case class TeamRegelVerbandGesamt(min: Int, max: Int, extraTeamsDef: String, gro
             .sortBy(_._3).reverse.take(takeCnt) // sortiert auf Gesamtresultat
             .flatMap(_._2) // mit wertungen die Disziplin-Map aufbauen
             .groupBy(w => w.wettkampfdisziplin.disziplin)
-          val limitedTeamwertungen = if max > 0 then teamwertungen else {
-            val allRelevantWertungen = perAthletWertungen.values.flatten.toSet
-            teamwertungen.filter {
-              allRelevantWertungen.contains
-            }
-          }
-          List(Team(s"$teamname", toRuleName, limitedTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
+          List(Team(s"$teamname", toRuleName, activeTeamwertungen, perAthletWertungen, perAthletWertungen, aggregateFun))
         } else {
           List.empty
         }

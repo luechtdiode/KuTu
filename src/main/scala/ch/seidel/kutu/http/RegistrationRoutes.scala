@@ -532,7 +532,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                               })
                               .map {
                                 case a@AthletView(id, _, geschlecht, name, vorname, gebdat, _, _, _, _, _) =>
-                                  AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a), None, None)
+                                  AthletRegistration(0L, reg.id, Some(id), geschlecht, name, vorname, gebdat.map(dateToExportedStr).getOrElse(""), 0L, 0, Some(a), None, None, 0)
                               }
                             val incompletedCandidates = selectUnaprovedAthletRegistrations(registrationId)
                               .filter(ar => !existingAthletRegs.exists { aro => aro.geschlecht.equals(ar.geschlecht) && aro.name.equals(ar.name) && aro.vorname.equals(ar.vorname) })
@@ -622,7 +622,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                                       if id > 0 then {
                                         ResourceExchanger.importWettkampfMediaFile(wettkampf, selectAthletRegistration(id).copy(mediafile = Some(MediaAdmin("", metadata.fileName, fileext, 0, "", "", 0L))), is)
                                       } else {
-                                        AthletRegistration(id, 0, None, "", "", "", "", 0L, 0L, None, None, Some(ResourceExchanger.saveMediaFile(is, wettkampf, Media("", metadata.fileName, fileext))))
+                                        AthletRegistration(id, 0, None, "", "", "", "", 0L, 0L, None, None, Some(ResourceExchanger.saveMediaFile(is, wettkampf, Media("", metadata.fileName, fileext))), 0)
                                       }
                                     }
                                     onComplete(processor) {

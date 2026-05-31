@@ -14,7 +14,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 
   given wkFormat: RootJsonFormat[Wettkampf] = jsonFormat(Wettkampf.apply, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
   given pgmFormat: RootJsonFormat[ProgrammRaw] = jsonFormat10(ProgrammRaw.apply)
-  lazy given programmViewFormat: RootJsonFormat[ch.seidel.kutu.domain.ProgrammView] = new RootJsonFormat[ch.seidel.kutu.domain.ProgrammView] {
+  given programmViewFormat: RootJsonFormat[ch.seidel.kutu.domain.ProgrammView] = new RootJsonFormat[ch.seidel.kutu.domain.ProgrammView] {
     override def write(p: ch.seidel.kutu.domain.ProgrammView): JsValue = JsObject(
       "id" -> JsNumber(p.id),
       "name" -> JsString(p.name),
@@ -59,14 +59,91 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given scoreCalcTemplateViewFormat: RootJsonFormat[ScoreCalcTemplateView] = jsonFormat10(ScoreCalcTemplateView.apply)
   given mediaFormat: RootJsonFormat[Media] = jsonFormat3(Media.apply)
   given mediaAdminFormat: RootJsonFormat[MediaAdmin] = jsonFormat7(MediaAdmin.apply)
-  given wertungFormat: RootJsonFormat[Wertung] = jsonFormat(Wertung.apply, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2", "team", "mediafile", "variables")
+
+  given wertungFormat: RootJsonFormat[Wertung] = jsonFormat(Wertung.apply, "id", "athletId", "wettkampfdisziplinId", "wettkampfId", "wettkampfUUID", "noteD", "noteE", "endnote", "riege", "riege2", "team", "mediafile", "variables", "reserve")
+  /*given wertungFormat: RootJsonFormat[Wertung] = new RootJsonFormat[Wertung] {
+    override def write(obj: Wertung): JsValue = JsObject(
+      "id" -> obj.id.toJson,
+      "athletId" -> obj.athletId.toJson,
+      "wettkampfdisziplinId" -> obj.wettkampfdisziplinId.toJson,
+      "wettkampfId" -> obj.wettkampfId.toJson,
+      "wettkampfUUID" -> obj.wettkampfUUID.toJson,
+      "noteD" -> obj.noteD.toJson,
+      "noteE" -> obj.noteE.toJson,
+      "endnote" -> obj.endnote.toJson,
+      "riege" -> obj.riege.toJson,
+      "riege2" -> obj.riege2.toJson,
+      "team" -> obj.team.toJson,
+      "mediafile" -> obj.mediafile.toJson,
+      "variables" -> obj.variables.toJson,
+      "reserve" -> obj.reserve.toJson
+    )
+
+    override def read(json: JsValue): Wertung = {
+      val fields = json.asJsObject.fields
+      Wertung(
+        id = fields("id").convertTo[Long],
+        athletId = fields("athletId").convertTo[Long],
+        wettkampfdisziplinId = fields("wettkampfdisziplinId").convertTo[Long],
+        wettkampfId = fields("wettkampfId").convertTo[Long],
+        wettkampfUUID = fields("wettkampfUUID").convertTo[String],
+        noteD = fields.get("noteD").flatMap(_.convertTo[Option[BigDecimal]]),
+        noteE = fields.get("noteE").flatMap(_.convertTo[Option[BigDecimal]]),
+        endnote = fields.get("endnote").flatMap(_.convertTo[Option[BigDecimal]]),
+        riege = fields.get("riege").flatMap(_.convertTo[Option[String]]),
+        riege2 = fields.get("riege2").flatMap(_.convertTo[Option[String]]),
+        team = normalizeZeroToNone(fields.get("team").flatMap(_.convertTo[Option[Int]]).getOrElse(0)),
+        mediafile = fields.get("mediafile").flatMap(_.convertTo[Option[Media]]),
+        variables = fields.get("variables").flatMap(_.convertTo[Option[ScoreCalcTemplateView]]),
+        reserve = normalizeZeroToNone(fields.get("reserve").map(_.convertTo[Int]).getOrElse(0))
+      )
+    }
+  }
+*/
   given vereinFormat: RootJsonFormat[Verein] = jsonFormat(Verein.apply, "id", "name", "verband")
   given atheltViewFormat: RootJsonFormat[AthletView] = jsonFormat(AthletView.apply, "id", "js_id", "geschlecht", "name", "vorname", "gebdat", "strasse", "plz", "ort", "verein", "activ")
   given wertungContainerFormat: RootJsonFormat[WertungContainer] = jsonFormat11(WertungContainer.apply)
   given registrationFormat: RootJsonFormat[Registration] = jsonFormat11(Registration.apply)
   given newregistrationFormat: RootJsonFormat[NewRegistration] = jsonFormat8(NewRegistration.apply)
   given resetRegistrationPWFormat: RootJsonFormat[RegistrationResetPW] = jsonFormat3(RegistrationResetPW.apply)
-  given athletregistrationFormat: RootJsonFormat[AthletRegistration] = jsonFormat12(AthletRegistration.apply)
+  given athletregistrationFormat: RootJsonFormat[AthletRegistration] = jsonFormat13(AthletRegistration.apply)
+  /*
+  given athletregistrationFormatx: RootJsonFormat[AthletRegistration] = new RootJsonFormat[AthletRegistration] {
+    override def write(obj: AthletRegistration): JsValue = JsObject(
+      "id" -> obj.id.toJson,
+      "vereinregistrationId" -> obj.vereinregistrationId.toJson,
+      "athletId" -> obj.athletId.toJson,
+      "geschlecht" -> obj.geschlecht.toJson,
+      "name" -> obj.name.toJson,
+      "vorname" -> obj.vorname.toJson,
+      "gebdat" -> obj.gebdat.toJson,
+      "programId" -> obj.programId.toJson,
+      "registrationTime" -> obj.registrationTime.toJson,
+      "athlet" -> obj.athlet.toJson,
+      "team" -> obj.team.toJson,
+      "mediafile" -> obj.mediafile.toJson,
+      "reserve" -> obj.reserve.toJson
+    )
+    override def read(json: JsValue): AthletRegistration = {
+      val fields = json.asJsObject.fields
+      AthletRegistration(
+        id = fields("id").convertTo[Long],
+        vereinregistrationId = fields("vereinregistrationId").convertTo[Long],
+        athletId = fields.get("athletId").flatMap(_.convertTo[Option[Long]]),
+        geschlecht = fields("geschlecht").convertTo[String],
+        name = fields("name").convertTo[String],
+        vorname = fields("vorname").convertTo[String],
+        gebdat = fields("gebdat").convertTo[String],
+        programId = fields("programId").convertTo[Long],
+        registrationTime = fields("registrationTime").convertTo[Long],
+        athlet = fields.get("athlet").flatMap(_.convertTo[Option[AthletView]]),
+        team = fields.get("team").flatMap(_.convertTo[Option[Int]]),
+        mediafile = fields.get("mediafile").flatMap(_.convertTo[Option[MediaAdmin]]),
+        reserve = fields.get("reserve").map(_.convertTo[Int]).getOrElse(0)
+      )
+    }
+  }
+*/
   given teamFormat: RootJsonFormat[TeamItem] = jsonFormat2(TeamItem.apply)
   given judgeregistrationFormat: RootJsonFormat[JudgeRegistration] = jsonFormat9(JudgeRegistration.apply)
   given judgeregistrationPgmFormat: RootJsonFormat[JudgeRegistrationProgram] = jsonFormat5(JudgeRegistrationProgram.apply)

@@ -54,8 +54,11 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = List(values)
     val calculatedWertung = Calculator(t).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None,None,Some(scvtv)) =>
-        d.toDouble == 2.1 && e.toDouble == 8.277 && end.toDouble == 10.377 && scvtv.variables == valuesList
+      case w: Wertung =>
+        w.noteD.exists(_.toDouble == 2.1) &&
+          w.noteE.exists(_.toDouble == 8.277) &&
+          w.endnote.exists(_.toDouble == 10.377) &&
+          w.variables.exists(_.variables == valuesList)
       case _ => false
     })
   }
@@ -71,9 +74,12 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(tt).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
-        assert(scvtv.variables === valuesList)
-        d.toDouble == 4.1 && e.toDouble == 6.677 && end.toDouble == 10.777 && scvtv.variables == valuesList
+      case w: Wertung =>
+        w.variables.foreach(scvtv => assert(scvtv.variables === valuesList))
+        w.noteD.exists(_.toDouble == 4.1) &&
+          w.noteE.exists(_.toDouble == 6.677) &&
+          w.endnote.exists(_.toDouble == 10.777) &&
+          w.variables.exists(_.variables == valuesList)
       case _ => false
     })
   }
@@ -89,8 +95,11 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(tt).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
-        d.toDouble == 3.1 && e.toDouble == 7.777 && end.toDouble == 10.877 && scvtv.variables == valuesList
+      case w: Wertung =>
+        w.noteD.exists(_.toDouble == 3.1) &&
+          w.noteE.exists(_.toDouble == 7.777) &&
+          w.endnote.exists(_.toDouble == 10.877) &&
+          w.variables.exists(_.variables == valuesList)
       case _ => false
     })
   }
@@ -106,8 +115,11 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(tt).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
-        d.toDouble == 7.2 && e.toDouble == 14.454 && end.toDouble == 21.654 && scvtv.variables == valuesList
+      case w: Wertung =>
+        w.noteD.exists(_.toDouble == 7.2) &&
+          w.noteE.exists(_.toDouble == 14.454) &&
+          w.endnote.exists(_.toDouble == 21.654) &&
+          w.variables.exists(_.variables == valuesList)
       case _ => false
     })
   }
@@ -123,8 +135,11 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(tt).calculate(wertung, wd, valuesList)
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
-        d.toDouble == 3.6 && e.toDouble == 7.227 && end.toDouble == 10.827 && scvtv.variables == valuesList
+      case w: Wertung =>
+        w.noteD.exists(_.toDouble == 3.6) &&
+          w.noteE.exists(_.toDouble == 7.227) &&
+          w.endnote.exists(_.toDouble == 10.827) &&
+          w.variables.exists(_.variables == valuesList)
       case _ => false
     })
   }
@@ -161,8 +176,11 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(t).calculate(wertung, wd, List(values, values))
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
-        d.toDouble == 3.1 && e.toDouble == 7.777 && end.toDouble == 10.877 && scvtv.variables == valuesList
+      case w: Wertung =>
+        w.noteD.exists(_.toDouble == 3.1) &&
+          w.noteE.exists(_.toDouble == 7.777) &&
+          w.endnote.exists(_.toDouble == 10.877) &&
+          w.variables.exists(_.variables == valuesList)
       case _ => false
     })
 
@@ -186,8 +204,11 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
     val valuesList = values.groupBy(_.index).values.toList
     val calculatedWertung = Calculator(t).calculate(wertung, wd, List(values, values))
     assert(calculatedWertung match {
-      case Wertung(0,0,0,0,"",Some(d),Some(e), Some(end),None,None,None, None,Some(scvtv)) =>
-        d.toDouble == 3.1 && e.toDouble == 7.777 && end.toDouble == 10.877 && scvtv.variables == valuesList
+      case w: Wertung =>
+        w.noteD.exists(_.toDouble == 3.1) &&
+          w.noteE.exists(_.toDouble == 7.777) &&
+          w.endnote.exists(_.toDouble == 10.877) &&
+          w.variables.exists(_.variables == valuesList)
       case _ => false
     })
     println(calculatedWertung.toJson.prettyPrint)

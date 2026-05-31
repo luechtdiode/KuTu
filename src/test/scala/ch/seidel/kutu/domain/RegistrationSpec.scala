@@ -1,22 +1,14 @@
 package ch.seidel.kutu.domain
 
-import java.time.LocalDate
-import java.util.UUID
-import org.apache.pekko.http.scaladsl.model.HttpMethods._
-import org.apache.pekko.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, RawHeader}
-import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, StatusCodes}
-import org.apache.pekko.util.ByteString
-import ch.seidel.jwt.JsonWebToken
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
 import ch.seidel.kutu.base.KuTuBaseSpec
+
+import java.util.UUID
 
 class RegistrationSpec extends KuTuBaseSpec {
   val testwettkampf = insertGeTuWettkampf("TestGetuWK", 2)
   val testwettkampf2 = insertGeTuWettkampf("TestGetuWK2", 2)
   val myverysecretpassword = "vkyvf%gMnvXs"
   var registration: Option[Registration] = None
-  var athletregistration: Option[AthletRegistration] = None
 
   def createTestRegistration = {
     registration = registration match {
@@ -31,15 +23,12 @@ class RegistrationSpec extends KuTuBaseSpec {
     registration.get
   }
 
-  def createTestAthletRegistration(reg: Registration) = {
-    athletregistration = athletregistration match {
-      case None =>
-        Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0, None, None, Some(MediaAdmin("1", "life-is-life.mp3", "mp3", 0, "", "", 0)))))
-      case Some(r) =>
-        if (r.vereinregistrationId == reg.id)
-        Some(r) else Some(createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", "Test", "2010-05-05", 20, 0, None, None, Some(MediaAdmin("1", "life-is-life.mp3", "mp3", 0, "", "", 0)))))
+  def createTestAthletRegistration(reg: Registration, withMedia: Option[MediaAdmin] = Some(MediaAdmin("1", "life-is-life.mp3", "mp3", 0, "", "", 0)), team: Option[Int] = None, reserve: Int = 0) = {
+    val teamText = team match {
+      case Some(n) => s"-Team$n"
+      case None => ""
     }
-    athletregistration.get
+    createAthletRegistration(AthletRegistration(0, reg.id, None, "M", "Tester", s"Test$teamText", "2010-05-05", 20, 0, None, team, withMedia, reserve = reserve))
   }
 
   "registration" should {
@@ -65,6 +54,17 @@ class RegistrationSpec extends KuTuBaseSpec {
       assert(athletRegistration.id > 0L)
       athletRegistration.vereinregistrationId should ===(reg.id)
       athletRegistration.name should ===("Tester")
+      athletRegistration.reserve should ===(0)
+    }
+
+    "add athlet-registration with team and reserve" in {
+      val reg = createTestRegistration
+      val athletRegistration: AthletRegistration = createTestAthletRegistration(reg, team=Some(1), reserve = 1)
+      assert(athletRegistration.id > 0L)
+      athletRegistration.vereinregistrationId should ===(reg.id)
+      athletRegistration.name should ===("Tester")
+      athletRegistration.team should ===(Some(1))
+      athletRegistration.reserve should ===(1)
     }
 
     "selectAthletRegistration" in {
@@ -72,24 +72,25 @@ class RegistrationSpec extends KuTuBaseSpec {
       val athletRegistration: AthletRegistration = createTestAthletRegistration(registration)
       val selectedregistration = selectAthletRegistration(athletRegistration.id)
       selectedregistration.id should ===(athletRegistration.id)
+      selectedregistration.reserve should ===(0)
     }
 
-    "selectAthletRegistrations" in {
+    "selectAthletRegistrations with team" in {
       val registration = createTestRegistration
-      val athletRegistration: AthletRegistration = createTestAthletRegistration(registration)
+      val athletRegistration: AthletRegistration = createTestAthletRegistration(registration, team=Some(1), reserve = 1)
       val registrations = selectAthletRegistrations(registration.id)
       registrations should not be empty
       assert(registrations.exists(r => r.id === athletRegistration.id) === true)
+      assert(registrations.exists(r => r.id === athletRegistration.id && r.reserve == 1) === true)
     }
 
     "delete AthletRegistration" in {
       val registration = createTestRegistration
-      val athletRegistration: AthletRegistration = createTestAthletRegistration(registration)
+      val athletRegistration: AthletRegistration = createTestAthletRegistration(registration, reserve = 1)
       deleteAthletRegistration(athletRegistration.id)
       val registrations = selectAthletRegistrations(registration.id)
       // registrations shouldBe empty
       assert(registrations.exists(r => r.id === athletRegistration.id) === false)
-      athletregistration = None
     }
 
     "auto-approve similar registration as already registered for earlier competitions" in {
@@ -110,11 +111,11 @@ class RegistrationSpec extends KuTuBaseSpec {
       updateRegistration(reg.copy(
         vereinId = Some(1L),
         verband = "Verband-1"))
-      val athlet1 = createTestAthletRegistration(reg)
-      updateAthletRegistration(athlet1.copy(athletId = Some(1L)))
+      val athlet1 = createTestAthletRegistration(reg, reserve = 1)
+      updateAthletRegistration(athlet1.copy(athletId = Some(1L), reserve = 2))
 
       val secondRegistration = try {
-        selectRegistrationsOfWettkampf(UUID.fromString(testwettkampf2.uuid.get)).filter(r => r.vereinId == Some(1L)).head
+        selectRegistrationsOfWettkampf(UUID.fromString(testwettkampf2.uuid.get)).filter(r => r.vereinId.contains(1L)).head
       } catch {
         case e: Exception =>
         createRegistration(NewRegistration(
@@ -127,6 +128,9 @@ class RegistrationSpec extends KuTuBaseSpec {
         AthletRegistration(0, secondRegistration.id, None,
           "M", "Tester", "Test", "2010-05-05", 20, 0, None, None, Some(MediaAdmin("1", "life-is-life.mp3", "mp3", 0, "", "", 0))))
       athlet2.athletId should ===(Some(1L))
+
+      val updated = updateAthletRegistration(athlet2.copy(reserve = 3)).get
+      updated.reserve should ===(3)
     }
 
     "selectRegistrations" in {
@@ -138,7 +142,7 @@ class RegistrationSpec extends KuTuBaseSpec {
 
     "selectRegistrations by wettkampf" in {
       val registrationId = createTestRegistration.id
-      val registrations = selectRegistrationsOfWettkampf(testwettkampf.uuid.map(UUID.fromString(_)).get)
+      val registrations = selectRegistrationsOfWettkampf(testwettkampf.uuid.map(UUID.fromString).get)
       registrations should not be empty
       assert(registrations.exists(r => r.id === registrationId) === true)
     }
@@ -150,17 +154,15 @@ class RegistrationSpec extends KuTuBaseSpec {
       val remainingId = selectRegistrations().filter(id => id === idToDelete)
       remainingId.size shouldBe 0
       registration = None
-      athletregistration = None
     }
 
     "delete all from competition" in {
       val registrationToDelete = createTestRegistration
       val idToDelete = registrationToDelete.id
-      deleteRegistrations(testwettkampf.uuid.map(UUID.fromString(_)).get)
+      deleteRegistrations(testwettkampf.uuid.map(UUID.fromString).get)
       val remainingId = selectRegistrations().filter(id => id === idToDelete)
       remainingId.size shouldBe 0
       registration = None
-      athletregistration = None
     }
   }
 

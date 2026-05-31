@@ -440,7 +440,7 @@ class RegistrationRestSpec extends KuTuBaseSpec {
           HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/athletes", entity = HttpEntity(
             ContentTypes.`application/json`,
             //       {"gebdat":"2020-05-05T02:00:00.000+0200","geschlecht":"M","id":0,"name":"Tester","programId":20,"registrationTime":0,"vereinregistrationId":1,"vorname":"Test"}
-            ByteString(s"""{"id":0,"vereinregistrationId":${reg.id},"name":"a","vorname":"b","geschlecht":"W","gebdat":"$gebDat","programId":23,"registrationTime":0}""")
+            ByteString(s"""{"id":0,"vereinregistrationId":${reg.id},"name":"a","vorname":"b","geschlecht":"W","gebdat":"$gebDat","programId":23,"registrationTime":0,"reserve":0}""")
           )).addHeader(registrationJwt.get) ~>
             allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id)) ~> check {
             status should ===(StatusCodes.OK)

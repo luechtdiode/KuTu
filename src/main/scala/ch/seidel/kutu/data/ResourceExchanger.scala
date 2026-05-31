@@ -485,7 +485,8 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         riege2 = if fields(wertungenHeader("riege2")).nonEmpty then Some(fields(wertungenHeader("riege2"))) else None,
         team = if wertungenHeader.contains("team") && fields(wertungenHeader("team")).nonEmpty then Some(fields(wertungenHeader("team"))) else None,
         mediafile = if wertungenHeader.contains("mediafile") && fields(wertungenHeader("mediafile")).nonEmpty then MediaJsonReader(Some(new String(dec.decode(fields(wertungenHeader("mediafile")))))) else None,
-        variables = if wertungenHeader.contains("variables") && fields(wertungenHeader("variables")).nonEmpty then TemplateViewJsonReader(Some(new String(dec.decode(fields(wertungenHeader("variables")))))) else None
+        variables = if wertungenHeader.contains("variables") && fields(wertungenHeader("variables")).nonEmpty then TemplateViewJsonReader(Some(new String(dec.decode(fields(wertungenHeader("variables")))))) else None,
+        reserve = if wertungenHeader.contains("reserve") && fields(wertungenHeader("reserve")).nonEmpty then Some(fields(wertungenHeader("reserve"))) else Some(0)
       )
       w
     }
