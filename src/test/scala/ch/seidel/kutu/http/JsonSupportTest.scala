@@ -17,18 +17,23 @@ class JsonSupportTest extends AnyFunSuite with JsonSupport with EnrichedJson {
     val event = eventText.asType[KutuAppEvent].asInstanceOf[AthletWertungUpdated]
     assert(
       event.wertung.team === None)
+    assert(event.wertung.reserve === None)
 
-    assert(event.toJson.toJsonStringWithType(event) === eventText)
+    val roundtripped = event.toJson.toJsonStringWithType(event).asType[KutuAppEvent].asInstanceOf[AthletWertungUpdated]
+    assert(roundtripped.wertung.team === None)
+    assert(roundtripped.wertung.reserve === None)
   }
 
   test("testOptionalDeSerialize with team") {
     val event = """{
                   |"athlet":{"activ":true,"gebdat":"2009-05-13T00:00:00.000+0000","geschlecht":"M","id":853,"js_id":0,"name":"Muster","ort":"","plz":"","strasse":"",
                   |"verein":{"id":16,"name":"BTV Basel","verband":"BLTV"},"vorname":"Maximilian"},"durchgang":"","geraet":6,"programm":"K2","type":"AthletWertungUpdated",
-                  |"wertung":{"athletId":853,"endnote":8.6,"id":46636,"noteD":0,"noteE":8.6,"riege":"M,K2,BTV Basel","riege2":"Barren K2","wettkampfId":24,"wettkampfUUID":"3328007b-0472-46a4-94ae-3093067bc251","wettkampfdisziplinId":82, "team":2},
+                  |"wertung":{"athletId":853,"endnote":8.6,"id":46636,"noteD":0,"noteE":8.6,"riege":"M,K2,BTV Basel","riege2":"Barren K2","wettkampfId":24,"wettkampfUUID":"3328007b-0472-46a4-94ae-3093067bc251","wettkampfdisziplinId":82, "team":2, "reserve":3},
                   |"wettkampfUUID":"3328007b-0472-46a4-94ae-3093067bc251"
                   |}""".stripMargin.asType[KutuAppEvent].asInstanceOf[AthletWertungUpdated]
     assert(
       event.wertung.team === Some(2))
+    assert(event.wertung.reserve === Some(3))
   }
+
 }

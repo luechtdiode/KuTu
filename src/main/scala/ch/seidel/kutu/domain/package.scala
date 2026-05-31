@@ -1117,7 +1117,7 @@ package object domain {
   case class Wertung(id: Long, athletId: Long, wettkampfdisziplinId: Long, wettkampfId: Long, wettkampfUUID: String,
                      noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal],
                      riege: Option[String], riege2: Option[String], team: Option[Int], mediafile: Option[Media],
-                     variables: Option[ScoreCalcTemplateView]) extends DataObject {
+                     variables: Option[ScoreCalcTemplateView], reserve: Option[Int] = None) extends DataObject {
     lazy val resultat: Resultat = {
       val dTeilresults = variables match {
         case Some(v) if v.dDetails => v.dVariables.filter(_.value > 0).map(_.value.toString())
@@ -1168,7 +1168,9 @@ package object domain {
     }
   }
 
-  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, mediafile: Option[Media], variables: Option[ScoreCalcTemplateView], isStroked: Boolean = false) extends DataObject {
+  def normalizeZeroToNone(value: Int): Option[Int] = if value == 0 then None else Some(value)
+
+  case class WertungView(id: Long, athlet: AthletView, wettkampfdisziplin: WettkampfdisziplinView, wettkampf: Wettkampf, noteD: Option[scala.math.BigDecimal], noteE: Option[scala.math.BigDecimal], endnote: Option[scala.math.BigDecimal], riege: Option[String], riege2: Option[String], team: Int, mediafile: Option[Media], variables: Option[ScoreCalcTemplateView], isStroked: Boolean = false, reserve: Int = 0) extends DataObject {
     lazy val resultat: Resultat = {
       val dTeilresults = variables match {
         case Some(v) if v.dDetails => v.dVariables.filter(_.value > 0).map(_.value.toString())
@@ -1210,9 +1212,9 @@ package object domain {
 
     lazy val teamName: String = getTeamName(wettkampf.extraTeams)
 
-    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, Some(team), mediafile, defaultVariables)
+    def toWertung = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, riege, riege2, normalizeZeroToNone(team), mediafile, defaultVariables, normalizeZeroToNone(reserve))
 
-    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, Some(team), mediafile, defaultVariables)
+    def toWertung(riege: String, riege2: Option[String]) = Wertung(id, athlet.id, wettkampfdisziplin.id, wettkampf.id, wettkampf.uuid.getOrElse(""), noteD, noteE, endnote, Some(riege), riege2, normalizeZeroToNone(team), mediafile, defaultVariables, normalizeZeroToNone(reserve))
 
     def updatedWertung(valuesFrom: Wertung): WertungView = copy(noteD = valuesFrom.noteD, noteE = valuesFrom.noteE, endnote = valuesFrom.endnote, variables = valuesFrom.variables)
 
@@ -1580,8 +1582,8 @@ package object domain {
           RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView.copy(gebdat = existing.gebdat), expected.toPublicView.copy(gebdat = expected.gebdat))
         else
           RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
-      case AddRegistration(verein, programId, athlet, suggestion, team, media) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team, media)
-      case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView)
+      case AddRegistration(verein, programId, athlet, suggestion, team, media, reserve) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team, media, reserve)
+      case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion, reserve) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView, reserve)
       case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
       case am:AddMedia => AddMedia(am.verein.toPublicView, am.athletReg.toPublicView)
     }
@@ -1604,11 +1606,11 @@ package object domain {
     override val caption = s"Verein bestätigen: ${verein.vereinname}"
   }
 
-  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int, media: Option[MediaAdmin]) extends SyncAction {
+  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int, media: Option[MediaAdmin], reserve: Int = 0) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
 
-  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, fromTeam: Int, toProgramid: Long, toTeam: Int, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, fromTeam: Int, toProgramid: Long, toTeam: Int, athlet: Athlet, suggestion: AthletView, reserve: Int = 0) extends SyncAction {
     override val caption: String = if fromTeam != toTeam && fromProgramId == toProgramid then s"Team Einteilung verarbeiten: ${suggestion.easyprint}"
     else s"Program-Umteilung verarbeiten: ${suggestion.easyprint}"
   }
@@ -1715,8 +1717,8 @@ package object domain {
 
   case class AthletRegistration(id: Long, vereinregistrationId: Long,
                                 athletId: Option[Long], geschlecht: String, name: String, vorname: String, gebdat: String,
-                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int], mediafile: Option[MediaAdmin]) extends DataObject {
-    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team, mediafile)
+                                programId: Long, registrationTime: Long, athlet: Option[AthletView], team: Option[Int], mediafile: Option[MediaAdmin], reserve: Int = 0) extends DataObject {
+    def toPublicView = AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat.substring(0, 4) + "-01-01", programId, registrationTime, athlet.map(_.toPublicView), team, mediafile, reserve)
 
     def capitalizeIfBlockCase(s: String): String = {
       if s.length > 2 && (s.toUpperCase.equals(s) || s.toLowerCase.equals(s)) then {
@@ -1823,7 +1825,7 @@ package object domain {
   }
 
   object EmptyAthletRegistration {
-    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None, None, None)
+    def apply(vereinregistrationId: Long): AthletRegistration = AthletRegistration(0L, vereinregistrationId, None, "", "", "", "", 0L, 0L, None, None, None, 0)
   }
 
   case class JudgeRegistration(id: Long, vereinregistrationId: Long,

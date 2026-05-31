@@ -179,7 +179,7 @@ class PackageSpec extends KuTuBaseSpec {
 
     val athletRegistration = AthletRegistration(1, 1, Some(2), "W", "Saner ", " Waiata ", "2007-10-20", 1L, 1L, Some(
       AthletView(2, 0, "W", "Saner", "Waiata", Some(str2SQLDate("2007-10-20")), "", "", "",
-        Some(testverein), activ = true)), None, Some(MediaAdmin("1", "life-is-life.mp3", "mp3", 0, "", "", 0)))
+        Some(testverein), activ = true)), None, Some(MediaAdmin("1", "life-is-life.mp3", "mp3", 0, "", "", 0)), reserve = 2)
 
     val athletView = athletRegistration.athlet.get
     val athlet = athletView.toAthlet
@@ -200,6 +200,7 @@ class PackageSpec extends KuTuBaseSpec {
       val gebdat = sqlDate2ld(str2SQLDate(athletRegistration.toPublicView.gebdat))
       assert(gebdat.getDayOfMonth ==(1))
       assert(gebdat.getMonthValue ==(1))
+      assert(athletRegistration.toPublicView.reserve == 2)
     }
   }
   "toAthlet" should {

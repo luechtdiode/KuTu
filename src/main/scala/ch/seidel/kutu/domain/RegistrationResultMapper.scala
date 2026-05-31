@@ -17,18 +17,11 @@ trait RegistrationResultMapper extends AthletResultMapper with MediaResultMapper
     val programId: Long = r.<<
     val registrationTime: Long = getTime(r)
     val athlet: Option[AthletView] = getAthletOptionResult(r)
-    var team: Option[Int] = None
-    var mediafile: Option[MediaAdmin] = None
-    while r.hasMoreColumns do {
-      r.currentPos match {
-        case pos:Int if pos == 23 =>
-          team = r.<<?
-        case pos:Int if pos == 24 =>
-          mediafile = r.<<?
-        case _ => r.nextObjectOption()
-      }
-    }
-    AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat, programId, registrationTime, athlet, team, mediafile)
+    val team: Option[Int] = if r.hasMoreColumns then r.<<? else None
+    val mediafile: Option[MediaAdmin] = if r.hasMoreColumns then r.<<? else None
+    val reserve: Int = if r.hasMoreColumns then r.<< else 0
+    while (r.hasMoreColumns) println(r.nextObject().toString)
+    AthletRegistration(id, vereinregistrationId, athletId, geschlecht, name, vorname, gebdat, programId, registrationTime, athlet, team, mediafile, reserve)
   )
   implicit val getJudgeRegistrationResult: GetResult[JudgeRegistration] = GetResult(using r =>
     JudgeRegistration(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r)))

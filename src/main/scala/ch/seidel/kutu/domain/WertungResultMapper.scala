@@ -20,8 +20,9 @@ trait MediaResultMapper {
 
   implicit def getMediaAdminOption: GetResult[Option[MediaAdmin]] = GetResult(using { r =>
     r.nextStringOption() match {
-      case Some(x) => Some(MediaAdmin(x, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r)))
-      case None => r.skip; r.skip; r.skip; r.skip; None
+      case Some(x) =>
+        Some(MediaAdmin(x, r.<<, r.<<, r.<<, r.<<, r.<<, getTime(r)))
+      case None => r.skip; r.skip; r.skip; r.skip; r.skip; r.skip; None
     }
   })
 
@@ -54,14 +55,14 @@ trait WertungResultMapper extends WettkampfResultMapper with DisziplinResultMapp
     val wk: Wettkampf = Wettkampf(r.<<, r.nextStringOption(), r.<<[java.sql.Date], r.<<, r.<<, r.<<, r.<<[BigDecimal], r.<<, r.<<, r.<<, r.<<, r.<<, r.<<)
     implicit val wkId: Long = wk.id
     val wd: WettkampfdisziplinView = r
-    WertungView(id, av, wd, wk, mapBigDecimalOption(r), mapBigDecimalOption(r), mapBigDecimalOption(r), r.<<?, r.<<?, r.<<, getMediaOption(r), r.<<?)
+    WertungView(id, av, wd, wk, mapBigDecimalOption(r), mapBigDecimalOption(r), mapBigDecimalOption(r), r.<<?, r.<<?, r.<<, getMediaOption(r), r.<<?, reserve = r.<<)
   })
 
   def getResultWertung: GetResult[Wertung] = GetResult(using
     r => {
       val wettkampfId: Long = r.<<
       val wettkampfdisziplinId: Long = r.<<
-      Wertung(r.<<, r.<<, wettkampfdisziplinId, wettkampfId, r.<<, r.<<, r.<<, r.<<, r.<<?, r.<<?, r.<<?, getMediaOption(r), r.<<?)
+      Wertung(r.<<, r.<<, wettkampfdisziplinId, wettkampfId, r.<<, r.<<, r.<<, r.<<, r.<<?, r.<<?, r.<<?, getMediaOption(r), r.<<?, reserve = r.<<)
     }
   )
 }

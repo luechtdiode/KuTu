@@ -223,7 +223,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
   def copyClubRegsFromCompetition(wettkampfCopyFrom: String, registrationId: Long): Unit = {
     Await.result(database.run {
       sqlu"""
-              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, media_id, registrationtime)
+              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, reserve, media_id, registrationtime)
               select distinct
                 #$registrationId as vereinregistration_id,
                 a.id,
@@ -232,6 +232,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                 a.vorname,
                 a.gebdat,
                 wkd.programm_id,
+                0,
                 0,
                 m.id,
                 current_timestamp as registrationtime
@@ -256,7 +257,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   )
           """ >>
         sqlu"""
-              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, registrationtime)
+              insert into athletregistration (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, reserve, registrationtime)
               select distinct
                 #$registrationId as vereinregistration_id,
                 ar.athlet_id,
@@ -265,6 +266,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                 ar.vorname,
                 ar.gebdat,
                 ar.program_id,
+                0,
                 0,
                 current_timestamp as registrationtime
               from athletregistration ar
@@ -357,12 +359,13 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
     Await.result(database.run {
       sqlu"""
                   insert into athletregistration
-                  (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, media_id, registrationtime)
+                  (vereinregistration_id, athlet_id, geschlecht, name, vorname, gebdat, program_id, team, reserve, media_id, registrationtime)
                   values (${newReg.vereinregistrationId}, $athletId,
                           ${nomralizedAthlet.geschlecht}, ${nomralizedAthlet.name},
                           ${nomralizedAthlet.vorname}, ${nomralizedAthlet.gebdat},
                           ${newReg.programId},
                           ${newReg.team.getOrElse(0)},
+                          ${newReg.reserve},
                           ${newReg.mediafile.map(_.id)},
                           ${Timestamp.valueOf(LocalDateTime.now())})
               """ >>
@@ -372,7 +375,8 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
                       r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       r.team, r.media_id,
-                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp,
+                      r.reserve
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -398,7 +402,8 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                       ar.athlet_id, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
                       ar.program_id, ar.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       ar.team, ar.media_id,
-                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp,
+                      ar.reserve
                   from athletregistration ar
                   inner join vereinregistration vr on (ar.vereinregistration_id = vr.id)
                   inner join athlet a on (a.id = ar.athlet_id and a.verein = vr.verein_id)
@@ -435,7 +440,8 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   gebdat=$gebdat, geschlecht=${registration.geschlecht},
                   program_id=${registration.programId},
                   team=${registration.team.getOrElse(0)},
-                  media_id=${registration.mediafile.map(_.id)}
+                  media_id=${registration.mediafile.map(_.id)},
+                  reserve=${registration.reserve}
               where id=${registration.id}
      """ >>
       sqlu"""
@@ -449,7 +455,8 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                   r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
                   r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                   r.team, r.media_id,
-                  m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
+                  m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp,
+                  r.reserve
               from athletregistration r
               left join athlet a on (r.athlet_id = a.id)
               left join verein v on (a.verein = v.id)
@@ -467,7 +474,8 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
                       r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       r.team, r.media_id,
-                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp,
+                      r.reserve
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -485,7 +493,8 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                       r.athlet_id, r.geschlecht, r.name, r.vorname, r.gebdat,
                       r.program_id, r.registrationtime, a.id, a.js_id, a.geschlecht, a.name, a.vorname, a.gebdat, a.strasse, a.plz, a.ort, a.activ, a.verein, v.*,
                       r.team, r.media_id,
-                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
+                      m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp,
+                      r.reserve
                   from athletregistration r
                   left join athlet a on (r.athlet_id = a.id)
                   left join verein v on (a.verein = v.id)
@@ -503,7 +512,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
                               0, ar.geschlecht, ar.name, ar.vorname, ar.gebdat,
                               0, ar.registrationtime,
                               null, null, null, null, null, null, null, null, null, null, null, null, null, -- athletview, vereinview
-                              ar.team, ar.media_id, m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp
+                              ar.team, ar.media_id, m.name, m.extension, m.stage, m.metadata, m.md5, m.stamp, ar.reserve
                     from vereinregistration avr
                     inner join vereinregistration vr on (vr.verein_id = avr.verein_id)
                     inner join athletregistration ar on (ar.vereinregistration_id = vr.id)
