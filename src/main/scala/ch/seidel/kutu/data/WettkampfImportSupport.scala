@@ -12,7 +12,7 @@ import scala.util.Using
 object WettkampfImportSupport {
   private val YearPattern = ".*(\\d{4}).*".r
 
-  val ImportExcelHeaders: Seq[String] = Seq("NAME", "VORNAME", "JAHRGANG", "GESCHLECHT", "VEREIN", "VERBAND", "KATEGORIE", "TEAM", "RLZ_TZ", "VERBAND_RLZ")
+  val ImportExcelHeaders: Seq[String] = Seq("NAME", "VORNAME", "JAHRGANG", "GESCHLECHT", "VEREIN", "VERBAND", "KATEGORIE", "TEAM", "RESERVE", "RLZ_TZ", "VERBAND_RLZ")
 
   val CsvDefaultFieldMapping: Map[String, Seq[String]] = Map(
     "NAME" -> Seq("NAME", "NAME_TURNER", "NACHNAME"),
@@ -20,6 +20,7 @@ object WettkampfImportSupport {
     "JAHRGANG" -> Seq("JAHRGANG", "JG", "JG_TURNER", "GEBURTSDATUM"),
     "KATEGORIE" -> Seq("KATEGORIE", "PROGRAMM", "WETTKAMPF_TEIL"),
     "TEAM" -> Seq("TEAM", "MANNSCHAFT"),
+    "RESERVE" -> Seq("RESERVE", "TEAM_RESERVE"),
     "VERBAND" -> Seq("VERBAND"),
     "VEREIN" -> Seq("VEREIN", "CLUB"),
     "RLZ_TZ" -> Seq("RLZ_TZ", "LEISTUNGSZENTRUM", "POOL"),
@@ -213,6 +214,7 @@ object WettkampfImportSupport {
           "KATEGORIE" -> fields.lift(3).getOrElse(""),
           "GESCHLECHT" -> (if fields.lift(4).exists(_.nonEmpty) then "W" else "M"),
           "TEAM" -> "",
+          "RESERVE" -> "",
           "VERBAND" -> "",
           "VEREIN" -> "",
           "RLZ_TZ" -> "",

@@ -27,7 +27,7 @@ export class ScorelistItemComponent implements OnInit {
   }
 }
 
-const knownKeys: string[] = ["athletID", "rows", "Rang", "Athlet", "Team", "Team/Athlet", "Jahrgang", "Verein", "K", "ø Gerät", "Total D", "Total E", "Total A", "Total B", "Total Punkte"];
+const knownKeys: string[] = ["athletID", "rows", "Rang", "Athlet", "Team", "Reserve", "Team/Athlet", "Jahrgang", "Verein", "K", "ø Gerät", "Total D", "Total E", "Total A", "Total B", "Total Punkte"];
 
 function renderTeilnehmer(tnRow: ScoreRow) {
   return `${tnRow['Team']} (${tnRow['K']}): ${renderTeilnehmerWertungen(tnRow)}`

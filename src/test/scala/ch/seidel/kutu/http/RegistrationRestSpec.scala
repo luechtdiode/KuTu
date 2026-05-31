@@ -434,12 +434,26 @@ class RegistrationRestSpec extends KuTuBaseSpec {
           testSuccessfulRequest(reg, AthletRegistration(0, reg.id, None, "M", "Schneider", "Markus", gebDat, 20, 0, None, None, Some(MediaAdmin("1", "life-is-life.mp3", "mp3", 0, "", "", 0))), "Schneider", "Markus", "M")
         }
 
-        "add AthletRegistration via rest2" in {
+        "add AthletRegistration with team via rest" in {
           val reg = createTestRegistration
           val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
           HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/athletes", entity = HttpEntity(
             ContentTypes.`application/json`,
-            //       {"gebdat":"2020-05-05T02:00:00.000+0200","geschlecht":"M","id":0,"name":"Tester","programId":20,"registrationTime":0,"vereinregistrationId":1,"vorname":"Test"}
+            ByteString(s"""{"id":0,"vereinregistrationId":${reg.id},"name":"Muster","vorname":"Hans","geschlecht":"M","gebdat":"$gebDat","programId":23,"registrationTime":0,"team":1,"reserve":1}""")
+          )).addHeader(registrationJwt.get) ~>
+            allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id)) ~> check {
+            status should ===(StatusCodes.OK)
+            header(Config.jwtAuthorizationKey) should not be empty
+            val athletreg = entityAs[AthletRegistration]
+            athletreg.vereinregistrationId should ===(reg.id)
+          }
+        }
+
+        "add AthletRegistration with reserve via rest" in {
+          val reg = createTestRegistration
+          val gebDat: String = dateToExportedStr(ld2SQLDate(LocalDate.now().minusYears(10)))
+          HttpRequest(method = POST, uri = s"/api/registrations/${testwettkampf.uuid.get}/${reg.id}/athletes", entity = HttpEntity(
+            ContentTypes.`application/json`,
             ByteString(s"""{"id":0,"vereinregistrationId":${reg.id},"name":"a","vorname":"b","geschlecht":"W","gebdat":"$gebDat","programId":23,"registrationTime":0,"reserve":0}""")
           )).addHeader(registrationJwt.get) ~>
             allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id)) ~> check {

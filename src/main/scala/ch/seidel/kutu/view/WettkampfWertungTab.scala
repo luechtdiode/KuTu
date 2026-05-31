@@ -1915,7 +1915,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         onAction = (event: ActionEvent) => {
           if !wkview.selectionModel().isEmpty then {
             val wertung = wkview.selectionModel().getSelectedItem.head.init
-            service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wertung.team, wertung.athlet)
+            service.moveToProgram(wettkampf.id, cbProgramms.selectionModel().selectedItem.value.id, wertung.team, wertung.reserve, wertung.athlet)
             //              reloadData()
           }
         }
@@ -2220,7 +2220,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
               case a@AthletWertungUpdatedSequenced(_, wertung, _, _, _, _, _) =>
                 handleWertungUpdated(wertung)
 
-              case a@AthletMovedInWettkampf(athlet, wettkampfUUID, pgmId, team) =>
+              case a@AthletMovedInWettkampf(athlet, wettkampfUUID, pgmId, team, reserve) =>
                 reloadData()
               case a@AthletRemovedFromWettkampf(athlet, wettkampfUUID) =>
                 reloadData()
