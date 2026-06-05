@@ -195,7 +195,7 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
         StringProperty(
           if x.value.getValue == null then "Durchgänge"
           else if x.value.getValue.durchgang.planStartOffset != 0 && x.value.getValue.name.equals(x.value.getValue.durchgang.title) then {
-            s"""${x.value.getValue.durchgang.name}
+            s"""${x.value.getValue.durchgang.title}
                |Plan-Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}
                |Plan-Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}""".stripMargin
           } else {
