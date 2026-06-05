@@ -581,6 +581,11 @@
 			<artifactId>commons-text</artifactId>
 			<version>1.15.0</version>
 		</dependency>
+		<dependency>
+			<groupId>technology.tabula</groupId>
+			<artifactId>tabula</artifactId>
+			<version>1.0.5</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.scalatest</groupId>
