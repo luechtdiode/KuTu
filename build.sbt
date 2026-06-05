@@ -4,7 +4,7 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.8.3"
+ThisBuild / scalaVersion := "3.8.4"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.3.24"
 
@@ -20,7 +20,7 @@ val pekkoHttpV   = "1.3.0"
 val pekkoV       = "1.6.0"
 val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
-val gatlingV     = "3.15.0"
+val gatlingV     = "3.15.1"
 val slf4jV       = "2.0.17"
 val logbackV     = "1.5.32"
 
@@ -115,8 +115,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp" % slickV,
 
   // JSON / Jackson / Spray
-  "com.fasterxml.jackson.core" % "jackson-core" % "2.21.3",
-  "com.fasterxml.jackson.core" % "jackson-databind" % "2.21.3",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.22.0",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.0",
 
   // Database drivers / utils
   "org.xerial" % "sqlite-jdbc" % "3.53.1.0",
@@ -129,6 +129,9 @@ libraryDependencies ++= Seq(
   "commons-codec" % "commons-codec" % "1.22.0",
   "org.apache.commons" % "commons-lang3" % "3.20.0",
   "org.apache.commons" % "commons-text" % "1.15.0",
+  "technology.tabula" % "tabula" % "1.0.5",
+  "org.apache.poi" % "poi" % "5.5.1",
+  "org.apache.poi" % "poi-ooxml" % "5.5.1",
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.3",
@@ -155,7 +158,7 @@ libraryDependencies ++= Seq(
   "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingV % Test,
   "io.gatling"            % "gatling-test-framework"    % gatlingV % Test,
   // Scala 3 std lib
-  "org.scala-lang" %% "scala3-library" % "3.8.3"
+  "org.scala-lang" %% "scala3-library" % "3.8.4"
 )
 
 enablePlugins(GatlingPlugin)
