@@ -18,14 +18,14 @@ object WettkampfImportSupport {
     "NAME" -> Seq("NAME", "NAME_TURNER", "NACHNAME"),
     "VORNAME" -> Seq("VORNAME", "VORNAME_TURNER", "SURNAME"),
     "JAHRGANG" -> Seq("JAHRGANG", "JG", "JG_TURNER", "GEBURTSDATUM"),
+    "GESCHLECHT" -> Seq("GESCHLECHT", "SEX"),
     "KATEGORIE" -> Seq("KATEGORIE", "PROGRAMM", "WETTKAMPF_TEIL"),
     "TEAM" -> Seq("TEAM", "MANNSCHAFT"),
     "RESERVE" -> Seq("RESERVE", "TEAM_RESERVE"),
     "VERBAND" -> Seq("VERBAND"),
     "VEREIN" -> Seq("VEREIN", "CLUB"),
     "RLZ_TZ" -> Seq("RLZ_TZ", "LEISTUNGSZENTRUM", "POOL"),
-    "VERBAND_RLZ" -> Seq("VERBAND_RLZ"),
-    "GESCHLECHT" -> Seq("GESCHLECHT", "SEX")
+    "VERBAND_RLZ" -> Seq("VERBAND_RLZ")
   )
 
   val DefaultGenderValueMappingRaw: String =

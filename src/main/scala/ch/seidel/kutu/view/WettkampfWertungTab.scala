@@ -1349,8 +1349,8 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   private def existingProgramsByAthletEasyprint: Map[String, Long] =
     wertungen.map(w => w.head.init.athlet.easyprint -> w.head.init.wettkampfdisziplin.programm.id).toMap
 
-  private def existingTeamsByAthletEasyprint: Map[String, Int] =
-    wertungen.map(w => w.head.init.athlet.easyprint -> w.head.init.team).toMap
+  private def existingTeamsByAthletEasyprint: Map[String, (Int,Int)] =
+    wertungen.map(w => w.head.init.athlet.easyprint -> (w.head.init.team, w.head.init.reserve)).toMap
 
   private def wertungIdsByAthletEasyprint: Map[String, Set[Long]] = {
     wertungen

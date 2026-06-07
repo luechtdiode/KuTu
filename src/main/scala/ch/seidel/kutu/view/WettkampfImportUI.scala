@@ -145,8 +145,7 @@ class WettkampfImportUI(homedir: String) {
       vgap = 8
       padding = Insets(12)
     }
-
-    CsvDefaultFieldMapping.keys.toSeq.zipWithIndex.foreach { case (logicalField, row) =>
+    ImportExcelHeaders.zipWithIndex.foreach { case (logicalField, row) =>
       val selector = new ComboBox[String] {
         items = ObservableBuffer.from(csvHeaders :+ "")
         prefWidth = 280

@@ -241,7 +241,7 @@ class WettkampfImportServiceIntegrationSpec extends KuTuBaseSpec {
         context = importService.StructuredPreviewContext(
           existingAthlets = Seq(expectedAthlet),
           existingProgramsByAthletEasyprint = Map(expectedAthlet.easyprint -> programms.head.id),
-          existingTeamsByAthletEasyprint = Map(expectedAthlet.easyprint -> 1)
+          existingTeamsByAthletEasyprint = Map(expectedAthlet.easyprint -> (1,0))
         )
       )
 
