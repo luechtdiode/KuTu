@@ -2,7 +2,13 @@
 # minimum configuration for two package managers
 
 version: 2
+enable-beta-ecosystems: true # Zwingend erforderlich für sbt-Support
 updates:
+  - package-ecosystem: "sbt"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
   # Enable version updates for npm
   - package-ecosystem: "npm"
     # Look for `package.json` and `lock` files in the `root` directory
