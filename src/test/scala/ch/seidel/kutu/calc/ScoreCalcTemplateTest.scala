@@ -59,7 +59,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
           w.noteE.exists(_.toDouble == 8.277) &&
           w.endnote.exists(_.toDouble == 10.377) &&
           w.variables.exists(_.variables == valuesList)
-      case _ => false
+      case null => false
     })
   }
 
@@ -80,7 +80,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
           w.noteE.exists(_.toDouble == 6.677) &&
           w.endnote.exists(_.toDouble == 10.777) &&
           w.variables.exists(_.variables == valuesList)
-      case _ => false
+      case null => false
     })
   }
 
@@ -100,7 +100,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
           w.noteE.exists(_.toDouble == 7.777) &&
           w.endnote.exists(_.toDouble == 10.877) &&
           w.variables.exists(_.variables == valuesList)
-      case _ => false
+      case null => false
     })
   }
 
@@ -120,7 +120,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
           w.noteE.exists(_.toDouble == 14.454) &&
           w.endnote.exists(_.toDouble == 21.654) &&
           w.variables.exists(_.variables == valuesList)
-      case _ => false
+      case null => false
     })
   }
 
@@ -140,7 +140,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
           w.noteE.exists(_.toDouble == 7.227) &&
           w.endnote.exists(_.toDouble == 10.827) &&
           w.variables.exists(_.variables == valuesList)
-      case _ => false
+      case null => false
     })
   }
 
@@ -181,7 +181,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
           w.noteE.exists(_.toDouble == 7.777) &&
           w.endnote.exists(_.toDouble == 10.877) &&
           w.variables.exists(_.variables == valuesList)
-      case _ => false
+      case null => false
     })
 
   }
@@ -209,7 +209,7 @@ class ScoreCalcTemplateTest extends AnyWordSpec with Matchers with JsonSupport {
           w.noteE.exists(_.toDouble == 7.777) &&
           w.endnote.exists(_.toDouble == 10.877) &&
           w.variables.exists(_.variables == valuesList)
-      case _ => false
+      case null => false
     })
     println(calculatedWertung.toJson.prettyPrint)
   }
