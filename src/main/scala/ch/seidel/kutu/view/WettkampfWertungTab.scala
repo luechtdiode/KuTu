@@ -1443,9 +1443,10 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       "VEREIN" -> "TV Musterstadt",
       "VERBAND" -> "Musterverband",
       "KATEGORIE" -> kategorie,
-      "TEAM" -> "",
-      "RLZ_TZ" -> "",
-      "VERBAND_RLZ" -> ""
+      "TEAM" -> "<Teamnummer, optional>",
+      "RESERVE" -> "<Reserve Reihenfolge, optional>",
+      "RLZ_TZ" -> "<Regionales Leistungszentrum oder Talentzentrum, optional>",
+      "VERBAND_RLZ" -> "<Verband des RLZ, optional>"
     )
   }
 
@@ -1470,9 +1471,20 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
       // Keep the exact program name so resolveProgramId can match it on import.
       "KATEGORIE" -> row.head.init.wettkampfdisziplin.programm.name,
       "TEAM" -> (if teamNo > 0 then teamNo.toString else ""),
+      "RESERVE" -> (if teamNo > 0  && row.head.init.reserve > 0 then row.head.init.reserve.toString else ""),
       "RLZ_TZ" -> rlz,
       "VERBAND_RLZ" -> ""
-    )
+    )++ row.flatMap{we =>
+      val resultat = we.commit.resultat
+      List(
+        s"${we.init.wettkampfdisziplin.disziplin.name} A/D" -> we.calculatedWertung.value.noteD.map(en => f"$en%3.3f").getOrElse("")
+        ,s"${we.init.wettkampfdisziplin.disziplin.name} A/D-Teilresultate" -> resultat.teilresultateD.mkString(", ")
+        ,s"${we.init.wettkampfdisziplin.disziplin.name} B/E" -> we.calculatedWertung.value.noteE.map(en => f"$en%3.3f").getOrElse("")
+        ,s"${we.init.wettkampfdisziplin.disziplin.name} B/E-Teilresultate" -> resultat.teilresultateE.mkString(", ")
+        ,s"${we.init.wettkampfdisziplin.disziplin.name} Penalty" -> resultat.teilresultateP.mkString(", ")
+        ,s"${we.init.wettkampfdisziplin.disziplin.name} ENDNOTE" -> we.calculatedWertung.value.endnote.map(en => f"$en%3.3f").getOrElse("")
+      ).filter(_._2.nonEmpty)
+    }.toMap
   }
 
   private def exportBaseDir: File = {
@@ -1485,15 +1497,28 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
 
   private def exportTabularExcel(filename: URI, includeData: Boolean): Unit = {
     val targetFile = new File(filename)
+    val rows = wkModel.toSeq
     val exportRows = if includeData then {
-      wkModel.toSeq.filter(_.nonEmpty).map(toStructuredExportRow)
+      rows.filter(_.nonEmpty).map(toStructuredExportRow)
         .sortBy(r =>
           (r.getOrElse("VEREIN", ""), r.getOrElse("KATEGORIE", ""), r.getOrElse("JAHRGANG", ""), r.getOrElse("NAME", "")))
     } else {
       Seq.empty[Map[String, String]]
     }
-
-    if exportRows.nonEmpty then writeExcelFile(targetFile, ImportExcelHeaders, exportRows)
+    val extraHeaders = rows.headOption.toList.flatMap{werow =>
+      werow.flatMap{we =>
+        List(
+          s"${we.init.wettkampfdisziplin.disziplin.name} A/D"
+          ,s"${we.init.wettkampfdisziplin.disziplin.name} A/D-Teilresultate"
+          ,s"${we.init.wettkampfdisziplin.disziplin.name} B/E"
+          ,s"${we.init.wettkampfdisziplin.disziplin.name} B/E-Teilresultate"
+          ,s"${we.init.wettkampfdisziplin.disziplin.name} ENDNOTE"
+        )
+      }
+    }
+    val filterHeader = exportRows.flatMap(_.keys).toSet
+    val headers = (ImportExcelHeaders ++ extraHeaders).filter(filterHeader.contains).distinct
+    if exportRows.nonEmpty then writeExcelFile(targetFile, headers, exportRows)
     else writeExcelFile(targetFile, ImportExcelHeaders, wettkampfInfo.leafprograms
       .zipWithIndex
       .map(pgmWithIndex =>
