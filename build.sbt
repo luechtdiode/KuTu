@@ -21,7 +21,7 @@ val pekkoV       = "1.6.0"
 val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
 val gatlingV     = "3.15.1"
-val slf4jV       = "2.0.17"
+val slf4jV       = "2.0.18"
 val logbackV     = "1.5.34"
 
 // Ensure Java compiler options match the project's target
