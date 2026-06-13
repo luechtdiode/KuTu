@@ -1,5 +1,5 @@
 // Project plugins for sbt build (initial migration)
-addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.5.8")
+addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "2.1.0")
 // Native packager plugin removed temporarily to allow sbt plugin resolution during validation.
 // Re-add `sbt-native-packager` later if you want automated jpackage/packaging integration.
 // sbt-native-packager: enables `jpackage` and platform installers
