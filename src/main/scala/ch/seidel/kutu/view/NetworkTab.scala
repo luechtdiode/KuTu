@@ -190,14 +190,13 @@ class DurchgangStationView(wettkampf: WettkampfView, service: KutuService, diszi
     new TreeTableColumn[DurchgangState, String] {
       prefWidth = 130
       text = "Durchgang"
-      val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss")
       cellValueFactory = { x =>
         StringProperty(
           if x.value.getValue == null then "Durchgänge"
           else if x.value.getValue.durchgang.planStartOffset != 0 && x.value.getValue.name.equals(x.value.getValue.durchgang.title) then {
             s"""${x.value.getValue.durchgang.title}
-               |Plan-Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}
-               |Plan-Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}""".stripMargin
+               |Plan-Start: ${x.value.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(DurchgangView.formatter)}
+               |Plan-Ende: ${x.value.getValue.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(DurchgangView.formatter)}""".stripMargin
           } else {
             x.value.getValue.name
           })

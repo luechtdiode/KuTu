@@ -43,6 +43,7 @@ import scala.concurrent.Future
 
 object DurchgangView {
   val DRAG_RIEGE = new DataFormat("application/x-drag-riege")
+  val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
   private def getVisibleBounds(aNode: Node): Bounds = {
     // If node not visible, return empty bounds
@@ -107,13 +108,13 @@ class DurchgangTreeTableColumn[T](val index: Disziplin) extends TreeTableColumn[
 }
 
 class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlist: () => Seq[Disziplin], durchgangModel: ObservableBuffer[TreeItem[DurchgangEditor]]) extends TreeTableView[DurchgangEditor] {
-
   id = "durchgang-table"
   //  items = durchgangModel
   showRoot = false
   tableMenuButtonVisible = true
 
   private val rootEditor = DurchgangEditor(wettkampf.id, Durchgang(), List.empty)
+  import DurchgangView.formatter
 
   root = new TreeItem[DurchgangEditor](rootEditor) {
     durchgangModel.onChange {
@@ -127,7 +128,6 @@ class DurchgangView(wettkampf: WettkampfView, service: KutuService, disziplinlis
     new TreeTableColumn[DurchgangEditor, String] {
       prefWidth = 130
       text = "Durchgang"
-      val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss")
       cellValueFactory = { x =>
         StringProperty(
           if x.value.getValue.durchgang.planStartOffset != 0 && x.value.getValue.durchgang.name.equals(x.value.getValue.durchgang.title) then {
@@ -349,6 +349,7 @@ class RiegenFilterView(isEditable: BooleanProperty, wettkampf: WettkampfView, se
 }
 
 class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service: KutuService) extends Tab with TabWithService with ExportFunctions {
+  import DurchgangView.formatter
   val programmText: String = wettkampf.programm.id match {
     case 20 => "Kategorie"
     case _ => "Programm"
@@ -359,9 +360,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
   val disziplinlist: Seq[Disziplin] = wettkampfInfo.disziplinList
 
   private def warnings = durchgangModel.nonEmpty && incompleteAssignments.nonEmpty
-
   private val warnPanelVisible: BooleanProperty = new BooleanProperty()
-
   closable = false
   text = "Riegeneinteilung"
 
@@ -1253,7 +1252,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         given ActionEvent = action
 
         val selectedDurchgang: String = durchgangView.selectionModel.value.getSelectedCells.head.getTreeItem.getValue.durchgang.title
-        val selectedStartTime: String = s"${durchgangView.selectionModel.value.getSelectedCells.head.getTreeItem.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate)}"
+        val selectedStartTime: String = s"${durchgangView.selectionModel.value.getSelectedCells.head.getTreeItem.getValue.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}"
         val txtDurchgangStartTime = new TextField {
           text.value = selectedStartTime
         }
@@ -1263,13 +1262,13 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
               prefHeight = 50
               alignment = Pos.BottomRight
               hgrow = Priority.Always
-              children = Seq(new Label("Durchgang Start Zeitpunkt (jjjj-mm-ttThh:mm:ss) "), txtDurchgangStartTime)
+              children = Seq(new Label("Durchgang Start Zeitpunkt (jjjj-mm-tt hh:mm) "), txtDurchgangStartTime)
             }
           }
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
             KuTuApp.invokeWithBusyIndicator {
-              val startTime = LocalDateTime.parse(txtDurchgangStartTime.text.value)
+              val startTime = LocalDateTime.from(formatter.parse(txtDurchgangStartTime.text.value))
               val wkstart = LocalDateTime.of(wettkampf.datum.toLocalDate, LocalTime.MIDNIGHT)
               val dur: Duration = Duration.between(wkstart, startTime)
               service.updateStartOffset(wettkampf.id, selectedDurchgang, dur.toMillis)
