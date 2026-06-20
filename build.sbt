@@ -121,7 +121,7 @@ libraryDependencies ++= Seq(
   // Database drivers / utils
   "org.xerial" % "sqlite-jdbc" % "3.53.2.0",
   "org.postgresql" % "postgresql" % "42.7.11",
-  "com.zaxxer" % "HikariCP" % "7.0.2",
+  "com.zaxxer" % "HikariCP" % "7.1.0",
 
   // Utilities
   "org.slf4j" % "slf4j-api" % slf4jV,
