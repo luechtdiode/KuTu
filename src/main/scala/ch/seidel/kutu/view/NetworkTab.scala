@@ -421,6 +421,8 @@ class NetworkTab(wettkampfmode: BooleanProperty, override val wettkampfInfo: Wet
 
   private def getSelectedDruchgangStates: List[DurchgangState] = {
     view.selectionModel().selectedItems.flatMap {
+      case treeItem if treeItem == null =>
+        List.empty
       case treeItem if treeItem.getChildren.nonEmpty =>
         treeItem.getChildren.toList.map(_.getValue)
       case treeItem if treeItem.getChildren.isEmpty =>
