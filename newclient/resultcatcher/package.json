@@ -74,5 +74,12 @@
     "vite": ">=8.0.8",
     "webpack": ">=5.105.4"
   },
+  "overrides": {
+    "esbuild": "^0.28.1",
+    "http-proxy-middleware": "^3.0.7",
+    "piscina": "^5.1.5",
+    "uuid": "^11.1.1",
+    "webpack-dev-server": "^5.2.5"
+  },
   "description": "Resultcatcher"
 }
