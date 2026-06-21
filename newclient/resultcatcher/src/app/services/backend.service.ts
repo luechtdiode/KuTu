@@ -17,7 +17,7 @@ import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, 
          AthletMediaIsRunning,
          AthletMediaIsAtStart,
          AthletMediaIsPaused} from '../backend-types';
-import { backendUrl } from '../utils';
+import { backendUrl, utf8_to_b64 } from '../utils';
 
 // tslint:disable:radix
 // tslint:disable:variable-name
@@ -605,14 +605,6 @@ export class BackendService extends WebsocketService {
       this.logout();
     }
 
-    utf8_to_b64( str: string ): string {
-      return window.btoa(unescape(encodeURIComponent( str )));
-    }
-
-    b64_to_utf8( str: string ): string {
-      return decodeURIComponent(escape(window.atob( str )));
-    }
-
     clublist: Verein[] = [];
 
     getClubList() {
@@ -651,7 +643,7 @@ export class BackendService extends WebsocketService {
       const loader = this.startLoading('Login wird verarbeitet. Bitte warten ...',
         this.http.options(backendUrl + 'api/login', {
           observe: 'response',
-          headers: headers.set('Authorization', 'Basic ' + this.utf8_to_b64(`${username}:${password}`)),
+          headers: headers.set('Authorization', 'Basic ' + utf8_to_b64(`${username}:${password}`)),
           withCredentials: true,
           responseType: 'text'
         }

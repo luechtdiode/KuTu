@@ -135,13 +135,14 @@ export abstract class WebsocketService {
   protected abstract getWebsocketBackendUrl(): string;
   protected abstract handleWebsocketMessage(message: any): boolean;
 
+
   public initWebsocket() {
     this.logMessages.subscribe(msg => {
       this.lastMessages.push(formatCurrentMoment(true) + ` - ${msg}`);
       this.lastMessages = this.lastMessages.slice(Math.max(this.lastMessages.length - 50, 0));
     });
     this.logMessages.next('init');
-    this.backendUrl = this.getWebsocketBackendUrl() + `?clientid=${clientID()}`;
+    this.backendUrl = this.getWebsocketBackendUrl() + `?clientid=${encodeURIComponent(clientID())}`;
     this.logMessages.next('init with ' + this.backendUrl);
 
     this.connect();

@@ -14,7 +14,7 @@ export class TokenInterceptor implements HttpInterceptor {
     const token = request.headers.get('x-access-token') || localStorage.getItem('auth_token');
     request = request.clone({
       setHeaders: {
-        clientid: `${clientID()}`,
+        clientid: `${encodeURIComponent(clientID())}`,
         'x-access-token': `${token}`
       }
     });
