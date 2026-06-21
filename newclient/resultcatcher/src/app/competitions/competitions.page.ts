@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { BackendService } from '../services/backend.service';
 import { NavController } from '@ionic/angular';
 import { Subject, distinctUntilChanged, map, of, share, switchMap } from 'rxjs';
@@ -8,6 +8,7 @@ import { Wettkampf } from '../backend-types';
     selector: 'app-competitions',
     templateUrl: './competitions.page.html',
     styleUrls: ['./competitions.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class CompetitionsPage implements OnInit {

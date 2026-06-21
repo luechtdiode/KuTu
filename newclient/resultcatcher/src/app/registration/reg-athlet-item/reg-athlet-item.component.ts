@@ -1,10 +1,11 @@
-import { Component, OnInit, input, output } from '@angular/core';
+import { Component, OnInit, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { ClubRegistration, AthletRegistration, ProgrammRaw, TeamItem } from '../../backend-types';
 
 @Component({
     selector: 'app-reg-athlet-item',
     templateUrl: './reg-athlet-item.component.html',
     styleUrls: ['./reg-athlet-item.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class RegAthletItemComponent implements OnInit {

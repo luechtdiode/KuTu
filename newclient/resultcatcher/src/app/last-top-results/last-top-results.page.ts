@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf } from '../backend-types';
 import { BackendService } from '../services/backend.service';
 import { filter } from 'rxjs/operators';
@@ -8,6 +8,7 @@ import { GroupBy } from '../component/result-display/result-display.component';
     selector: 'app-last-top-results',
     templateUrl: './last-top-results.page.html',
     styleUrls: ['./last-top-results.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class LastTopResultsPage implements OnInit {
