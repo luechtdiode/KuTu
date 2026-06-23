@@ -14,7 +14,7 @@ name := "KuTu"
 
 // library versions (from pom properties)
 val scalafxV     = "26.0.0-R38"
-val javafxV      = "26-ea+21" // current issues with macos - see https://youtrack.jetbrains.com/articles/SUPPORT-A-860/How-to-fix-JavaFX-running-crash-issue-NSInternalInconsistencyException-on-macOS?_gl=1*173yxy7*_ga*NTcyODg1ODk1LjE3NjczMDM1MTc.*_ga_9J976DJZ68*czE3NjczMDM1MTYkbzEkZzAkdDE3NjczMDM1MTgkajYwJGwwJGgw*_gcl_au*MjI4ODI3MTEwLjE3NjczMDM1MTk.*FPAU*MjI4ODI3MTEwLjE3NjczMDM1MTk.&_cl=MTsxOzE7V0dydFNwb0tnM2w0eHZuUUdzMUxiVjFYS1JaV3NIQjNMQmxKcHViMUtaUDNRYjlkcFFjUjBaa0NVczdwOWZtbjs=
+val javafxV      = "27-ea+21" // current issues with macos - see https://youtrack.jetbrains.com/articles/SUPPORT-A-860/How-to-fix-JavaFX-running-crash-issue-NSInternalInconsistencyException-on-macOS?_gl=1*173yxy7*_ga*NTcyODg1ODk1LjE3NjczMDM1MTc.*_ga_9J976DJZ68*czE3NjczMDM1MTYkbzEkZzAkdDE3NjczMDM1MTgkajYwJGwwJGgw*_gcl_au*MjI4ODI3MTEwLjE3NjczMDM1MTk.*FPAU*MjI4ODI3MTEwLjE3NjczMDM1MTk.&_cl=MTsxOzE7V0dydFNwb0tnM2w0eHZuUUdzMUxiVjFYS1JaV3NIQjNMQmxKcHViMUtaUDNRYjlkcFFjUjBaa0NVczdwOWZtbjs=
                               // 25.0.1 runs stable on macOS but has other issues with Treetable JavaFX controls
 val pekkoHttpV   = "1.3.0"
 val pekkoV       = "1.6.0"
@@ -121,7 +121,7 @@ libraryDependencies ++= Seq(
   // Database drivers / utils
   "org.xerial" % "sqlite-jdbc" % "3.53.2.0",
   "org.postgresql" % "postgresql" % "42.7.11",
-  "com.zaxxer" % "HikariCP" % "7.0.2",
+  "com.zaxxer" % "HikariCP" % "7.1.0",
 
   // Utilities
   "org.slf4j" % "slf4j-api" % slf4jV,

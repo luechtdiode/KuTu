@@ -1,11 +1,12 @@
 import { isNgTemplate } from '@angular/compiler';
-import { Component, OnInit, input, output } from '@angular/core';
+import { Component, OnInit, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { JudgeRegistration, JudgeRegistrationProgramItem } from 'src/app/backend-types';
 
 @Component({
     selector: 'app-reg-judge-item',
     templateUrl: './reg-judge-item.component.html',
     styleUrls: ['./reg-judge-item.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class RegJudgeItemComponent implements OnInit {

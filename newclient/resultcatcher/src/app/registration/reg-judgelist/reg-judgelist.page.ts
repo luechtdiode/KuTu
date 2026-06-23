@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BehaviorSubject, Subject, of } from 'rxjs';
@@ -10,6 +10,7 @@ import { BackendService } from 'src/app/services/backend.service';
     selector: 'app-reg-judgelist',
     templateUrl: './reg-judgelist.page.html',
     styleUrls: ['./reg-judgelist.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class RegJudgelistPage  implements OnInit {

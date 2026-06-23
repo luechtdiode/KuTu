@@ -1,4 +1,4 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, inject } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Wettkampf, Geraet } from '../../app/backend-types';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -9,6 +9,7 @@ import { map } from 'rxjs/operators';
 @Component({
     selector: 'app-page-home',
     templateUrl: 'home.page.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class HomePage implements OnInit {

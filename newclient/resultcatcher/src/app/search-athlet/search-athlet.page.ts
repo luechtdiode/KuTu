@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { StartList, Wettkampf, Teilnehmer, ProgrammItem } from '../backend-types';
 import { NavController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -11,6 +11,7 @@ import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share 
     selector: 'app-search-athlet',
     templateUrl: './search-athlet.page.html',
     styleUrls: ['./search-athlet.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class SearchAthletPage implements OnInit {

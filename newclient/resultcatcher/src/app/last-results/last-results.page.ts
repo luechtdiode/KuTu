@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ActionSheetController, IonItemSliding, NavController } from '@ionic/angular';
 import { Geraet, NewLastResults, ScoreBlock, ScoreLink, ScoreRow, Wertung, WertungContainer, Wettkampf } from '../backend-types';
 
@@ -14,6 +14,7 @@ import { backendUrl } from '../utils';
     selector: 'app-last-results',
     templateUrl: './last-results.page.html',
     styleUrls: ['./last-results.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class LastResultsPage implements OnInit, OnDestroy {

@@ -1,4 +1,4 @@
-import { Component, NgZone, inject, viewChild } from '@angular/core';
+import { Component, NgZone, inject, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables, AthletMediaIsAtStart, AthletMediaIsFree, AthletMediaIsPaused, AthletMediaIsRunning } from '../backend-types';
 import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
@@ -15,6 +15,7 @@ import { encodeURIComponent2 } from '../services/websocket.service';
     selector: 'app-wertung-editor',
     templateUrl: './wertung-editor.page.html',
     styleUrls: ['./wertung-editor.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
   })
 export class WertungEditorPage {

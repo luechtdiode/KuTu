@@ -65,6 +65,14 @@ export function guid() {
     s4() + '-' + s4() + s4() + s4();
 }
 
+export function utf8_to_b64( str: string ): string {
+  return window.btoa(encodeURIComponent( str ).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCodePoint(Number.parseInt(p1, 16))));
+}
+
+export function b64_to_utf8( str: string ): string {
+  return decodeURIComponent(window.atob( str ).split('').map(c => '%' + ('00' + c.codePointAt(0).toString(16)).slice(-2)).join(''));
+}
+
 export function clientID() {
   let clientid = localStorage.getItem('clientid');
   if (!clientid) {

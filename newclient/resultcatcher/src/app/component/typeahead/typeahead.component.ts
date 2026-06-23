@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import type { OnInit } from '@angular/core';
 
 export interface TypeAheadItem<T> {
@@ -8,6 +8,7 @@ export interface TypeAheadItem<T> {
 @Component({
     selector: 'app-typeahead',
     templateUrl: 'typeahead.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class TypeaheadComponent<T> implements OnInit {

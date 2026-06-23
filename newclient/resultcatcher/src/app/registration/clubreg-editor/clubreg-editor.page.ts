@@ -1,4 +1,4 @@
-import { Component, OnInit, NgZone, inject } from '@angular/core';
+import { Component, OnInit, NgZone, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ClubRegistration, NewClubRegistration, Verein } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -13,6 +13,7 @@ import { TypeAheadItem } from 'src/app/component/typeahead/typeahead.component';
     selector: 'app-clubreg-editor',
     templateUrl: './clubreg-editor.page.html',
     styleUrls: ['./clubreg-editor.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class ClubregEditorPage implements OnInit {

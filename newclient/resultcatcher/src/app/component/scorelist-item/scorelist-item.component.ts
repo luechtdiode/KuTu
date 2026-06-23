@@ -1,10 +1,11 @@
-import { Component, OnInit, output, input } from '@angular/core';
+import { Component, OnInit, output, input, ChangeDetectionStrategy } from '@angular/core';
 import { ScoreRow } from 'src/app/backend-types';
 
 @Component({
   selector: 'scorelist-item',
   templateUrl: './scorelist-item.component.html',
   styleUrls: ['./scorelist-item.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   standalone: false
 })
 export class ScorelistItemComponent implements OnInit {

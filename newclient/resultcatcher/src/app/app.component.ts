@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 
 import { Platform, AlertController, NavController } from '@ionic/angular';
 import { BackendService } from './services/backend.service';
@@ -10,6 +10,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 @Component({
     selector: 'app-root',
     templateUrl: 'app.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class AppComponent {

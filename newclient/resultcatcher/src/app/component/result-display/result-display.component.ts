@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, input } from '@angular/core';
+import { Component, OnInit, inject, input, ChangeDetectionStrategy } from '@angular/core';
 import { AlertController, IonButton } from '@ionic/angular';
 import { WertungContainer } from 'src/app/backend-types';
 import { gearMapping, turn10ProgrammNames } from 'src/app/utils';
@@ -11,6 +11,7 @@ export enum GroupBy {
     selector: 'result-display',
     templateUrl: './result-display.component.html',
     styleUrls: ['./result-display.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class ResultDisplayComponent implements OnInit {

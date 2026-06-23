@@ -1,4 +1,4 @@
-import { Component, NgZone, OnInit, inject } from '@angular/core';
+import { Component, NgZone, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NavController, AlertController } from '@ionic/angular';
 import { JudgeRegistration, ProgrammRaw } from 'src/app/backend-types';
@@ -10,6 +10,7 @@ import { NgForm } from '@angular/forms';
     selector: 'app-reg-judge-editor',
     templateUrl: './reg-judge-editor.page.html',
     styleUrls: ['./reg-judge-editor.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class RegJudgeEditorPage  implements OnInit {

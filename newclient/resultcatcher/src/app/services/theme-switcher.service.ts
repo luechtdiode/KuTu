@@ -1,6 +1,6 @@
 import { Injectable, DOCUMENT, inject } from '@angular/core';
 
-import * as Color from 'color';
+import Color from 'color';
 
 @Injectable({
   providedIn: 'root'
@@ -57,7 +57,7 @@ const defaults = {
 function generateSteppedColors(background, text) {
   if (background === void 0) { background = '#ffffff'; }
   if (text === void 0) { text = '#000000'; }
-  const color = new Color(background);
+  const color = Color(background);
   let steps = '';
   for (let i = 5; i < 100; i = i + 5) {
       const step = i + '0';

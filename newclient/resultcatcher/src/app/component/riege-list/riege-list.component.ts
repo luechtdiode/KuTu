@@ -1,4 +1,4 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, inject, input, ChangeDetectionStrategy } from '@angular/core';
 import { NavController } from '@ionic/angular';
 import { WertungContainer } from '../../backend-types';
 import { BackendService } from '../../services/backend.service';
@@ -6,6 +6,7 @@ import { BackendService } from '../../services/backend.service';
     selector: 'riege-list',
     templateUrl: 'riege-list.component.html',
     styleUrls: ['./riege-list.component.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class RiegeListComponent {

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf, Wertung } from '../backend-types';
 import { NavController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -12,6 +12,7 @@ import { GroupBy } from '../component/result-display/result-display.component';
     selector: 'app-athlet-view',
     templateUrl: './athlet-view.page.html',
     styleUrls: ['./athlet-view.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class AthletViewPage  implements OnInit {

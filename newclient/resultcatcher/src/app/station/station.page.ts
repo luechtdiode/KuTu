@@ -11,6 +11,7 @@ import { gearMapping } from '../utils';
     selector: 'app-station',
     templateUrl: './station.page.html',
     styleUrls: ['./station.page.scss'],
+    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class StationPage implements OnInit  {
