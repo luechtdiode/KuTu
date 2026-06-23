@@ -54,7 +54,7 @@
     "@types/node": "^25.9.4",
     "@typescript-eslint/parser": "^8.61.1",
     "body-parser": ">=2.3.0",
-    "eslint": "^9.39.4",
+    "eslint": "^10.5.0",
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-jsdoc": "63.0.7",
     "eslint-plugin-prefer-arrow": "1.2.3",
