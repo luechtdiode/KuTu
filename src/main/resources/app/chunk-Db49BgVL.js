@@ -1,1 +1,0 @@
-import {bO as n$1}from'./main-DJ665XY6.js';var n=()=>{if(n$1!==void 0)return n$1.Capacitor};export{n};
