@@ -1,6 +1,7 @@
 package ch.seidel.kutu.http
 
 import ch.seidel.jwt.{JsonWebToken, JwtClaimsSetMap}
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.ResourceExchanger
@@ -90,7 +91,7 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
     val wettkampfEntity = toHttpEntity(wettkampf)
     val uploadProm = Promise[String]()
     val uploadFut = uploadProm.future
-    if remoteHost.startsWith("localhost") && !wettkampf.hasSecred(homedir, remoteHostOrigin) then {
+    if Config.isLocalHostServer && remoteHost.startsWith("localhost") && !wettkampf.hasSecred(homedir, remoteHostOrigin) then {
       wettkampf.saveSecret(homedir, remoteHostOrigin, JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue), jwtSecretKey))
     }
     val hadSecret = wettkampf.hasSecred(homedir, remoteHostOrigin)
