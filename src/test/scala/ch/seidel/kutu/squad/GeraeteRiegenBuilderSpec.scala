@@ -151,8 +151,8 @@ class GeraeteRiegenBuilderSpec extends AnyWordSpec with Matchers {
 
       val merged = Harness.merge(Set(riegeA1, riegeA2), maxRiegenSize = 4, GemischteRiegen, targetDiff = 2)
 
-      merged.exists(r => r.turnerriegen.flatMap(_.verein).toSet == Set(vereinA)) shouldBe true
-      merged.exists(r => r.turnerriegen.flatMap(_.verein).toSet == Set(vereinB)) shouldBe true
+      merged.exists(r => r.turnerriegen.flatMap(_.verein) == Set(vereinA)) shouldBe true
+      merged.exists(r => r.turnerriegen.flatMap(_.verein) == Set(vereinB)) shouldBe true
     }
 
     "keep mixed genders in one Durchgang for GemischterDurchgang when max size is unlimited" in {
@@ -259,7 +259,7 @@ class GeraeteRiegenBuilderSpec extends AnyWordSpec with Matchers {
       val result = Harness.build(
         programm = "K2",
         startgeraete = startgeraete,
-        turnerRiegen = sixer.toSeq :+ tiny,
+        turnerRiegen = sixer :+ tiny,
         maxRiegenSize = 8,
         splitSex = GemischteRiegen,
         jahrgangGroup = false
