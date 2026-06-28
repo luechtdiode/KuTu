@@ -642,7 +642,7 @@ package object domain {
       12, 13, 15, 17, 19
     ).map(i => ("AK", Seq(), i))
 
-    val predefinedAKs = Map(
+    val predefinedAKs: Map[String, String] = Map(
       "Ohne" -> ""
       , "Turn10®" -> akExpressionTurn10
       , "DTB" -> akDTBExpression
@@ -1382,7 +1382,7 @@ package object domain {
 
     def similarFactor(left: Seq[String], right: Seq[String]): Int = {
       val gs = left.take(2).zip(right.take(2)).zipWithIndex.map{
-        case (((l, r), idx)) => if l.equals(r) then (idx +1) * 20 else 0
+        case ((l, r), idx) => if l.equals(r) then (idx +1) * 20 else 0
       }.sum
       val remainingright = right.drop(2).toSet
       val remainingLeft = left.drop(2).toSet

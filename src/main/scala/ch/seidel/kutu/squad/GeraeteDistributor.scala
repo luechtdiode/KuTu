@@ -28,7 +28,7 @@ trait GeraeteDistributor {
       }
 
       def findCompatibleDisziplin(groupGeschlecht: Option[String], startIndex: Int): Option[Disziplin] = {
-        (0 until startgeraete.size)
+        startgeraete.indices
           .map(i => startgeraete((startIndex + i) % startgeraete.size))
           .find(d => isCompatibleDisziplin(d.id, groupGeschlecht))
       }
