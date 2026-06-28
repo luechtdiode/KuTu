@@ -21,6 +21,13 @@ class GeraeteRiegenBuilderSpec extends AnyWordSpec with Matchers {
     def distribute(programm: String, startgeraete: List[Disziplin], alignedriegen: Seq[RiegeAthletWertungen]): Seq[(String, String, Disziplin, Seq[WertungViewsZuAthletView])] =
       distributeToStartgeraete(programm, startgeraete, alignedriegen)
 
+    def distributeWithGenderRestrictions(
+        programm: String,
+        startgeraete: List[Disziplin],
+        alignedriegen: Seq[RiegeAthletWertungen],
+        disziplinGeschlecht: Map[Long, (Int, Int)]): Seq[(String, String, Disziplin, Seq[WertungViewsZuAthletView])] =
+      distributeToStartgeraete(programm, startgeraete, alignedriegen, disziplinGeschlecht)
+
     def merge(startriegen: GeraeteRiegen, maxRiegenSize: Int, splitSex: SexDivideRule, targetDiff: Int): GeraeteRiegen =
       bringVereineTogether(startriegen, maxRiegenSize, splitSex, targetDiff)
 
@@ -33,6 +40,18 @@ class GeraeteRiegenBuilderSpec extends AnyWordSpec with Matchers {
         jahrgangGroup: Boolean): Seq[(String, String, Disziplin, Seq[WertungViewsZuAthletView])] = {
       given mutable.Map[String, Int] = mutable.Map.empty[String, Int]
       buildGeraeteRiegen(programm, startgeraete, turnerRiegen, maxRiegenSize, splitSex, jahrgangGroup)
+    }
+
+    def buildWithGenderRestrictions(
+        programm: String,
+        startgeraete: List[Disziplin],
+        turnerRiegen: Seq[(String, Seq[WertungViewsZuAthletView])],
+        maxRiegenSize: Int,
+        splitSex: SexDivideRule,
+        jahrgangGroup: Boolean,
+        disziplinGeschlecht: Map[Long, (Int, Int)]): Seq[(String, String, Disziplin, Seq[WertungViewsZuAthletView])] = {
+      given mutable.Map[String, Int] = mutable.Map.empty[String, Int]
+      buildGeraeteRiegen(programm, startgeraete, turnerRiegen, maxRiegenSize, splitSex, jahrgangGroup, disziplinGeschlecht)
     }
   }
 
@@ -372,8 +391,75 @@ class GeraeteRiegenBuilderSpec extends AnyWordSpec with Matchers {
       athletesPerDevice.nonEmpty shouldBe true
       (athletesPerDevice.max - athletesPerDevice.min) should be <= 2
     }
+
+    "assign male and female groups to gender-compatible disciplines in GemischterDurchgang mode" in {
+      // This test verifies the fix for the issue where female groups were assigned to male-only disciplines
+      // when splitSex == GemischterDurchgang
+      val maleBoden = Disziplin(11L, "Boden-M") // male-only
+      val femaleReck = Disziplin(12L, "Reck-W") // female-only
+      val mixedSprung = Disziplin(13L, "Sprung-Mixed") // mixed
+
+      // Define gender restrictions:
+      // masculin=1, feminim=0 => male-only
+      // masculin=0, feminim=1 => female-only
+      // masculin=1, feminim=1 => mixed
+      val disziplinGeschlecht = Map(
+        maleBoden.id -> (1, 0),      // male-only
+        femaleReck.id -> (0, 1),     // female-only
+        mixedSprung.id -> (1, 1)     // mixed
+      )
+
+      // Create groups: 2 male groups and 2 female groups
+      val turnerRiegen = Seq(
+        teamWithSex("M-Group-1", "M", vereinA, Seq(501L, 502L)),
+        teamWithSex("M-Group-2", "M", vereinA, Seq(503L, 504L)),
+        teamWithSex("W-Group-1", "W", vereinB, Seq(505L, 506L)),
+        teamWithSex("W-Group-2", "W", vereinB, Seq(507L, 508L))
+      )
+
+      val result = Harness.buildWithGenderRestrictions(
+        programm = "Kgender",
+        startgeraete = List(maleBoden, femaleReck, mixedSprung),
+        turnerRiegen = turnerRiegen,
+        maxRiegenSize = 0,
+        splitSex = GemischterDurchgang,
+        jahrgangGroup = false,
+        disziplinGeschlecht = disziplinGeschlecht
+      )
+
+      // Verify groups are kept together in one Durchgang (mixed gender pass)
+      result.map(_._1).toSet shouldBe Set("Kgender (1)")
+
+      // Verify that male groups are only assigned to male-compatible disciplines (maleBoden or mixedSprung)
+      val maleAssignments = result.filter { case (_, _, diz, athletes) =>
+        athletes.headOption.exists(_._1.geschlecht.equalsIgnoreCase("M"))
+      }
+      maleAssignments.foreach { case (_, riegeName, diz, _) =>
+        withClue(s"Male group '$riegeName' incorrectly assigned to discipline '${diz.name}' (id=${diz.id})") {
+          (diz.id == maleBoden.id || diz.id == mixedSprung.id) shouldBe true
+        }
+      }
+
+      // Verify that female groups are only assigned to female-compatible disciplines (femaleReck or mixedSprung)
+      val femaleAssignments = result.filter { case (_, _, diz, athletes) =>
+        athletes.headOption.exists(_._1.geschlecht.equalsIgnoreCase("W"))
+      }
+      femaleAssignments.foreach { case (_, riegeName, diz, _) =>
+        withClue(s"Female group '$riegeName' incorrectly assigned to discipline '${diz.name}' (id=${diz.id})") {
+          (diz.id == femaleReck.id || diz.id == mixedSprung.id) shouldBe true
+        }
+      }
+
+      // Verify that male and female groups are present
+      maleAssignments should not be empty
+      femaleAssignments should not be empty
+
+      // Verify that both genders are represented
+      result.flatMap(_._4.map(_._1.geschlecht)).toSet shouldBe Set("M", "W")
+    }
   }
 }
+
 
 
 
