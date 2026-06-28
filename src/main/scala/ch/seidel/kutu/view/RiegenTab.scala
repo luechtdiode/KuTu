@@ -1521,7 +1521,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       given ActionEvent = event
 
       KuTuApp.invokeWithBusyIndicator {
-        val filename = "Durchgaenge.csv"
+        val filename = "Durchgaenge.xlsx"
         val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if !dir.exists() then {
           dir.mkdirs()
@@ -1547,7 +1547,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       given ActionEvent = event
 
       KuTuApp.invokeWithBusyIndicator {
-        val filename = "Durchgaenge-Einfach.csv"
+        val filename = "Durchgaenge-Einfach.xlsx"
         val dir = new java.io.File(homedir + "/" + encodeFileName(wettkampf.easyprint))
         if !dir.exists() then {
           dir.mkdirs()
