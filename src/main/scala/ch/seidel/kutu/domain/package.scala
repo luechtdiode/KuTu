@@ -1028,7 +1028,14 @@ package object domain {
       s"${if altersklassen.nonEmpty then ", Altersklassen" else ""}" +
       s"${if jahrgangsklassen.nonEmpty then ", Jahrgangs Altersklassen" else ""}" +
       ""
-    def toWettkampf = Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, Option(altersklassen), Option(jahrgangsklassen), Option(punktegleichstandsregel), Option(rotation), Option(teamrule))
+    def toWettkampf: Wettkampf = {
+      val ak = if altersklassen != null && altersklassen.nonEmpty then Some(altersklassen) else None
+      val jak = if jahrgangsklassen != null && jahrgangsklassen.nonEmpty then Some(jahrgangsklassen) else None
+      val pgr = if punktegleichstandsregel != null && punktegleichstandsregel.nonEmpty then Some(punktegleichstandsregel) else None
+      val r = if rotation != null && rotation.nonEmpty then Some(rotation) else None
+      val tr = if teamrule != null && teamrule.nonEmpty then Some(teamrule) else None
+      Wettkampf(id, uuid, datum, titel, programm.id, auszeichnung, auszeichnungendnote, notificationEMail, ak, jak, pgr, r, tr)
+    }
   }
 
   case class WettkampfStats(uuid: String, wkid: Int, titel: String, finishAthletesCnt: Int, finishClubsCnt: Int, finishOnlineAthletesCnt: Int, finishOnlineClubsCnt: Int) extends DataObject {
