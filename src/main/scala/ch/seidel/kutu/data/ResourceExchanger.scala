@@ -6,6 +6,8 @@ import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.ServerPrintUtil
 import ch.seidel.kutu.squad.RiegenBuilder
 import ch.seidel.kutu.view.*
+import org.apache.poi.ss.usermodel.{BorderStyle, FillPatternType, IndexedColors, VerticalAlignment}
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import ch.seidel.kutu.{Config, KuTuApp}
 import org.slf4j.LoggerFactory
 import slick.jdbc
@@ -23,6 +25,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.deriving.Mirror
 import scala.io.Source
+import scala.util.Using
 
 /**
  */
@@ -129,6 +132,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               refresher(sender, uw)
           }
         }
+
       case (sender, uw: MediaPlayerAction) =>
         if Config.isLocalHostServer then {
           refresher(sender, uw)
@@ -997,22 +1001,18 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
 
   private val charset = "ISO-8859-1"
   private val charset2 = "UTF-8"
-  private val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss")
+  private val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
   def exportDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
-    val fileOutputStream = new BufferedOutputStream(new FileOutputStream(filename))
-    fileOutputStream.write(0xef); // emits 0xef
-    fileOutputStream.write(0xbb); // emits 0xbb
-    fileOutputStream.write(0xbf); // emits 0xbf
+    val targetFile = new File(filename)
+    val parent = targetFile.getParentFile
+    if parent != null && !parent.exists() then {
+      parent.mkdirs()
+    }
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
-    val sep = ";"
-    fileOutputStream.write(f"""sep=$sep\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Durchschn.${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes(charset))
-
-    diszipline.foreach { x =>
-      fileOutputStream.write(f"$sep${x.name}${sep}Anz".getBytes(charset))
-    }
-    fileOutputStream.write("\r\n".getBytes(charset))
+    val headers = Seq("Durchgang", "Summe", "Min", "Max", "Durchschn.", "Total-Zeit", "Einturn-Zeit", "Gerät-Zeit") ++
+      diszipline.flatMap(x => Seq(x.name, "Anz"))
 
     val durchgangEditors = listRiegenZuWettkampf(wettkampf.id)
       .filter(_._3.nonEmpty)
@@ -1036,52 +1036,151 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
       .toList
 
-    def writeDurchgangRow(x: DurchgangEditor): Unit = {
-      val dgtext = if x.durchgang.planStartOffset != 0 && x.durchgang.name.equals(x.durchgang.title) then {
-        s"${x.durchgang.name}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
-      }
-      else {
-        x.durchgang.name
-      }
-      fileOutputStream.write(f"""$dgtext$sep${x.anz.value}$sep${x.min.value}$sep${x.max.value}$sep${x.avg.value}$sep${toShortDurationFormat(x.durchgang.planTotal)}$sep${toShortDurationFormat(x.durchgang.planEinturnen)}$sep${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
-      diszipline.foreach { d =>
-        fileOutputStream.write(f"$sep${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => f"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\"", "\n", "\"")}$sep${x.initstartriegen.getOrElse(d, Seq[RiegeEditor]()).map(r => r.anz.value).sum}".getBytes(charset))
-      }
-      fileOutputStream.write("\r\n".getBytes(charset))
-    }
+    Using.resources(new XSSFWorkbook(), new BufferedOutputStream(new FileOutputStream(targetFile))) { (workbook, outputStream) =>
+      val sheet = workbook.createSheet("Durchgaenge")
+      val headerFont = workbook.createFont()
+      headerFont.setBold(true)
+      val styleCache = scala.collection.mutable.Map[(String, Boolean, Boolean, Boolean, Boolean, Boolean), org.apache.poi.ss.usermodel.CellStyle]()
 
-    for group <- DurchgangEditor(durchgangEditors) do {
-      group match {
-        case x: GroupDurchgangEditor =>
-          val dgtext = if x.durchgang.planStartOffset != 0 then {
-            s"${x.durchgang.title}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
+      val disziplinTextColumnIndexes = diszipline.indices.map(i => 8 + (i * 2)).toSet
+
+      def styleFor(
+          rowType: String,
+          wrap: Boolean,
+          borderTop: Boolean,
+          borderBottom: Boolean,
+          borderLeft: Boolean,
+          borderRight: Boolean): org.apache.poi.ss.usermodel.CellStyle = {
+        styleCache.getOrElseUpdate((rowType, wrap, borderTop, borderBottom, borderLeft, borderRight), {
+          val style = workbook.createCellStyle()
+          if wrap then {
+            style.setWrapText(true)
+            style.setVerticalAlignment(VerticalAlignment.TOP)
           }
-          else {
-            x.durchgang.title
+          rowType match {
+            case "header" =>
+              style.setFont(headerFont)
+              style.setFillForegroundColor(IndexedColors.GREY_40_PERCENT.getIndex)
+              style.setFillPattern(FillPatternType.SOLID_FOREGROUND)
+              style.setBorderTop(BorderStyle.NONE)
+              style.setBorderBottom(BorderStyle.NONE)
+              style.setBorderLeft(BorderStyle.NONE)
+              style.setBorderRight(BorderStyle.NONE)
+            case "group" =>
+              style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex)
+              style.setFillPattern(FillPatternType.SOLID_FOREGROUND)
+              style.setVerticalAlignment(VerticalAlignment.CENTER)
+              style.setBorderTop(BorderStyle.NONE)
+              style.setBorderBottom(BorderStyle.NONE)
+              style.setBorderLeft(BorderStyle.NONE)
+              style.setBorderRight(BorderStyle.NONE)
+            case _ =>
+              style.setBorderTop(if borderTop then BorderStyle.THIN else BorderStyle.NONE)
+              style.setBorderBottom(if borderBottom then BorderStyle.THIN else BorderStyle.NONE)
+              style.setBorderLeft(if borderLeft then BorderStyle.THIN else BorderStyle.NONE)
+              style.setBorderRight(if borderRight then BorderStyle.THIN else BorderStyle.NONE)
           }
-          fileOutputStream.write(f"""$dgtext$sep${x.anz.value}$sep${x.min.value}$sep${x.max.value}$sep${x.avg.value}$sep${toShortDurationFormat(x.durchgang.planTotal)}$sep${toShortDurationFormat(x.durchgang.planEinturnen)}$sep${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
-          fileOutputStream.write("\r\n".getBytes(charset))
-          x.aggregates.foreach(x => writeDurchgangRow(x))
-        case x: DurchgangEditor =>
-          writeDurchgangRow(x)
+          style
+        })
       }
+
+      def writeRow(
+          rowIdx: Int,
+          values: Seq[String],
+          rowType: String,
+          wrappedColumns: Set[Int] = Set.empty,
+          borderByColumn: Map[Int, (Boolean, Boolean, Boolean, Boolean)] = Map.empty): Unit = {
+        val row = sheet.createRow(rowIdx)
+        values.zipWithIndex.foreach { case (value, colIdx) =>
+          val cell = row.createCell(colIdx)
+          cell.setCellValue(value)
+          val wrap = wrappedColumns.contains(colIdx)
+          val (borderTop, borderBottom, borderLeft, borderRight) =
+            borderByColumn.getOrElse(colIdx, (false, false, false, false))
+          cell.setCellStyle(styleFor(rowType, wrap, borderTop, borderBottom, borderLeft, borderRight))
+        }
+      }
+
+      writeRow(0, headers, "header")
+      var rowIndex = 1
+
+      def writeDurchgangRow(x: DurchgangEditor): Unit = {
+        val dgtext = if x.durchgang.planStartOffset != 0 && x.durchgang.name.equals(x.durchgang.title) then {
+          s"${x.durchgang.name}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
+        }
+        else {
+          x.durchgang.name
+        }
+        val values = Seq(
+          dgtext,
+          x.anz.value.toString,
+          x.min.value.toString,
+          x.max.value.toString,
+          x.avg.value.toString,
+          toShortDurationFormat(x.durchgang.planTotal),
+          toShortDurationFormat(x.durchgang.planEinturnen),
+          toShortDurationFormat(x.durchgang.planGeraet)) ++ diszipline.flatMap { d =>
+          val riegen = x.initstartriegen.getOrElse(d, Seq.empty)
+          Seq(
+            riegen.map(r => s"${r.name.value.replace("M,", "Tu,").replace("W,", "Ti,")} (${r.anz.value})").mkString("\n"),
+            riegen.map(_.anz.value).sum.toString)
+        }
+        val disziplinFraming = diszipline.indices.flatMap { i =>
+          val startCol = 8 + (i * 2)
+          Seq(
+            startCol -> (true, true, true, false),
+            (startCol + 1) -> (true, true, false, true))
+        }.toMap
+        writeRow(rowIndex, values, "durchgang", disziplinTextColumnIndexes + 0, disziplinFraming)
+        rowIndex += 1
+      }
+
+      for group <- DurchgangEditor(durchgangEditors) do {
+        group match {
+          case x: GroupDurchgangEditor =>
+            val dgtext = if x.durchgang.planStartOffset != 0 then {
+              s"${x.durchgang.title}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
+            }
+            else {
+              x.durchgang.title
+            }
+            writeRow(
+              rowIndex,
+              Seq(
+                dgtext,
+                x.anz.value.toString,
+                x.min.value.toString,
+                x.max.value.toString,
+                x.avg.value.toString,
+                toShortDurationFormat(x.durchgang.planTotal),
+                toShortDurationFormat(x.durchgang.planEinturnen),
+                toShortDurationFormat(x.durchgang.planGeraet)) ++ diszipline.flatMap(d => Seq(d.name, "")),
+              "group",
+              disziplinTextColumnIndexes + 0)
+            rowIndex += 1
+            x.aggregates.foreach(writeDurchgangRow)
+          case x: DurchgangEditor =>
+            writeDurchgangRow(x)
+        }
+      }
+
+      sheet.createFreezePane(0, 1)
+      headers.indices.foreach(colIdx => sheet.autoSizeColumn(colIdx))
+      workbook.write(outputStream)
     }
-    fileOutputStream.flush()
-    fileOutputStream.close()
   }
 
   def exportSimpleDurchgaenge(wettkampf: Wettkampf, filename: String): Unit = {
-    val fileOutputStream = new BufferedOutputStream(new FileOutputStream(filename))
+    val targetFile = new File(filename)
+    val parent = targetFile.getParentFile
+    if parent != null && !parent.exists() then {
+      parent.mkdirs()
+    }
     val diszipline = listDisziplinesZuWettkampf(wettkampf.id)
     val durchgaenge = selectDurchgaenge(UUID.fromString(wettkampf.uuid.get)).map(d => d.name -> d).toMap
 
-    val sep = ";"
-    fileOutputStream.write(f"""sep=$sep\nDurchgang${sep}Summe${sep}Min${sep}Max${sep}Total-Zeit${sep}Einturn-Zeit${sep}Gerät-Zeit""".getBytes(charset))
-
-    diszipline.foreach { x =>
-      fileOutputStream.write(f"$sep${x.name}${sep}Ti${sep}Tu".getBytes(charset))
-    }
-    fileOutputStream.write("\r\n".getBytes(charset))
+    val headers = Seq("Durchgang", "Summe", "Min", "Max", "Total-Zeit", "Einturn-Zeit", "Gerät-Zeit") ++
+      diszipline.flatMap(x => Seq(x.name, "Ti", "Tu"))
 
     val riege2Map = listRiegen2ToRiegenMapZuWettkampf(wettkampf.id)
 
@@ -1116,60 +1215,156 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
       .toList
 
-    def writeDurchgangRow(x: DurchgangEditor): Unit = {
-      val dgtext = if x.durchgang.planStartOffset != 0 && x.durchgang.name.equals(x.durchgang.title) then {
-        s"${x.durchgang.name}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
-      }
-      else {
-        x.durchgang.name
-      }
-      fileOutputStream.write(f"""$dgtext$sep${x.anz.value}$sep${x.min.value}$sep${x.max.value}$sep${toShortDurationFormat(x.durchgang.planTotal)}$sep${toShortDurationFormat(x.durchgang.planEinturnen)}$sep${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
-      val riegen = x.riegenWithMergedClubs()
-      val rows = riegen.values.map(_.size).max
-      val riegenFields = for {
-        row <- 0 to rows
-        d <- diszipline
-        r = riegen.getOrElse(d, Seq())
-      } yield {
-        (row, if r.size > row then {
-          f"$sep${r(row)._1}$sep${r(row)._2}$sep${r(row)._3}"
-        } else {
-          f"$sep$sep$sep"
+    Using.resources(new XSSFWorkbook(), new BufferedOutputStream(new FileOutputStream(targetFile))) { (workbook, outputStream) =>
+      val sheet = workbook.createSheet("Durchgaenge")
+      val headerFont = workbook.createFont()
+      headerFont.setBold(true)
+      val styleCache = scala.collection.mutable.Map[(String, Boolean, Boolean, Boolean, Boolean, Boolean), org.apache.poi.ss.usermodel.CellStyle]()
+
+      def styleFor(
+          rowType: String,
+          wrap: Boolean,
+      borderTop: Boolean,
+      borderBottom: Boolean,
+      borderLeft: Boolean,
+      borderRight: Boolean): org.apache.poi.ss.usermodel.CellStyle = {
+        styleCache.getOrElseUpdate((rowType, wrap, borderTop, borderBottom, borderLeft, borderRight), {
+          val style = workbook.createCellStyle()
+          if wrap then {
+            style.setWrapText(true)
+            style.setVerticalAlignment(VerticalAlignment.TOP)
+          }
+          rowType match {
+            case "header" =>
+              style.setFont(headerFont)
+              style.setFillForegroundColor(IndexedColors.GREY_40_PERCENT.getIndex)
+              style.setFillPattern(FillPatternType.SOLID_FOREGROUND)
+              style.setBorderTop(BorderStyle.NONE)
+              style.setBorderBottom(BorderStyle.NONE)
+              style.setBorderLeft(BorderStyle.NONE)
+              style.setBorderRight(BorderStyle.NONE)
+            case "group" =>
+              style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex)
+              style.setFillPattern(FillPatternType.SOLID_FOREGROUND)
+              style.setVerticalAlignment(VerticalAlignment.CENTER)
+              style.setBorderTop(BorderStyle.NONE)
+              style.setBorderBottom(BorderStyle.NONE)
+              style.setBorderLeft(BorderStyle.NONE)
+              style.setBorderRight(BorderStyle.NONE)
+            case _ =>
+              style.setBorderTop(if borderTop then BorderStyle.THIN else BorderStyle.NONE)
+              style.setBorderBottom(if borderBottom then BorderStyle.THIN else BorderStyle.NONE)
+              style.setBorderLeft(if borderLeft then BorderStyle.THIN else BorderStyle.NONE)
+              style.setBorderRight(if borderRight then BorderStyle.THIN else BorderStyle.NONE)
+          }
+          style
         })
       }
-      val rs = riegenFields.groupBy(_._1).toList
-        .sortBy(_._1)
-        .map(r => {
-          val tuples = r._2
-          val strings = tuples.map(_._2)
-          val fieldsString = strings.mkString("", "", f"\r\n$sep$sep$sep$sep$sep$sep")
-          fieldsString
-        }) :+ "\r\n"
 
-      rs.foreach(row => {
-        fileOutputStream.write(row.getBytes(charset))
-      })
-      fileOutputStream.write("\r\n".getBytes(charset))
-    }
-
-    for group <- DurchgangEditor(durchgangEditors) do {
-      group match {
-        case x: GroupDurchgangEditor =>
-          val dgtext = if x.durchgang.planStartOffset != 0 then {
-            s"${x.durchgang.title}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
-          }
-          else {
-            x.durchgang.title
-          }
-          fileOutputStream.write(f"""$dgtext$sep${x.anz.value}$sep${x.min.value}$sep${x.max.value}$sep${toShortDurationFormat(x.durchgang.planTotal)}$sep${toShortDurationFormat(x.durchgang.planEinturnen)}$sep${toShortDurationFormat(x.durchgang.planGeraet)}""".getBytes(charset))
-          fileOutputStream.write("\r\n".getBytes(charset))
-          x.aggregates.foreach(x => writeDurchgangRow(x))
-        case x: DurchgangEditor =>
-          writeDurchgangRow(x)
+      def writeRow(
+          rowIdx: Int,
+          values: Seq[String],
+          rowType: String,
+          wrappedColumns: Set[Int] = Set.empty,
+          borderByColumn: Map[Int, (Boolean, Boolean, Boolean, Boolean)] = Map.empty): Unit = {
+        val row = sheet.createRow(rowIdx)
+        values.zipWithIndex.foreach { case (value, colIdx) =>
+          val cell = row.createCell(colIdx)
+          cell.setCellValue(value)
+          val wrap = wrappedColumns.contains(colIdx)
+          val (borderTop, borderBottom, borderLeft, borderRight) =
+            borderByColumn.getOrElse(colIdx, (false, false, false, false))
+          cell.setCellStyle(styleFor(rowType, wrap, borderTop, borderBottom, borderLeft, borderRight))
+        }
       }
-    }
 
-    fileOutputStream.flush()
-    fileOutputStream.close()
+      writeRow(0, headers, "header")
+      var rowIndex = 1
+
+      def writeDurchgangRow(x: DurchgangEditor): Unit = {
+        val dgtext = if x.durchgang.planStartOffset != 0 && x.durchgang.name.equals(x.durchgang.title) then {
+          s"${x.durchgang.name}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
+        }
+        else {
+          x.durchgang.name
+        }
+
+        val riegen = x.riegenWithMergedClubs()
+        val maxRowsPerDurchgang = riegen.values.map(_.size).maxOption.getOrElse(0)
+        val totalRows = math.max(1, maxRowsPerDurchgang)
+
+        for rowOffset <- 0 until totalRows do {
+          val baseFields = if rowOffset == 0 then {
+            Seq(
+              dgtext,
+              x.anz.value.toString,
+              x.min.value.toString,
+              x.max.value.toString,
+              toShortDurationFormat(x.durchgang.planTotal),
+              toShortDurationFormat(x.durchgang.planEinturnen),
+              toShortDurationFormat(x.durchgang.planGeraet))
+          } else {
+            Seq.fill(7)("")
+          }
+          val disziplinFields = diszipline.flatMap { d =>
+            val values = riegen.getOrElse(d, Seq.empty)
+            if values.size > rowOffset then {
+              val (name, ti, tu) = values(rowOffset)
+              Seq(name, ti.toString, tu.toString)
+            } else {
+              Seq("", "", "")
+            }
+          }
+          val isFirst = rowOffset == 0
+          val isLast = rowOffset == totalRows - 1
+          val disziplinFraming = diszipline.indices.flatMap { i =>
+            val startCol = 7 + (i * 3)
+            Seq(
+              startCol -> (isFirst, isLast, true, false),
+              (startCol + 1) -> (isFirst, isLast, false, false),
+              (startCol + 2) -> (isFirst, isLast, false, true))
+          }.toMap
+          writeRow(
+            rowIndex,
+            baseFields ++ disziplinFields,
+            "durchgang",
+            if rowOffset == 0 then Set(0) else Set.empty,
+            disziplinFraming)
+          rowIndex += 1
+        }
+      }
+
+      for group <- DurchgangEditor(durchgangEditors) do {
+        group match {
+          case x: GroupDurchgangEditor =>
+            val dgtext = if x.durchgang.planStartOffset != 0 then {
+              s"${x.durchgang.title}\nStart: ${x.durchgang.effectivePlanStart(wettkampf.datum.toLocalDate).format(formatter)}\nEnde: ${x.durchgang.effectivePlanFinish(wettkampf.datum.toLocalDate).format(formatter)}"
+            }
+            else {
+              x.durchgang.title
+            }
+            writeRow(
+              rowIndex,
+              Seq(
+                dgtext,
+                x.anz.value.toString,
+                x.min.value.toString,
+                x.max.value.toString,
+                toShortDurationFormat(x.durchgang.planTotal),
+                toShortDurationFormat(x.durchgang.planEinturnen),
+                toShortDurationFormat(x.durchgang.planGeraet)) ++ diszipline.flatMap(d => Seq(d.name, "", "")),
+              "group",
+              Set(0))
+            rowIndex += 1
+            x.aggregates.foreach(x => writeDurchgangRow(x))
+          case x: DurchgangEditor =>
+            writeDurchgangRow(x)
+        }
+      }
+
+      sheet.createFreezePane(0, 1)
+      headers.indices.foreach(colIdx => sheet.autoSizeColumn(colIdx))
+      workbook.write(outputStream)
+    }
   }
 }
