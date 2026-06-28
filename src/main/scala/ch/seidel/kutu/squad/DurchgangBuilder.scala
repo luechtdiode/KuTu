@@ -15,7 +15,8 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       splitSex: SexDivideRule,
       grouper: List[WertungView => String],
       fullGrouper: List[WertungView => String],
-      jahrgangGroup: Boolean)
+      jahrgangGroup: Boolean,
+      disziplinGeschlecht: Map[Long, (Int, Int)] = Map.empty)
 
   def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 0,
       durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
@@ -37,8 +38,8 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       val programme = listProgramme(filteredWert)
       val progAthlWertungen = buildProgrammAthletWertungen(filteredWert, programme, splitPgm)
       val riegen = buildProgrammKontexte(wettkampfId, progAthlWertungen, splitSexOption, onDisziplinList).flatMap {
-        case ProgrammKontext(programm, wertungen, startgeraete, splitSex, grouper, fullGrouper, jahrgangGroup) =>
-          groupWertungen(programm, wertungen, grouper, fullGrouper, startgeraete, maxRiegenSize, splitSex, jahrgangGroup)
+        case ProgrammKontext(programm, wertungen, startgeraete, splitSex, grouper, fullGrouper, jahrgangGroup, disziplinGeschlecht) =>
+          groupWertungen(programm, wertungen, grouper, fullGrouper, startgeraete, maxRiegenSize, splitSex, jahrgangGroup, disziplinGeschlecht)
       }
 
       val suggested = rebuildDurchgangWertungen(riegen)
@@ -150,6 +151,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
         case None => if startgeraeteM == startgeraeteW then GemischteRiegen else GetrennteDurchgaenge
         case Some(option) => option
       }
+      val disziplinGeschlecht = startgeraeteMeta.map(wd => wd.disziplinId -> (wd.masculin, wd.feminim)).toMap
       val wv = wertungen.head._2.head
       val riegenmode = wv.wettkampfdisziplin.programm.riegenmode
       val aks = wv.wettkampf.altersklassen match {
@@ -163,13 +165,13 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       val (shortGrouper, fullGrouper, jgGroup) = RiegenBuilder.selectRiegenGrouper(riegenmode, aks, jaks).buildGrouper(riegencnt)
       splitSex match {
         case GemischteRiegen | GemischterDurchgang =>
-          Seq(ProgrammKontext(programm, wertungen, startgeraete, splitSex, shortGrouper, fullGrouper, jgGroup))
+          Seq(ProgrammKontext(programm, wertungen, startgeraete, splitSex, shortGrouper, fullGrouper, jgGroup, disziplinGeschlecht))
         case GetrennteDurchgaenge =>
           val maenner = wertungen.filter(_._1.geschlecht.equalsIgnoreCase("M"))
           val frauen = wertungen.filter(_._1.geschlecht.equalsIgnoreCase("W"))
           Seq(
-            if maenner.nonEmpty then Some(ProgrammKontext(if frauen.nonEmpty then programm + "-Tu" else programm, maenner, startgeraeteM, GetrennteDurchgaenge, shortGrouper, fullGrouper, jgGroup)) else None,
-            if frauen.nonEmpty then Some(ProgrammKontext(if maenner.nonEmpty then programm + "-Ti" else programm, frauen, startgeraeteW, GetrennteDurchgaenge, shortGrouper, fullGrouper, jgGroup)) else None
+            if maenner.nonEmpty then Some(ProgrammKontext(if frauen.nonEmpty then programm + "-Tu" else programm, maenner, startgeraeteM, GetrennteDurchgaenge, shortGrouper, fullGrouper, jgGroup, disziplinGeschlecht)) else None,
+            if frauen.nonEmpty then Some(ProgrammKontext(if maenner.nonEmpty then programm + "-Ti" else programm, frauen, startgeraeteW, GetrennteDurchgaenge, shortGrouper, fullGrouper, jgGroup, disziplinGeschlecht)) else None
           ).flatten
       }
     }
