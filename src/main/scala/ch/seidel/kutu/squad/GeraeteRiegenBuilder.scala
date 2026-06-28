@@ -12,11 +12,12 @@ trait GeraeteRiegenBuilder extends GeraeteOptimizer with GeraeteDistributor {
       turnerRiegen: Seq[(String, Seq[WertungViewsZuAthletView])],
       maxRiegenSize: Int,
       splitSex: SexDivideRule,
-      jahrgangGroup: Boolean)
+      jahrgangGroup: Boolean,
+      disziplinGeschlecht: Map[Long, (Int, Int)] = Map.empty)
       (using cache: mutable.Map[String, Int]): Seq[(String, String, Disziplin, Seq[WertungViewsZuAthletView])] = {
     if maxRiegenSize <= 0 && splitSex == GemischteRiegen then {
       val packed = packUnlimitedGemischte(turnerRiegen, startgeraete.size)
-      return distributeToStartgeraete(programm, startgeraete, packed)
+      return distributeToStartgeraete(programm, startgeraete, packed, disziplinGeschlecht)
     }
 
     val athletensum = turnerRiegen.flatMap(_._2.map(_._1.id)).toSet.size
@@ -37,7 +38,7 @@ trait GeraeteRiegenBuilder extends GeraeteOptimizer with GeraeteDistributor {
     val normalized =
       if maxRiegenSize <= 0 && splitSex == GetrennteDurchgaenge then normalizeToSingleDurchgang(rebalanced, startgeraete.size)
       else rebalanced
-    distributeToStartgeraete(programm, startgeraete, normalized)
+    distributeToStartgeraete(programm, startgeraete, normalized, disziplinGeschlecht)
   }
 
   private def packUnlimitedGemischte(
