@@ -400,7 +400,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       val txtAltersklassen = new TextField {
         prefWidth = 500
-        promptText = "Alersklassen (z.B. 6,7,9-10,AK11-20*2,25-100/10)"
+        promptText = "Alersklassen (z.B. 6,7,9-10,AK11-20/2,25-100/10)"
         text = p.altersklassen
         editable <== Bindings.createBooleanBinding(() => {
           "Individuell".equals(cmbAltersklassen.value.value) || cmbAltersklassen.selectionModel.value.isEmpty
@@ -426,7 +426,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       }
       val txtJGAltersklassen = new TextField {
         prefWidth = 500
-        promptText = "Jahrgangs Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20*2,AK25-100/10)"
+        promptText = "Jahrgangs Altersklassen (z.B. AK6,AK7,AK9-10,AK11-20/2,AK25-100/10)"
         text = p.jahrgangsklassen
         editable <== Bindings.createBooleanBinding(() => {
           "Individuell".equals(cmbJGAltersklassen.value.value) || cmbJGAltersklassen.selectionModel.value.isEmpty
