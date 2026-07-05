@@ -311,7 +311,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       state.lastWertungenPerWKDisz(durchgang.getOrElse("")),
       state.lastWertungenPerDisz(durchgang.getOrElse("")),
       state.lastBestenResults)
+      currentPlayer.foreach{
+        case (ws, playerEvent) =>
+          ref ! MediaPlayerIsReady(playerEvent.context)
+      }
       lastMediaEvent.foreach(ref ! _)
+
+
 
     // system actions
     case KeepAlive =>
