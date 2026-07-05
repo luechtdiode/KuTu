@@ -28,12 +28,12 @@ trait GeraeteRiegenBuilder extends GeraeteOptimizer with GeraeteDistributor {
       if maxRiegenSize > 0 then computeDimensions(athletensum, startgeraete.size, maxRiegenSize2)
       else (athletensum, 1)
     val splitTurnerRiegen = if maxRiegenSize > 0 then splitTurnerRiegenToMaxSize(turnerRiegen, effectiveSplitTarget) else turnerRiegen
-    val combined = combineToDurchgangSize(splitTurnerRiegen, startgeraete.size, maxRiegenSize2, splitSex, targetDiff)
-    val aligned = if combined.isEmpty then combined else handleVereinMerges(combined, maxRiegenSize2, splitSex, jahrgangGroup, targetDiff)
+    val combined = combineToDurchgangSize(splitTurnerRiegen, startgeraete.size, effectiveSplitTarget, splitSex, targetDiff)
+    val aligned = if combined.isEmpty then combined else handleVereinMerges(combined, effectiveSplitTarget, splitSex, jahrgangGroup, targetDiff)
     val targetGroupCount = math.max(1, plannedRounds * startgeraete.size)
     val compacted = compactToTargetGroupCount(aligned, targetGroupCount, maxRiegenSize2, splitSex)
     val rebalanced =
-      if maxRiegenSize <= 0 && splitSex == GemischteRiegen then rebalanceGemischte(compacted, targetDiff)
+      if splitSex == GemischteRiegen then rebalanceGemischte(compacted, targetDiff)
       else compacted
     val normalized =
       if maxRiegenSize <= 0 && splitSex == GetrennteDurchgaenge then normalizeToSingleDurchgang(rebalanced, startgeraete.size)
