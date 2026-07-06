@@ -80,7 +80,7 @@ object PageDisplayer {
 
   def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent): Unit = {
     val owner = event.source match {
-      case n: jfxs.Node if n.getScene.getRoot == KuTuApp.getStage.getScene.getRoot =>
+      case n: jfxs.Node if n.getScene != null && n.getScene.getRoot == KuTuApp.getStage.getScene.getRoot =>
         n.getScene.getWindow
       case _ =>
         KuTuApp.getStage.getScene.getWindow
