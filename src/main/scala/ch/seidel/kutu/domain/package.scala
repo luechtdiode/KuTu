@@ -422,6 +422,7 @@ package object domain {
     def toFormelPart: String = ""
 
     def toDescriptionPart: String
+    override def toString: String = toDescriptionPart.replace(" aus", " der zählenden Wertungen")
   }
 
   case object Sum extends TeamAggreateFun {
