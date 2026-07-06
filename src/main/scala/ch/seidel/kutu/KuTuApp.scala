@@ -273,16 +273,20 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
 
   private def createTeamRegelEditorField(txtTeamRegel: TextField, selectedProgramm: () => Option[ProgrammView]): HBox = new HBox {
     spacing = 5.0
-    children.addAll(
-      txtTeamRegel,
-      new Button("Bearbeiten ...") {
-        onAction = _ => {
-          val categories = categoriesForProgram(selectedProgramm())
-          TeamRegelFieldEditorDialog.edit(txtTeamRegel.text.value, categories, "Teamregel bearbeiten").foreach { formula =>
-            txtTeamRegel.text = formula
-          }
+    private val button: Button = new Button("Bearbeiten ...") {
+      prefWidth = 100
+      onAction = _ => {
+        val categories = categoriesForProgram(selectedProgramm())
+        TeamRegelFieldEditorDialog.edit(txtTeamRegel.text.value, categories, "Teamregel bearbeiten").foreach { formula =>
+          txtTeamRegel.text = formula
         }
       }
+    }
+    prefWidth = txtTeamRegel.prefWidth.value
+    txtTeamRegel.prefWidth = txtTeamRegel.prefWidth.value - button.prefWidth.value
+    children.addAll(
+      txtTeamRegel,
+      button
     )
   }
 
