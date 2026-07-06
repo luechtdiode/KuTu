@@ -8,7 +8,7 @@ import ch.seidel.kutu.data.{ResourceExchanger, Surname, mergeMissingProperties}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.*
 import ch.seidel.kutu.renderer.ServerPrintUtil
-import ch.seidel.kutu.view.WettkampfTableView
+import ch.seidel.kutu.view.{TeamRegelFieldEditorDialog, WettkampfTableView}
 import ch.seidel.kutu.view.player.Player
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
@@ -264,6 +264,28 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
   private def makeWettkampfKopierenMenu(copyFrom: WettkampfView): MenuItem = {
     makeNeuerWettkampfAnlegenMenu(Some(copyFrom))
   }
+
+  private def categoriesForProgram(programm: Option[ProgrammView]): Seq[String] = {
+    programm
+      .map(p => readWettkampfLeafs(p.id).map(_.name).distinct.sorted)
+      .getOrElse(Seq.empty)
+  }
+
+  private def createTeamRegelEditorField(txtTeamRegel: TextField, selectedProgramm: () => Option[ProgrammView]): HBox = new HBox {
+    spacing = 5.0
+    children.addAll(
+      txtTeamRegel,
+      new Button("Bearbeiten ...") {
+        onAction = _ => {
+          val categories = categoriesForProgram(selectedProgramm())
+          TeamRegelFieldEditorDialog.edit(txtTeamRegel.text.value, categories, "Teamregel bearbeiten").foreach { formula =>
+            txtTeamRegel.text = formula
+          }
+        }
+      }
+    )
+  }
+
   private def makeWettkampfBearbeitenMenu(p: WettkampfView): MenuItem = {
     makeMenuAction("Wettkampf bearbeiten") { (caption, action) =>
       given ActionEvent = action
@@ -460,7 +482,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
                 cmbAltersklassen, txtAltersklassen,
                 cmbJGAltersklassen, txtJGAltersklassen,
-                cmbTeamRegel, txtTeamRegel
+                cmbTeamRegel, createTeamRegelEditorField(txtTeamRegel, () => Option(cmbProgramm.selectionModel.value.getSelectedItem))
               )
             }
           }
@@ -1441,7 +1463,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
                 cmbAltersklassen, txtAltersklassen,
                 cmbJGAltersklassen, txtJGAltersklassen,
-                cmbTeamRegel, txtTeamRegel
+                cmbTeamRegel, createTeamRegelEditorField(txtTeamRegel, () => Option(cmbProgramm.selectionModel.value.getSelectedItem))
               )
             }
           }

@@ -108,6 +108,24 @@ class TeamRegelTest extends AnyWordSpec with Matchers {
     wertungView.toWertung.reserve shouldBe None
   }
 
+  "VerbandGerät[M+W](devmax/2/*/TeamA+TeamB)" in {
+    val regel = TeamRegel("VerbandGerät[M+W](devmax/2/*/TeamA+TeamB)")
+    assert(regel.teamsAllowed)
+    assert(regel.toFormel == "VerbandGerät[M+W](devmax/2/*/TeamA+TeamB)")
+  }
+
+  "Mehrere Regeln werden normalisiert serialisiert" in {
+    val regel = TeamRegel("VereinGesamt(3/4), VerbandGesamt(avg/*/*)")
+    assert(regel.teamsAllowed)
+    assert(regel.toFormel == "VereinGesamt(3/4),VerbandGesamt(avg/*/*)")
+  }
+
+  "VereinGesamt[M+W/K6+K7](avg/2/4/Team A+Team B+Team C)" in {
+    val regel = TeamRegel("VereinGesamt[M+W/K6+K7](avg/2/4/Team A+Team B+Team C)")
+    assert(regel.teamsAllowed)
+    assert(regel.toFormel == "VereinGesamt[M+W/K6+K7](avg/2/4/Team A+Team B+Team C)")
+  }
+
   "Test all predefined Rules" in {
     for( definition <- predefined) {
       val (description, formula) = definition
