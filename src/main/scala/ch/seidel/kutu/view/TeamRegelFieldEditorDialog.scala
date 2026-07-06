@@ -11,7 +11,8 @@ import scalafx.scene.layout.{FlowPane, HBox, Priority, VBox}
 import scala.collection.mutable.ArrayBuffer
 
 object TeamRegelFieldEditorDialog {
-  private val RuleTypes = Seq("Keine Teams", "VereinGesamt", "VereinGerät", "VerbandGesamt", "VerbandGerät")
+  private val RuleTypes1 = Seq("Keine Teams", "Aus Verein", "Aus Verband")
+  private val RuleTypes2 = Seq("Gesamtwertung", "Gerätewertung")
   private val Aggregates = Seq(
     Sum,
     Avg,
@@ -22,7 +23,8 @@ object TeamRegelFieldEditorDialog {
     DevMax)
 
   private case class StructuredRule(
-      ruleType: String,
+      ruleType1: String,
+      ruleType2: String,
       aggregate: TeamAggreateFun,
       min: String,
       max: String,
@@ -86,7 +88,7 @@ object TeamRegelFieldEditorDialog {
       currentFormulaCandidate() match {
         case Right(value) =>
           preview.text = value
-          status.text = if value.isEmpty then "Keine Teams" else "OK"
+          status.text = if value.isEmpty then "Keine Teams" else "Formel OK"
           if okButton != null then okButton.setDisable(false)
         case Left(msg) =>
           preview.text = ""
@@ -138,8 +140,11 @@ object TeamRegelFieldEditorDialog {
           val cur = rulesModel(idx)
           rulesModel.update(idx, rulesModel(idx - 1))
           rulesModel.update(idx - 1, cur)
+          rulesList.items.value.update(idx, rulesModel(idx).summary)
+          rulesList.items.value.update(idx - 1, rulesModel(idx - 1).summary)
+
           rulesList.selectionModel.value.select(idx - 1)
-          refreshList()
+          updateState()
         }
       }
     }
@@ -152,8 +157,10 @@ object TeamRegelFieldEditorDialog {
           val cur = rulesModel(idx)
           rulesModel.update(idx, rulesModel(idx + 1))
           rulesModel.update(idx + 1, cur)
+          rulesList.items.value.update(idx, rulesModel(idx).summary)
+          rulesList.items.value.update(idx+1, rulesModel(idx + 1).summary)
           rulesList.selectionModel.value.select(idx + 1)
-          refreshList()
+          updateState()
         }
       }
     }
@@ -178,7 +185,7 @@ object TeamRegelFieldEditorDialog {
         new Label("Regeln"),
         rulesList,
         controls,
-        new Label("Serialisierte Teamregel"),
+        new Label("Formel der Teamregel"),
         preview,
         status
       )
@@ -207,9 +214,13 @@ object TeamRegelFieldEditorDialog {
   }
 
   private def editRule(initial: Option[StructuredRule], availableCategories: Seq[String]): Option[StructuredRule] = {
-    val ruleType = new ComboBox[String] {
-      items = ObservableBuffer.from(RuleTypes)
-      value = initial.map(_.ruleType).getOrElse("VereinGesamt")
+    val ruleType1 = new ComboBox[String] {
+      items = ObservableBuffer.from(RuleTypes1)
+      value = initial.map(_.ruleType1).getOrElse("Aus Verein")
+    }
+    val ruleType2 = new ComboBox[String] {
+      items = ObservableBuffer.from(RuleTypes2)
+      value = initial.map(_.ruleType2).getOrElse("Gesamtwertung")
     }
     val aggregate = new ComboBox[TeamAggreateFun] {
       items = ObservableBuffer.from(Aggregates)
@@ -243,8 +254,9 @@ object TeamRegelFieldEditorDialog {
     var okButton: javafx.scene.control.Button = null
 
     def buildRuleCandidate(): Either[String, StructuredRule] = {
-      val selectedRule = Option(ruleType.value.value).getOrElse("VereinGesamt")
-      if selectedRule == "Keine Teams" then Right(StructuredRule("Keine Teams", Sum, "*", "*", includeSexGrouping = false, Set.empty, Nil))
+      val selectedRule1 = Option(ruleType1.value.value).getOrElse("Aus Verein")
+      val selectedRule2 = Option(ruleType2.value.value).getOrElse("Gesamtwertung")
+      if selectedRule1 == "Keine Teams" then Right(StructuredRule("Keine Teams", "", Sum, "*", "*", includeSexGrouping = false, Set.empty, Nil))
       else {
         for
           minVal <- normalizeToken(min.text.value).toRight("Min muss '*' oder eine positive Zahl sein.")
@@ -254,7 +266,7 @@ object TeamRegelFieldEditorDialog {
           val teams = Option(extraTeams.text.value)
             .map(_.split("[,\n\r;]").toList.map(_.trim).filter(_.nonEmpty).distinct)
             .getOrElse(Nil)
-          StructuredRule(selectedRule, aggregate.value.value, minVal, maxVal, includeSex.selected.value, selectedCategories, teams)
+          StructuredRule(selectedRule1, selectedRule2, aggregate.value.value, minVal, maxVal, includeSex.selected.value, selectedCategories, teams)
         }
       }
     }
@@ -288,14 +300,15 @@ object TeamRegelFieldEditorDialog {
       spacing = 8
       padding = Insets(10)
       children = Seq(
-        new Label("Regeltyp"), ruleType,
-        new Label("Berechnung (Aggregatfunktion)"), aggregate,
+        new Label("Gruppierung der Teams"), ruleType1,
+        new Label("Auswahl der Wertungen"), ruleType2,
+        new Label("Teamresultat Berechnung (Aggregatfunktion)"), aggregate,
         new Label("Mind. Anzahl Teilnehmer/-Innen, zählende Resultate"), min,
         new Label("Max Anzahl Teilnehmer/-Innen"), max,
         includeSex
       ) ++ (if availableCategories.nonEmpty then Seq(new Label("Kategorien"), categoryPane) else Seq.empty) ++ Seq(
         new Label("Gemischte Teams"), extraTeams,
-        new Label("Serialisierte Regel"), preview,
+        new Label("Formel der Regel"), preview,
         status
       )
     }
@@ -306,7 +319,8 @@ object TeamRegelFieldEditorDialog {
     dialog.getDialogPane.setContent(panel.delegate)
     okButton = dialog.getDialogPane.lookupButton(jfxsc.ButtonType.OK).asInstanceOf[javafx.scene.control.Button]
 
-    ruleType.value.onChange(updateState())
+    ruleType1.value.onChange(updateState())
+    ruleType2.value.onChange(updateState())
     aggregate.value.onChange(updateState())
     min.text.onChange(updateState())
     max.text.onChange(updateState())
@@ -335,25 +349,26 @@ object TeamRegelFieldEditorDialog {
   }
 
   private def parseRuleToken(token: String, categories: Set[String]): Option[StructuredRule] = {
-    if token.equalsIgnoreCase("Keine Teams") then Some(StructuredRule("Keine Teams", Sum, "*", "*", includeSexGrouping = false, Set.empty, Nil))
+    if token.equalsIgnoreCase("Keine Teams") then Some(StructuredRule("Keine Teams",  "", Sum, "*", "*", includeSexGrouping = false, Set.empty, Nil))
     else {
       val parsed = TeamRegel(token)
       parsed.getTeamRegeln.toList match {
         case (r: TeamRegelVereinGesamt) :: Nil =>
-          mapRule("VereinGesamt", r.min, r.max, r.aggregateFun, r.grouperDef, r.extraTeamsDef, categories, token)
+          mapRule("Aus Verein", "Gesamtwertung", r.min, r.max, r.aggregateFun, r.grouperDef, r.extraTeamsDef, categories, token)
         case (r: TeamRegelVereinGeraet) :: Nil =>
-          mapRule("VereinGerät", r.min, r.max, r.aggregateFun, r.grouperDef, r.extraTeamsDef, categories, token)
+          mapRule("Aus Verein", "Gerätwertung", r.min, r.max, r.aggregateFun, r.grouperDef, r.extraTeamsDef, categories, token)
         case (r: TeamRegelVerbandGesamt) :: Nil =>
-          mapRule("VerbandGesamt", r.min, r.max, r.aggregateFun, r.grouperDef, r.extraTeamsDef, categories, token)
+          mapRule("Aus Verband", "Gesamtwertung", r.min, r.max, r.aggregateFun, r.grouperDef, r.extraTeamsDef, categories, token)
         case (r: TeamRegelVerbandGeraet) :: Nil =>
-          mapRule("VerbandGerät", r.min, r.max, r.aggregateFun, r.grouperDef, r.extraTeamsDef, categories, token)
+          mapRule("Aus Verband", "Gerätwertung", r.min, r.max, r.aggregateFun, r.grouperDef, r.extraTeamsDef, categories, token)
         case _ => None
       }
     }
   }
 
   private def mapRule(
-      ruleType: String,
+      ruleType1: String,
+      ruleType2: String,
       min: Int,
       max: Int,
       aggregate: TeamAggreateFun,
@@ -376,7 +391,8 @@ object TeamRegelFieldEditorDialog {
     if unsupported.nonEmpty || categoryGroups.size > 1 || sexGroups.size > 1 then None
     else {
       val candidate = StructuredRule(
-        ruleType = ruleType,
+        ruleType1 = ruleType1,
+        ruleType2 = ruleType2,
         aggregate = aggregate,
         min = asToken(min),
         max = asToken(max),
@@ -415,8 +431,16 @@ object TeamRegelFieldEditorDialog {
   }
 
   private def ruleToFormula(rule: StructuredRule): String = {
-    if rule.ruleType == "Keine Teams" then ""
+    if rule.ruleType1 == "Keine Teams" then ""
     else {
+      val rt1 = rule.ruleType1 match {
+        case "Aus Verband" => "Verband"
+        case _ => "Verein"
+      }
+      val rt2 = rule.ruleType2 match {
+        case "Gesamtwertung" => "Gesamt"
+        case _ => "Gerät"
+      }
       val groups = {
         val terms = ArrayBuffer.empty[String]
         if rule.includeSexGrouping then terms += "M+W"
@@ -425,7 +449,7 @@ object TeamRegelFieldEditorDialog {
       }
       val groupPart = if groups.isEmpty then "" else s"[${groups.mkString("/")}]"
       val extraTeamsPart = if rule.extraTeams.isEmpty then "" else s"/${rule.extraTeams.mkString("+")}"
-      s"${rule.ruleType}$groupPart(${aggregatePrefix(rule.aggregate)}${rule.min}/${rule.max}$extraTeamsPart)"
+      s"$rt1$rt2$groupPart(${aggregatePrefix(rule.aggregate)}${rule.min}/${rule.max}$extraTeamsPart)"
     }
   }
 

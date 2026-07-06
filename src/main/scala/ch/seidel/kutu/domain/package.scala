@@ -622,23 +622,27 @@ package object domain {
   }
 
   object Altersklasse {
+    val rangeStepPattern: Regex = "([\\D\\s]*)([0-9]+)-([0-9]+)/([0-9]+)".r
+    val rangepattern : Regex= "([\\D\\s]*)([0-9]+)-([0-9]+)".r
+    val intpattern: Regex = "([\\D\\s]*)([0-9]+)".r
+    val qualifierPattern: Regex = "(.*)\\(([\\D\\s]+)\\)".r
 
     // file:///C:/Users/Roland/Downloads/Turn10-2018_Allgemeine%20Bestimmungen.pdf
-    val akExpressionTurn10 = "AK7-18,AK24,AK30-100/5"
+    val akExpressionTurn10: String = "AK7-18,AK24,AK30-100/5"
     val altersklassenTurn10: Seq[(String, Seq[Nothing], Int)] = Seq(
       6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100
     ).map(i => ("AK", Seq(), i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/Passwesen/Wettkampfordnung_DTB_2021.pdf
-    val akDTBExpression = "AK6,AK18,AK22,AK25"
+    val akDTBExpression: String = "AK6,AK18,AK22,AK25"
     val altersklassenDTB: Seq[(String, Seq[Nothing], Int)] = Seq(
       6, 18, 22, 25
     ).map(i => ("AK", Seq(), i))
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/TURNEN/Standards/PDFs/Rahmentrainingskonzeption-GTm_inklAnlagen_19.11.2020.pdf
-    val akDTBPflichtExpression = "AK8-9,AK11-19/2"
+    val akDTBPflichtExpression: String = "AK8-9,AK11-19/2"
     val altersklassenDTBPflicht: Seq[(String, Seq[Nothing], Int)] = Seq(
       7, 8, 9, 11, 13, 15, 17, 19
     ).map(i => ("AK", Seq(), i))
-    val akDTBKuerExpression = "AK13-19/2"
+    val akDTBKuerExpression: String = "AK13-19/2"
     val altersklassenDTBKuer: Seq[(String, Seq[Nothing], Int)] = Seq(
       12, 13, 15, 17, 19
     ).map(i => ("AK", Seq(), i))
@@ -682,10 +686,6 @@ package object domain {
       AKWBS(W+BS)7,8,9,10,12,16,AKMBS(M+BS)8,10,15
 
        */
-      val rangeStepPattern = "([\\D\\s]*)([0-9]+)-([0-9]+)/([0-9]+)".r
-      val rangepattern = "([\\D\\s]*)([0-9]+)-([0-9]+)".r
-      val intpattern = "([\\D\\s]*)([0-9]+)".r
-      val qualifierPattern = "(.*)\\(([\\D\\s]+)\\)".r
 
       def bez(b: String): (String, Seq[String]) = if b.nonEmpty then {
         b match {
