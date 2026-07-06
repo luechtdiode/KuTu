@@ -4,7 +4,7 @@ import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.view.*
 import ch.seidel.kutu.{KuTuApp, KuTuAppTree}
 import javafx.scene as jfxs
-import javafx.scene.input.{KeyCode, KeyEvent}
+import javafx.scene.control as jfxsc
 import org.slf4j.{Logger, LoggerFactory}
 import scalafx.Includes.*
 import scalafx.application.Platform
@@ -14,8 +14,8 @@ import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.control.*
 import scalafx.scene.image.*
 import scalafx.scene.layout.*
-import scalafx.scene.{Node, Scene}
-import scalafx.stage.{Modality, Stage}
+import scalafx.scene.Node
+import scalafx.stage.Modality
 
 import java.io.StringWriter
 import scala.concurrent.duration.Duration
@@ -29,90 +29,67 @@ import scala.concurrent.{Await, Promise}
 object PageDisplayer {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent): Unit = {
-    val buttons = commands :+ new Button(if commands.isEmpty then "Schliessen" else "Abbrechen")
-    // Create dialog
-    val dialogStage = new Stage {
-      outer =>
-      {
-        initModality(Modality.WindowModal)
-        event.source match {
-          case n: jfxs.Node if n.getScene.getRoot == KuTuApp.getStage.getScene.getRoot =>
-            delegate.initOwner(n.getScene.getWindow)
-          case _ =>
-            delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
-        }
-
-        title = tit
-        scene = new Scene {
-          root = new BorderPane {
-            padding = Insets(15)
-            center = nodeToAdd.getPage
-            bottom = new HBox {
-              prefHeight = 50
-              alignment = Pos.BottomRight
-              hgrow = Priority.Always
-              children = buttons
-            }
-            var first = false
-            buttons.foreach { btn =>
-              if !first then {
-                first = true
-                btn.defaultButton = true
-              }
-              btn.minWidth = 100
-              btn.filterEvent(ActionEvent.Action) { () => outer.close() }
-            }
-          }
-        }
-      }
+  private def toButtonType(button: Button, isPrimary: Boolean): jfxsc.ButtonType = {
+    val caption = Option(button.text.value).getOrElse("")
+    caption.trim.toLowerCase match {
+      case "ok" => jfxsc.ButtonType.OK
+      case "abbrechen" | "cancel" => jfxsc.ButtonType.CANCEL
+      case "schliessen" | "schließen" | "close" => jfxsc.ButtonType.CLOSE
+      case _ => new jfxsc.ButtonType(caption, if isPrimary then jfxsc.ButtonBar.ButtonData.OK_DONE else jfxsc.ButtonBar.ButtonData.OTHER)
     }
-    dialogStage.delegate.addEventHandler(KeyEvent.KEY_RELEASED, (event: KeyEvent) => {
-      if KeyCode.ESCAPE eq event.getCode then dialogStage.close()
+  }
+
+  private def showDialog(tit: String, nodeToAdd: DisplayablePage, owner: javafx.stage.Window, commands: Seq[Button]): Unit = {
+    val content = new BorderPane {
+      padding = Insets(15)
+      center = nodeToAdd.getPage
+    }
+
+    val dialog = new jfxsc.Dialog[Unit]()
+    dialog.setTitle(tit)
+    dialog.initModality(Modality.WindowModal)
+    dialog.initOwner(owner)
+    dialog.getDialogPane.setContent(content.delegate)
+
+    val commandButtons = commands.toSeq
+    val commandMappings = commandButtons.zipWithIndex.map { case (btn, idx) =>
+      val buttonType = toButtonType(btn, idx == 0)
+      (buttonType, btn, idx)
+    }
+    val hasCancelOrClose = commandMappings.exists(m => m._1 == jfxsc.ButtonType.CANCEL || m._1 == jfxsc.ButtonType.CLOSE)
+    val fallbackButtonType = if commandMappings.isEmpty then jfxsc.ButtonType.CLOSE else jfxsc.ButtonType.CANCEL
+    val allButtonTypes = commandMappings.map(_._1) ++ (if hasCancelOrClose then Seq.empty else Seq(fallbackButtonType))
+    dialog.getDialogPane.getButtonTypes.addAll(allButtonTypes*)
+
+    commandMappings.foreach { case (buttonType, sourceButton, idx) =>
+      val dialogButton = dialog.getDialogPane.lookupButton(buttonType).asInstanceOf[javafx.scene.control.Button]
+      dialogButton.setMinWidth(100)
+      if idx == 0 then dialogButton.setDefaultButton(true)
+      dialogButton.disableProperty().bind(sourceButton.disable.delegate)
+    }
+
+    dialog.setResultConverter(dialogButton => {
+      commandMappings.find(_._1 == dialogButton).foreach { case (_, sourceButton, _) =>
+        sourceButton.fire()
+      }
+      ()
     })
 
-    // Show dialog and wait till it is closed
-    dialogStage.showAndWait()
+    dialog.showAndWait()
+  }
+
+  def showInDialog(tit: String, nodeToAdd: DisplayablePage, commands: Button*)(implicit event: ActionEvent): Unit = {
+    val owner = event.source match {
+      case n: jfxs.Node if n.getScene.getRoot == KuTuApp.getStage.getScene.getRoot =>
+        n.getScene.getWindow
+      case _ =>
+        KuTuApp.getStage.getScene.getWindow
+    }
+    showDialog(tit, nodeToAdd, owner, commands)
   }
 
   def showInDialogFromRoot(tit: String, nodeToAdd: DisplayablePage, commands: Button*): Unit = {
-    val buttons = commands :+ new Button(if commands.isEmpty then "Schliessen" else "Abbrechen")
-    // Create dialog
-    val dialogStage = new Stage {
-      outer =>
-      {
-        initModality(Modality.WindowModal)
-        delegate.initOwner(KuTuApp.getStage.getScene.getWindow)
-
-        title = tit
-        scene = new Scene {
-          root = new BorderPane {
-            padding = Insets(15)
-            center = nodeToAdd.getPage
-            bottom = new HBox {
-              prefHeight = 50
-              alignment = Pos.BottomRight
-              hgrow = Priority.Always
-              children = buttons
-            }
-            var first = false
-            buttons.foreach { btn =>
-              if !first then {
-                first = true
-                btn.defaultButton = true
-              }
-              btn.minWidth = 100
-              btn.filterEvent(ActionEvent.Action) { () => outer.close() }
-            }
-          }
-        }
-      }
-    }
-    dialogStage.delegate.addEventHandler(KeyEvent.KEY_RELEASED, (event: KeyEvent) => {
-      if KeyCode.ESCAPE eq event.getCode then dialogStage.close()
-    })
-    // Show dialog and wait till it is closed
-    dialogStage.showAndWait()
+    showDialog(tit, nodeToAdd, KuTuApp.getStage.getScene.getWindow, commands)
   }
 
   /*
