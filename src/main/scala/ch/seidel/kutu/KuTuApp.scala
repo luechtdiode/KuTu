@@ -8,7 +8,13 @@ import ch.seidel.kutu.data.{ResourceExchanger, Surname, mergeMissingProperties}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.*
 import ch.seidel.kutu.renderer.ServerPrintUtil
-import ch.seidel.kutu.view.{TeamRegelFieldEditorDialog, WettkampfTableView}
+import ch.seidel.kutu.view.{
+  AltersklassenFieldEditorDialog,
+  PunktegleichstandsregelFieldEditorDialog,
+  RiegenRotationsregelFieldEditorDialog,
+  TeamRegelFieldEditorDialog,
+  WettkampfTableView
+}
 import ch.seidel.kutu.view.player.Player
 import javafx.beans.property.SimpleObjectProperty
 import javafx.concurrent.Task
@@ -271,6 +277,18 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       .getOrElse(Seq.empty)
   }
 
+  private def disziplinenForProgram(programm: Option[ProgrammView], fallbackWettkampf: Option[WettkampfView] = None): Seq[String] = {
+    programm match {
+      case Some(pgm) =>
+        val basis = fallbackWettkampf
+          .map(_.toWettkampf.copy(programmId = pgm.id))
+          .getOrElse(Wettkampf(0L, None, new java.sql.Date(0L), "", pgm.id, 0, BigDecimal(0), "", None, None, None, None, None))
+        Await.result(listDisziplinZuWettkampf(basis), Duration.Inf).map(_.name).distinct
+      case None =>
+        fallbackWettkampf.map(wk => listDisziplinesZuWettkampf(wk.id).map(_.name).distinct).getOrElse(Seq.empty)
+    }
+  }
+
   private def createTeamRegelEditorField(txtTeamRegel: TextField, selectedProgramm: () => Option[ProgrammView]): HBox = new HBox {
     spacing = 5.0
     private val button: Button = new Button("Bearbeiten ...") {
@@ -286,6 +304,60 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     txtTeamRegel.prefWidth = txtTeamRegel.prefWidth.value - button.prefWidth.value
     children.addAll(
       txtTeamRegel,
+      button
+    )
+  }
+
+  private def createAltersklassenEditorField(txtAltersklassen: TextField, title: String): HBox = new HBox {
+    spacing = 5.0
+    private val button: Button = new Button("Bearbeiten ...") {
+      prefWidth = 100
+      onAction = _ => {
+        AltersklassenFieldEditorDialog.edit(txtAltersklassen.text.value, title).foreach { formula =>
+          txtAltersklassen.text = formula
+        }
+      }
+    }
+    prefWidth = txtAltersklassen.prefWidth.value
+    txtAltersklassen.prefWidth = txtAltersklassen.prefWidth.value - button.prefWidth.value
+    children.addAll(
+      txtAltersklassen,
+      button
+    )
+  }
+
+  private def createRiegenRotationsregelEditorField(txtRotation: TextField): HBox = new HBox {
+    spacing = 5.0
+    private val button: Button = new Button("Bearbeiten ...") {
+      prefWidth = 100
+      onAction = _ => {
+        RiegenRotationsregelFieldEditorDialog.edit(txtRotation.text.value, "Riegenrotationsregel bearbeiten").foreach { formula =>
+          txtRotation.text = formula
+        }
+      }
+    }
+    prefWidth = txtRotation.prefWidth.value
+    txtRotation.prefWidth = txtRotation.prefWidth.value - button.prefWidth.value
+    children.addAll(
+      txtRotation,
+      button
+    )
+  }
+
+  private def createPunktegleichstandsregelEditorField(txtRegel: TextField, selectedDisziplinen: () => Seq[String]): HBox = new HBox {
+    spacing = 5.0
+    private val button: Button = new Button("Bearbeiten ...") {
+      prefWidth = 100
+      onAction = _ => {
+        PunktegleichstandsregelFieldEditorDialog.edit(txtRegel.text.value, "Punktegleichstandsregel bearbeiten", selectedDisziplinen()).foreach { formula =>
+          txtRegel.text = formula
+        }
+      }
+    }
+    prefWidth = txtRegel.prefWidth.value
+    txtRegel.prefWidth = txtRegel.prefWidth.value - button.prefWidth.value
+    children.addAll(
+      txtRegel,
       button
     )
   }
@@ -482,10 +554,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
-                cmbRiegenRotationsregel, txtRiegenRotationsregel,
-                cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
-                cmbAltersklassen, txtAltersklassen,
-                cmbJGAltersklassen, txtJGAltersklassen,
+                cmbRiegenRotationsregel, createRiegenRotationsregelEditorField(txtRiegenRotationsregel),
+                cmbPunktgleichstandsregel, createPunktegleichstandsregelEditorField(txtPunktgleichstandsregel, () => disziplinenForProgram(Option(cmbProgramm.selectionModel.value.getSelectedItem), Some(p))),
+                cmbAltersklassen, createAltersklassenEditorField(txtAltersklassen, "Altersklassen bearbeiten"),
+                cmbJGAltersklassen, createAltersklassenEditorField(txtJGAltersklassen, "Jahrgangsaltersklassen bearbeiten"),
                 cmbTeamRegel, createTeamRegelEditorField(txtTeamRegel, () => Option(cmbProgramm.selectionModel.value.getSelectedItem))
               )
             }
@@ -1463,10 +1535,10 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
                 new Label(txtNotificationEMail.promptText.value), txtNotificationEMail,
                 new Label(txtAuszeichnung.promptText.value), txtAuszeichnung,
                 new Label(txtAuszeichnungEndnote.promptText.value), txtAuszeichnungEndnote,
-                cmbRiegenRotationsregel, txtRiegenRotationsregel,
-                cmbPunktgleichstandsregel, txtPunktgleichstandsregel,
-                cmbAltersklassen, txtAltersklassen,
-                cmbJGAltersklassen, txtJGAltersklassen,
+                cmbRiegenRotationsregel, createRiegenRotationsregelEditorField(txtRiegenRotationsregel),
+                cmbPunktgleichstandsregel, createPunktegleichstandsregelEditorField(txtPunktgleichstandsregel, () => disziplinenForProgram(Option(cmbProgramm.selectionModel.value.getSelectedItem), copyFrom)),
+                cmbAltersklassen, createAltersklassenEditorField(txtAltersklassen, "Altersklassen bearbeiten"),
+                cmbJGAltersklassen, createAltersklassenEditorField(txtJGAltersklassen, "Jahrgangsaltersklassen bearbeiten"),
                 cmbTeamRegel, createTeamRegelEditorField(txtTeamRegel, () => Option(cmbProgramm.selectionModel.value.getSelectedItem))
               )
             }
