@@ -65,6 +65,7 @@ object TestDBService {
       , "AddWKProgrammBestOfCount-sqllite.sql"
       , "AddScoreTemplateTable-sqllite.sql"
       , "AddWertugMediaFile-sqllite.sql"
+      , "AddCreatorMetaToWettkampf-sqllite.sql"
     )
     installDBFunctions(tempDatabase)
 

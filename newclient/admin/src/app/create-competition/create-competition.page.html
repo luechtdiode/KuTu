@@ -1,0 +1,214 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Neuen Wettkampf anlegen</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-list>
+
+    <ion-item>
+      <ion-label position="stacked">Datum</ion-label>
+      <ion-datetime
+        presentation="date"
+        [(ngModel)]="form.datum"
+        [value]="form.datum"
+      ></ion-datetime>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Titel</ion-label>
+      <ion-input [(ngModel)]="form.titel" placeholder="z.B. Gaumeisterschaft 2026"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Programm</ion-label>
+      <ion-select
+        [(ngModel)]="form.programmId"
+        placeholder="Wähle ein Programm"
+        interface="popover"
+        (ngModelChange)="onProgramChange()"
+      >
+        @for (p of programme; track p.id) {
+          <ion-select-option [value]="p.id">{{ p.name }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Benachrichtigungs-Email</ion-label>
+      <ion-input
+        type="email"
+        [(ngModel)]="form.notificationEMail"
+        placeholder="email@beispiel.de"
+      ></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Auszeichnung (%)</ion-label>
+      <ion-input
+        type="number"
+        [(ngModel)]="form.auszeichnung"
+        placeholder="40"
+      ></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Auszeichnung Endnote</ion-label>
+      <ion-input
+        type="number"
+        step="0.1"
+        [(ngModel)]="form.auszeichnungendnote"
+        placeholder="0"
+      ></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Altersklassen-Regel</ion-label>
+      <ion-select
+        slot="start"
+        interface="popover"
+        style="max-width: 140px;"
+        [value]="altersklassenPreset"
+        (ionChange)="applyPreset('altersklassen', $event.detail.value, PRESETS_ALTERSKLASSEN)"
+      >
+        @for (p of PRESETS_ALTERSKLASSEN; track p.label) {
+          <ion-select-option [value]="p.label">{{ p.label }}</ion-select-option>
+        }
+      </ion-select>
+      <ion-input [(ngModel)]="form.altersklassen" placeholder="z.B. AK6,AK7,AK9-10"></ion-input>
+      <ion-button slot="end" fill="clear" (click)="openAltersklassenEditor('altersklassen')">
+        <ion-icon name="create" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Jahrgangs-Altersklassen-Regel</ion-label>
+      <ion-select
+        slot="start"
+        interface="popover"
+        style="max-width: 140px;"
+        [value]="jahrgangsklassenPreset"
+        (ionChange)="applyPreset('jahrgangsklassen', $event.detail.value, PRESETS_ALTERSKLASSEN)"
+      >
+        @for (p of PRESETS_ALTERSKLASSEN; track p.label) {
+          <ion-select-option [value]="p.label">{{ p.label }}</ion-select-option>
+        }
+      </ion-select>
+      <ion-input [(ngModel)]="form.jahrgangsklassen" placeholder="z.B. AK6,AK7,AK9-10"></ion-input>
+      <ion-button slot="end" fill="clear" (click)="openAltersklassenEditor('jahrgangsklassen')">
+        <ion-icon name="create" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Punktegleichstands-Regel</ion-label>
+      <ion-select
+        slot="start"
+        interface="popover"
+        style="max-width: 140px;"
+        [value]="punktegleichstandsregelPreset"
+        (ionChange)="applyPreset('punktegleichstandsregel', $event.detail.value, PRESETS_PUNKTEGLEICHSTANDSREGEL)"
+      >
+        @for (p of PRESETS_PUNKTEGLEICHSTANDSREGEL; track p.label) {
+          <ion-select-option [value]="p.label">{{ shortLabel(p.label) }}</ion-select-option>
+        }
+      </ion-select>
+      <ion-input [(ngModel)]="form.punktegleichstandsregel" placeholder="z.B. E-Note-Summe/D-Note-Summe"></ion-input>
+      <ion-button slot="end" fill="clear" (click)="openPunktegleichstandsregelEditor()">
+        <ion-icon name="create" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Riegen-Rotations-Regel</ion-label>
+      <ion-select
+        slot="start"
+        interface="popover"
+        style="max-width: 140px;"
+        [value]="rotationPreset"
+        (ionChange)="applyPreset('rotation', $event.detail.value, PRESETS_ROTATION)"
+      >
+        @for (p of PRESETS_ROTATION; track p.label) {
+          <ion-select-option [value]="p.label">{{ shortLabel(p.label) }}</ion-select-option>
+        }
+      </ion-select>
+      <ion-input [(ngModel)]="form.rotation" placeholder="z.B. Einfach/Rotierend"></ion-input>
+      <ion-button slot="end" fill="clear" (click)="openRiegenRotationsregelEditor()">
+        <ion-icon name="create" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Team-Regel</ion-label>
+      <ion-select
+        slot="start"
+        interface="popover"
+        style="max-width: 140px;"
+        [value]="teamrulePreset"
+        (ionChange)="applyPreset('teamrule', $event.detail.value, PRESETS_TEAMREGEL)"
+      >
+        @for (p of PRESETS_TEAMREGEL; track p.label) {
+          <ion-select-option [value]="p.label">{{ shortLabel(p.label) }}</ion-select-option>
+        }
+      </ion-select>
+      <ion-input [(ngModel)]="form.teamrule" placeholder="z.B. VereinGerät(3/4)"></ion-input>
+      <ion-button slot="end" fill="clear" (click)="openTeamregelEditor()">
+        <ion-icon name="create" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-item>
+
+    <ion-item-divider>
+      <ion-label>Ersteller-Informationen</ion-label>
+    </ion-item-divider>
+
+    <ion-item>
+      <ion-label position="stacked">Name *</ion-label>
+      <ion-input [(ngModel)]="form.creatorName" placeholder="Vor- und Nachname"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Adresse *</ion-label>
+      <ion-textarea
+        [(ngModel)]="form.creatorAddress"
+        placeholder="Strasse, PLZ, Ort"
+        rows="2"
+      ></ion-textarea>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Telefon *</ion-label>
+      <ion-input
+        type="tel"
+        [(ngModel)]="form.creatorPhone"
+        placeholder="+49 123 456789"
+      ></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label>
+        <p>Ich akzeptiere die <a href="#" (click)="showTerms($event)">Nutzungsbedingungen</a> *</p>
+      </ion-label>
+      <ion-checkbox
+        slot="end"
+        [(ngModel)]="form.termsAccepted"
+      ></ion-checkbox>
+    </ion-item>
+  </ion-list>
+
+  <ion-button
+    expand="block"
+    class="ion-margin-top"
+    [disabled]="!isValid() || submitting"
+    (click)="submit()"
+  >
+    Wettkampf anlegen
+  </ion-button>
+
+  <ion-note color="medium" class="ion-padding-top" style="display:block;">
+    Nach dem Anlegen wird eine Bestätigungs-Email an die angegebene Adresse gesendet.
+    Der Wettkampf wird erst nach Bestätigung aktiv (24h Timeout).
+  </ion-note>
+</ion-content>

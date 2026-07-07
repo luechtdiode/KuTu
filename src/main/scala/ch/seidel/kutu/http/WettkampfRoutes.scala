@@ -278,6 +278,55 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
           }
         }
       } ~
+      pathPrefixLabeled("admin" / "competition", "admin/competition") {
+        pathEnd {
+          post {
+            extractUri { uri =>
+              entity(as[AdminCreateCompetitionRequest]) { request =>
+                if (!request.termsAccepted) {
+                  complete(StatusCodes.BadRequest, "Terms of use must be accepted")
+                } else {
+                  val uuid = java.util.UUID.randomUUID().toString
+                  onComplete(Future {
+                    val wettkampf = createWettkampf(
+                      datum = request.datum,
+                      titel = request.titel,
+                      programmId = Set(request.programmId),
+                      notificationEMail = request.notificationEMail,
+                      auszeichnung = request.auszeichnung,
+                      auszeichnungendnote = request.auszeichnungendnote,
+                      uuidOption = Some(uuid),
+                      altersklassen = request.altersklassen,
+                      jahrgangsklassen = request.jahrgangsklassen,
+                      punktegleichstandsregel = request.punktegleichstandsregel,
+                      rotation = request.rotation,
+                      teamrule = request.teamrule,
+                      creatorName = Some(request.creatorName),
+                      creatorAddress = Some(request.creatorAddress),
+                      creatorPhone = Some(request.creatorPhone),
+                      termsAccepted = true,
+                      termsAcceptedAt = Some(new java.sql.Timestamp(System.currentTimeMillis())),
+                      termsVersion = Some(request.termsVersion)
+                    )
+                    val claims = setClaims(uuid, Int.MaxValue)
+                    val secret = JsonWebToken(jwtHeader, claims, jwtSecretKey)
+                    wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, secret)
+                    val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
+                    val link = s"$decodedorigin/api/registrations/$uuid/approvemail?mail=${encodeURIParam(request.notificationEMail)}"
+                    CompetitionRegistrationClientActor.publish(CompetitionCreated(uuid, link), clientId)
+                    AdminCreateCompetitionResponse(uuid, request.titel, request.datum, secret)
+                  }) {
+                    case Success(response) => complete(response.toJson)
+                    case Failure(e) =>
+                      log.error(e, "Failed to create competition")
+                      complete(StatusCodes.InternalServerError, s"Failed to create competition: ${e.getMessage}")
+                  }
+                }
+              }
+            }
+          }
+        }
+      } ~
       pathLabeled("competition" / "ws", "competition/ws") {
         pathEnd {
           (authenticated() & parameters(Symbol("lastSequenceId").?)) { (wettkampfUUID, lastSequenceId: Option[String]) =>
@@ -299,6 +348,14 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
             complete(listRootProgrammeAsync.map(list => list.map(pv => {
               ProgrammRaw(pv.id, pv.name, pv.aggregate, pv.parent.map(_.id).getOrElse(0L), pv.ord, pv.alterVon, pv.alterBis, pv.uuid, pv.riegenmode, pv.bestOfCount)
             }).toJson))
+          }
+        } ~ pathPrefixLabeled("programmdisziplinen" / LongNumber, "programmdisziplinen/:programId") { programId =>
+          get {
+            complete(listProgramDisziplinenAsync(programId).map(result => JsArray(result.map(JsString(_)).toVector)))
+          }
+        } ~ pathPrefixLabeled("programmkategorien" / LongNumber, "programmkategorien/:programId") { programId =>
+          get {
+            complete(listProgramKategorienAsync(programId).map(result => JsArray(result.map(JsString(_)).toVector)))
           }
         } ~ pathEnd {
           get {
@@ -488,24 +545,27 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 }
               } ~
               get {
-                log.info("serving wettkampf: " + wkuuid)
-                val wettkampf = readWettkampf(wkuuid.toString)
-                onComplete(Future {
-                  val bos = new ByteArrayOutputStream()
-                  ResourceExchanger.exportWettkampfToStream(wettkampf, bos)
-                  HttpEntity(
-                    MediaTypes.`application/zip`,
-                    bos.toByteArray
-                  )
-                }){
-                  case Success(entity) =>
-                    complete(entity)
-                  case Failure(e) =>
-                    log.error(e, s"wettkampf $wkuuid cannot be exported: " + e.toString)
-                    complete(StatusCodes.BadRequest,
-                      s"""Der Wettkampf ${wettkampf.easyprint}
-                         |konnte wg. einem technischen Fehler nicht vollständig zum Download exportiert werden.
-                         |=>${e.getMessage}""".stripMargin)
+                authenticatedId { authUserId =>
+                  log.info("serving wettkampf: " + wkuuid)
+                  val wettkampf = readWettkampf(wkuuid.toString)
+                  val isAdmin = authUserId.exists(_ == wkuuid.toString)
+                  onComplete(Future {
+                    val bos = new ByteArrayOutputStream()
+                    ResourceExchanger.exportWettkampfToStream(wettkampf, bos, withSecret = isAdmin)
+                    HttpEntity(
+                      MediaTypes.`application/zip`,
+                      bos.toByteArray
+                    )
+                  }){
+                    case Success(entity) =>
+                      complete(entity)
+                    case Failure(e) =>
+                      log.error(e, s"wettkampf $wkuuid cannot be exported: " + e.toString)
+                      complete(StatusCodes.BadRequest,
+                        s"""Der Wettkampf ${wettkampf.easyprint}
+                            |konnte wg. einem technischen Fehler nicht vollständig zum Download exportiert werden.
+                            |=>${e.getMessage}""".stripMargin)
+                  }
                 }
               }
           }

@@ -151,6 +151,9 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 
   given resultatFormat: RootJsonFormat[Resultat] = jsonFormat(Resultat.apply, "noteD", "noteE", "endnote", "isStreichwertung", "teilresultateD", "teilresultateE", "teilresultateP")
 
+  given adminCreateCompetitionRequestFormat: RootJsonFormat[AdminCreateCompetitionRequest] = jsonFormat(AdminCreateCompetitionRequest.apply, "datum", "titel", "programmId", "notificationEMail", "auszeichnung", "auszeichnungendnote", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule", "creatorName", "creatorAddress", "creatorPhone", "termsAccepted", "termsVersion")
+  given adminCreateCompetitionResponseFormat: RootJsonFormat[AdminCreateCompetitionResponse] = jsonFormat(AdminCreateCompetitionResponse.apply, "uuid", "titel", "datum", "secret")
+
   given dataObjectFormat: RootJsonWriter[DataObject] = (p: DataObject) => {
     p.easyprint.toJson
   }
