@@ -561,7 +561,9 @@ trait WettkampfService extends DBService
     seek(programmid, Seq.empty)
   }
 
-  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String): Wettkampf = {
+  def createWettkampf(datum: java.sql.Date, titel: String, programmId: Set[Long], notificationEMail: String, auszeichnung: Int, auszeichnungendnote: scala.math.BigDecimal, uuidOption: Option[String], altersklassen: String, jahrgangsklassen: String, punktegleichstandsregel: String, rotation: String, teamrule: String,
+                      creatorName: Option[String] = None, creatorAddress: Option[String] = None, creatorPhone: Option[String] = None,
+                      termsAccepted: Boolean = false, termsAcceptedAt: Option[java.sql.Timestamp] = None, termsVersion: Option[String] = None): Wettkampf = {
     val cache = scala.collection.mutable.Map[Long, ProgrammView]()
     val programs = programmId map (p => readProgramm(p, cache))
     val heads = programs map (_.head)
@@ -593,8 +595,9 @@ trait WettkampfService extends DBService
              """ >>
         sqlu"""
                   insert into wettkampfmetadata
-                  (uuid, wettkampf_id)
-                  select uuid, id from wettkampf wk where wk.uuid=$uuid
+                  (uuid, wettkampf_id, creator_name, creator_address, creator_phone, terms_accepted, terms_accepted_at, terms_version)
+                  select $uuid, id, $creatorName, $creatorAddress, $creatorPhone, $termsAccepted, $termsAcceptedAt, $termsVersion
+                  from wettkampf wk where wk.uuid=$uuid
              """
 
     def loadWettkampf(uuid: String) =
@@ -746,15 +749,7 @@ trait WettkampfService extends DBService
                       finish_donation_asked=$amount
                   where uuid=${uuid.toString}
          """ >>
-        sql"""      select uuid
-                    , wettkampf_id
-                    , finish_athletes_cnt
-                    , finish_clubs_cnt
-                    , finish_online_athletes_cnt
-                    , finish_online_clubs_cnt
-                    , finish_donation_mail
-                    , finish_donation_asked
-                    , finish_donation_approved
+        sql"""      select *
                   from wettkampfmetadata
                   where uuid=${uuid.toString}
          """.as[WettkampfMetaData].head
@@ -767,15 +762,7 @@ trait WettkampfService extends DBService
                   set finish_donation_approved=$amount
                   where uuid=${uuid.toString}
          """ >>
-        sql"""      select uuid
-                    , wettkampf_id
-                    , finish_athletes_cnt
-                    , finish_clubs_cnt
-                    , finish_online_athletes_cnt
-                    , finish_online_clubs_cnt
-                    , finish_donation_mail
-                    , finish_donation_asked
-                    , finish_donation_approved
+        sql"""      select *
                   from wettkampfmetadata
                   where uuid=${uuid.toString}
          """.as[WettkampfMetaData].head
@@ -1076,6 +1063,29 @@ trait WettkampfService extends DBService
 
     for durchgang <- durchgaenge do {
       WebSocketClient.publish(DurchgangChanged(durchgang, wettkampf.uuid.get, athelteView))
+    }
+  }
+
+  def listProgramDisziplinenAsync(programId: Long): Future[Seq[String]] = {
+    val programIds = readWettkampfLeafs(programId).map(_.id)
+    if (programIds.isEmpty) Future.successful(Seq.empty)
+    else database.run {
+      sql""" select distinct d.name
+            from wettkampfdisziplin wd, disziplin d
+            where wd.disziplin_id = d.id
+              and wd.programm_id in (#${programIds.mkString(",")})
+            order by wd.ord """.as[String].withPinnedSession
+    }
+  }
+
+  def listProgramKategorienAsync(programId: Long): Future[Seq[String]] = {
+    val programIds = readWettkampfLeafs(programId).map(_.id)
+    if (programIds.isEmpty) Future.successful(Seq.empty)
+    else database.run {
+      sql""" select distinct p.name
+            from programm p
+            where p.id in (#${programIds.mkString(",")})
+            order by p.name """.as[String].withPinnedSession
     }
   }
 
