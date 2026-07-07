@@ -25,3 +25,75 @@
 @import '@ionic/angular/css/text-transformation.css';
 @import '@ionic/angular/css/flex-utils.css';
 
+.riege-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.riege-table th,
+.riege-table td {
+  border: 1px solid var(--ion-color-step-200, #dedede);
+  padding: 6px 8px;
+  vertical-align: top;
+  text-align: left;
+}
+.riege-table thead th {
+  background: var(--ion-color-step-100, #f4f4f4);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.riege-table .col-durchgang {
+  min-width: 140px;
+  white-space: nowrap;
+}
+.riege-table .col-geraet {
+  min-width: 120px;
+}
+.duration-info {
+  font-size: 0.75em;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+.riege-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ion-color-primary, #ffa238);
+  color: var(--ion-color-primary-contrast, #fff);
+  border-radius: 12px;
+  padding: 2px 8px;
+  margin: 2px;
+  cursor: grab;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  user-select: none;
+}
+.riege-chip:active {
+  cursor: grabbing;
+}
+.riege-chip.empty-riege {
+  background: var(--ion-color-medium, #92949c);
+  opacity: 0.6;
+}
+.riege-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.riege-count {
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+td.drag-over {
+  background: var(--ion-color-success-tint, #b8e6b8) !important;
+}
+.empty-cell {
+  color: var(--ion-color-step-400, #aaa);
+  font-size: 0.8rem;
+}
+

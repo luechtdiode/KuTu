@@ -154,6 +154,12 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given adminCreateCompetitionRequestFormat: RootJsonFormat[AdminCreateCompetitionRequest] = jsonFormat(AdminCreateCompetitionRequest.apply, "datum", "titel", "programmId", "notificationEMail", "auszeichnung", "auszeichnungendnote", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule", "creatorName", "creatorAddress", "creatorPhone", "termsAccepted", "termsVersion")
   given adminCreateCompetitionResponseFormat: RootJsonFormat[AdminCreateCompetitionResponse] = jsonFormat(AdminCreateCompetitionResponse.apply, "uuid", "titel", "datum", "secret")
 
+  given riegeSuggestionRequestFormat: RootJsonFormat[RiegeSuggestionRequest] = jsonFormat(RiegeSuggestionRequest.apply, "maxRiegenSize", "splitPgm", "splitSexOption", "onDisziplinIds", "separateRiegen2Durchgaenge")
+  given updateRiegeRequestFormat: RootJsonFormat[UpdateRiegeRequest] = jsonFormat4(UpdateRiegeRequest.apply)
+  given riegeItemFormat: RootJsonFormat[RiegeItem] = jsonFormat6(RiegeItem.apply)
+  given durchgangDurationItemFormat: RootJsonFormat[DurchgangDurationItem] = jsonFormat7(DurchgangDurationItem.apply)
+  given riegePreviewResponseFormat: RootJsonFormat[RiegePreviewResponse] = jsonFormat2(RiegePreviewResponse.apply)
+
   given dataObjectFormat: RootJsonWriter[DataObject] = (p: DataObject) => {
     p.easyprint.toJson
   }

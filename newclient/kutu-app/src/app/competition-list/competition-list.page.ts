@@ -54,6 +54,10 @@ export class CompetitionListPage {
     await alert.present();
   }
 
+  openRiegen(s: StoredSecret) {
+    this.nav.navigateRoot('/admin/riege-einteilung/' + s.uuid);
+  }
+
   private async deleteCompetition(s: StoredSecret) {
     try {
       await firstValueFrom(this.backend.deleteCompetition(s.uuid, s.secret));

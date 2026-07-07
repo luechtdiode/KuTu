@@ -1074,6 +1074,45 @@ package object domain {
     secret: String
   ) extends DataObject
 
+  case class RiegeSuggestionRequest(
+    maxRiegenSize: Int = 0,
+    splitPgm: Boolean = true,
+    splitSexOption: Option[String] = None,
+    onDisziplinIds: Option[Set[Long]] = None,
+    separateRiegen2Durchgaenge: Boolean = false
+  ) extends DataObject
+
+  case class UpdateRiegeRequest(
+    name: String,
+    durchgang: Option[String],
+    startId: Option[Long],
+    kind: Int = 0
+  ) extends DataObject
+
+  case class RiegeItem(
+    name: String,
+    durchgang: Option[String],
+    startId: Option[Long],
+    startName: Option[String],
+    kind: Int,
+    athletCount: Int
+  ) extends DataObject
+
+  case class DurchgangDurationItem(
+    name: String,
+    title: String,
+    offsetMillis: Long,
+    einturnenMillis: Long,
+    geraetMillis: Long,
+    totalMillis: Long,
+    athletCount: Int
+  ) extends DataObject
+
+  case class RiegePreviewResponse(
+    riegen: Seq[RiegeItem],
+    durchgange: Seq[DurchgangDurationItem]
+  ) extends DataObject
+
   case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {
     override def easyprint = f"PublishedScore($title)"
   }
