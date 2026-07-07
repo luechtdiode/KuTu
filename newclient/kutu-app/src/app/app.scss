@@ -1,0 +1,181 @@
+// App Styles
+// ----------------------------------------------------------------------------
+// Put style rules here that you want to apply to the entire application. These
+// styles are for the entire app and not just one component. Additionally, this
+// file can hold Sass mixins, functions, and placeholder classes to be imported
+// and used throughout the application.
+.alert-head, .alert-head-md, .alert-head-ios {
+  // background-color: var(--ion-color-step-500, #2e2e2e);
+  background-color:  var(--ion-item-background-color);
+  color: var(--ion-item-text-color);
+}
+
+.alert-radio-label.sc-ion-alert-md,
+.alert-radio-label.sc-ion-alert-ios {
+    color: var(--ion-item-text-color);
+}
+[aria-checked=true].sc-ion-alert-md .alert-radio-label.sc-ion-alert-md,
+[aria-checked=true].sc-ion-alert-ios .alert-radio-label.sc-ion-alert-ios {
+  color: var(--ion-color-primary);
+}
+
+.sc-ion-loading-md-h,
+.sc-ion-loading-ios-h {
+    --background: var(--ion-color-step-50,#f2f2f2);
+    --spinner-color: var(--ion-color-primary,#666);
+    color: var(--ion-color-step-850);
+}
+ion-avatar {
+  align-self: flex-start;
+}
+ion-icon {
+  //background-color:  var(--ion-item-background-color);
+  //color: var(--ion-color-step-500);
+  color: var(--ion-item-color, var(--ion-text-color, #000));
+}
+ion-toolbar {
+  --background: var(--ion-toolbar-background-color);
+}
+
+ion-grid ion-label {
+  color: var(--ion-item-text-color);
+}
+
+ion-toolbar ion-note {
+  font-size: small;
+  padding-right: 16px;
+  color: var(--ion-color-primary);
+}
+
+.sc-ion-searchbar-md-h,
+.sc-ion-searchbar-ios-h {
+  --color: var(--ion-item-text-color);
+}
+.alert-head.sc-ion-alert-md + .alert-message.sc-ion-alert-md:empty,
+.alert-head.sc-ion-alert-ios + .alert-message.sc-ion-alert-ios:empty {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+.alert-head + .alert-message,
+.alert-head.sc-ion-alert-md + .alert-message.sc-ion-alert-md,
+.alert-head.sc-ion-alert-ios + .alert-message.sc-ion-alert-ios {
+    padding-top: 15px;
+}
+
+.stateinfo {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  font-size: smaller;
+}
+
+ion-note {
+  color: var(--ion-color-warning);
+}
+
+.isStroked {
+  ion-card {
+    color: var(--ion-color-warning);
+    background-color: var(--ion-color-warning-contrast);
+    font-style: italic;
+  }
+}
+
+.gradient-border {
+  --borderWidth: 3px;
+  position: relative;
+  border-radius: var(--borderWidth);
+
+  background-clip: padding-box; /* !importanté */
+  border: solid var(--borderWidth) transparent; /* !importanté */
+
+  ion-card {
+    margin: auto;
+    position: relative;
+    color: var(--ion-card-color);
+    background-color: var(--ion-card-background-color);
+  }
+
+  &:before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--borderWidth));
+    left: calc(-1 * var(--borderWidth));
+    height: calc(100% + var(--borderWidth) * 2);
+    width: calc(100% + var(--borderWidth) * 2);
+    background: linear-gradient(60deg, #f79533, #f37055, #ef4e7b, #a166ab, #5073b8, #1098ad, #07b39b, #6fba82);
+    border-radius: calc(2 * var(--borderWidth));
+
+    animation: animatedgradient 10s ease alternate;
+    background-size: 300% 300%;
+    }
+}
+
+@keyframes animatedgradient {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
+}
+
+ion-select, ion-radio-group {
+//   width: 80%;
+//  max-width: 80% !important;
+}
+input[type=date] {
+  text-align: right !important;
+}
+
+.select-alert {
+   --width: 80%;
+   --max-width: auto;
+   --min-width: 250px;
+}
+
+.sc-ion-alert-md-h {
+  --width: 80%;
+  --max-width: auto;
+  --min-width: 250px;
+}
+
+.my-optionselection-class .alert-wrapper {
+  --width: 80%;
+  --max-width: auto;
+  --min-width: 250px;
+}
+
+.my-actionsheet-class .action-sheet-group {
+  --background: var(--ion-item-background-color);
+  //--backdrop-opacity: var(--ion-backdrop-opacity, 0.32);
+  --button-background: var(--ion-overlay-background-color);
+  // --button-background-selected: var(--ion-color-primary);
+  --button-background-selected-opacity: 0;
+  --button-background-activated: var(----ion-item-background-activated);
+  // --button-background-activated-opacity: 0;
+  // --button-background-hover:  var(--ion-color-primary);
+  // --button-background-hover-opacity: .04;
+  // --button-background-focused: currentColor;
+  // --button-background-focused-opacity: .12;
+  --button-color: var(--ion-item-text-color);
+  --button-color-hover: var(--ion-color-primary);
+  --button-color-focused: var(--ion-color-primary);
+  --color: var(--ion-item-text-color);
+  .action-sheet-destructive {
+    --color: var(--ion-color-danger);
+    --button-color: var(--ion-color-danger);
+  }
+  .action-sheet-cancel {
+    --color: var(--ion-color-secondary);
+    --button-color: var(--ion-color-secondary);
+  }
+}
+
+audio, canvas, progress, video {
+    vertical-align: baseline;
+    width: 100%;
+}
