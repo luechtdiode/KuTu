@@ -335,3 +335,42 @@ export interface AthletMediaIsFree {
   media: Media
   type: string;
 }
+
+export interface RiegeSuggestionRequest {
+  maxRiegenSize?: number;
+  splitPgm?: boolean;
+  splitSexOption?: string;
+  onDisziplinIds?: number[];
+  separateRiegen2Durchgaenge?: boolean;
+}
+
+export interface UpdateRiegeRequest {
+  name: string;
+  durchgang?: string;
+  startId?: number;
+  kind?: number;
+}
+
+export interface RiegeItem {
+  name: string;
+  durchgang?: string;
+  startId?: number;
+  startName?: string;
+  kind: number;
+  athletCount: number;
+}
+
+export interface DurchgangDurationItem {
+  name: string;
+  title: string;
+  offsetMillis: number;
+  einturnenMillis: number;
+  geraetMillis: number;
+  totalMillis: number;
+  athletCount: number;
+}
+
+export interface RiegePreviewResponse {
+  riegen: RiegeItem[];
+  durchgange: DurchgangDurationItem[];
+}
