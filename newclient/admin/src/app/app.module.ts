@@ -5,11 +5,12 @@ import { provideHttpClient, withXhr } from '@angular/common/http';
 import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
+import { TermsModalComponent } from './create-competition/terms-modal.component';
 import { AdminBackendService } from './services/admin-backend.service';
 import { SecretService } from './services/secret.service';
 
 @NgModule({
-  declarations: [AppComponent],
+  declarations: [AppComponent, TermsModalComponent],
   bootstrap: [AppComponent],
   imports: [BrowserModule, IonicModule.forRoot(), AppRoutingModule],
   providers: [
