@@ -1,0 +1,36 @@
+import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { RouteReuseStrategy } from '@angular/router';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/common/http';
+import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
+
+import { AppComponent } from './app.component';
+import { AppRoutingModule } from './app-routing.module';
+import { BackendService } from './services/backend.service';
+import { TokenInterceptor } from './services/token-interceptor';
+import { StationGuardService } from './services/station-guard.service';
+import { ThemeSwitcherService } from './services/theme-switcher.service';
+import { AdminBackendService } from './services/admin-backend.service';
+import { SecretService } from './services/secret.service';
+import { TermsModalComponent } from './create-competition/terms-modal.component';
+
+@NgModule({ declarations: [AppComponent, TermsModalComponent],
+    bootstrap: [AppComponent], imports: [BrowserModule,
+        IonicModule.forRoot(),
+        AppRoutingModule], providers: [
+        StationGuardService,
+        { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
+        BackendService,
+        ThemeSwitcherService,
+        TokenInterceptor,
+        {
+            provide: HTTP_INTERCEPTORS,
+            useClass: TokenInterceptor,
+            multi: true
+        },
+        provideHttpClient(withXhr(), withInterceptorsFromDi()),
+        AdminBackendService,
+        SecretService,
+    ],
+    schemas: [CUSTOM_ELEMENTS_SCHEMA] })
+export class AppModule {}

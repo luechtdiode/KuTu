@@ -1,0 +1,77 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-toggle>
+        <ion-button>
+          <ion-icon slot="icon-only" name="menu" />
+        </ion-button>
+      </ion-menu-toggle>
+    </ion-buttons>
+    <ion-title>
+      <ion-grid no-padding>
+        <ion-row>
+          <ion-col>
+            <ion-label>Suche Turner/-in</ion-label>
+          </ion-col>
+          @if (!competition) {
+            <ion-col>
+              <ion-item>
+                @if (getCompetitions().length > 0) {
+                  <ion-select label="Wettkampf" placeholder='Bitte auswählen' [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
+                    @for (comp of getCompetitions(); track comp) {
+                      <ion-select-option [value]='comp.uuid'>
+                      {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
+                    }
+                  </ion-select>
+                }
+              </ion-item>
+            </ion-col>
+          }
+        </ion-row>
+      </ion-grid>
+    </ion-title>
+    @if (competition) {
+      <ion-note slot="end">
+        {{competitionName()}}
+      </ion-note>
+    }
+  </ion-toolbar>
+  <ion-searchbar placeholder="Search" showCancelButton="never"
+    [(ngModel)]="sMyQuery"
+    (ionInput)="reloadList($event)"
+    (ionCancel)="reloadList($event)" />
+  </ion-header>
+
+  @if (competition && startlist && startlist.programme) {
+    <ion-content>
+      <ion-list>
+        @if ((isBusy | async)) {
+          <ion-item>
+            <ion-label>loading ...</ion-label>
+            <ion-spinner />
+          </ion-item>
+        }
+        @for (pgm of filteredStartList.programme; track pgm) {
+          <div>
+            <ion-item-divider>{{pgm.programm}}</ion-item-divider>
+            @for (tn of pgm.teilnehmer; track tn) {
+              <ion-item-sliding #slidingAthletItem>
+                <startlist-item [teilnehmer]="tn" [programm]="pgm"
+                  (click)='itemTapped(tn, slidingAthletItem)' />
+                  <ion-item-options side="end">
+                    <ion-item-option color="primary" (click)="followAthlet(tn, slidingAthletItem)">
+                      <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
+                      {{tn.athlet}} verfolgen
+                    </ion-item-option>
+                    <ion-item-option color="secondary" (click)="followRiege(tn, slidingAthletItem)">
+                      <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
+                      Riege verfolgen
+                    </ion-item-option>
+                  </ion-item-options>
+                </ion-item-sliding>
+              }
+            </div>
+          }
+        </ion-list>
+      </ion-content>
+    }
