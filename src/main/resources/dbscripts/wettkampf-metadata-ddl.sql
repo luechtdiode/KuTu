@@ -13,6 +13,12 @@ CREATE TABLE IF NOT EXISTS wettkampfmetadata (
   finish_donation_mail varchar(70) DEFAULT NULL,
   finish_donation_asked decimal(10,2) DEFAULT NULL,
   finish_donation_approved decimal(10,2) DEFAULT NULL
+  -- creator_name varchar(200) DEFAULT NULL,
+  -- creator_address varchar(500) DEFAULT NULL,
+  -- creator_phone varchar(50) DEFAULT NULL,
+  -- terms_accepted boolean DEFAULT false,
+  -- terms_accepted_at timestamp DEFAULT NULL,
+  -- terms_version varchar(20) DEFAULT NULL
 
   -- emailapproved boolean DEFAULT false,
   -- organisator varchar(100) DEFAULT NULL,

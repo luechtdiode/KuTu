@@ -1,0 +1,46 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Wettkämpfe</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button routerLink="/competitions/create">
+      <ion-icon name="add"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
+  @if (secrets.length > 0) {
+    <ion-list>
+      @for (s of secrets; track s.uuid) {
+        <ion-item-sliding>
+          <ion-item>
+            <ion-label>
+              <h2>{{ s.titel }}</h2>
+              <p>{{ s.datum }}</p>
+              <p class="ion-text-wrap" style="font-size: 0.7em; opacity: 0.6;">UUID: {{ s.uuid }}</p>
+            </ion-label>
+            <ion-button slot="end" fill="clear" (click)="downloadZip(s)">
+              <ion-icon slot="icon-only" name="download"></ion-icon>
+            </ion-button>
+          </ion-item>
+          <ion-item-options>
+            <ion-item-option color="danger" (click)="confirmDelete(s)">
+              <ion-icon slot="icon-only" name="trash"></ion-icon>
+            </ion-item-option>
+          </ion-item-options>
+        </ion-item-sliding>
+      }
+    </ion-list>
+  } @else {
+    <ion-text color="medium">
+      <p class="ion-text-center ion-padding">Noch keine Wettkämpfe angelegt.</p>
+      <ion-button expand="block" routerLink="/competitions/create" class="ion-padding">
+        Neuen Wettkampf anlegen
+      </ion-button>
+    </ion-text>
+  }
+</ion-content>

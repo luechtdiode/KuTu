@@ -1043,8 +1043,36 @@ package object domain {
   }
 
   case class WettkampfMetaData(uuid: String, wkid: Int, finishAthletesCnt: Int, finishClubsCnt: Int, finishOnlineAthletesCnt: Int, finishOnlineClubsCnt: Int,
-                               finishDonationMail: Option[String], finishDonationAsked: Option[BigDecimal], finishDonationApproved: Option[BigDecimal]) extends DataObject {
+                               finishDonationMail: Option[String], finishDonationAsked: Option[BigDecimal], finishDonationApproved: Option[BigDecimal],
+                               creatorName: Option[String] = None, creatorAddress: Option[String] = None, creatorPhone: Option[String] = None,
+                               termsAccepted: Boolean = false, termsAcceptedAt: Option[java.sql.Timestamp] = None, termsVersion: Option[String] = None) extends DataObject {
   }
+
+  case class AdminCreateCompetitionRequest(
+    datum: java.sql.Date,
+    titel: String,
+    programmId: Long,
+    notificationEMail: String,
+    auszeichnung: Int,
+    auszeichnungendnote: scala.math.BigDecimal,
+    altersklassen: String,
+    jahrgangsklassen: String,
+    punktegleichstandsregel: String,
+    rotation: String,
+    teamrule: String,
+    creatorName: String,
+    creatorAddress: String,
+    creatorPhone: String,
+    termsAccepted: Boolean,
+    termsVersion: String
+  ) extends DataObject
+
+  case class AdminCreateCompetitionResponse(
+    uuid: String,
+    titel: String,
+    datum: java.sql.Date,
+    secret: String
+  ) extends DataObject
 
   case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {
     override def easyprint = f"PublishedScore($title)"
