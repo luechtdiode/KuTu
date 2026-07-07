@@ -9,6 +9,7 @@ import { AltersklassenEditorComponent } from '../editors/altersklassen-editor.co
 import { RiegenRotationsregelEditorComponent } from '../editors/riegenrotationsregel-editor.component';
 import { PunktegleichstandsregelEditorComponent } from '../editors/punktegleichstandsregel-editor.component';
 import { TeamregelEditorComponent } from '../editors/teamregel-editor.component';
+import { TermsModalComponent } from './terms-modal.component';
 
 const PRESETS_ALTERSKLASSEN = [
   { label: 'Ohne', value: '' },
@@ -156,9 +157,16 @@ export class CreateCompetitionPage {
     );
   }
 
-  showTerms(event: Event) {
+  async showTerms(event: Event) {
     event.preventDefault();
-    alert('Nutzungsbedingungen folgen in einer späteren Version.');
+    const modal = await this.modalCtrl.create({
+      component: TermsModalComponent
+    });
+    await modal.present();
+    const { data } = await modal.onDidDismiss();
+    if (data === true) {
+      this.form.termsAccepted = true;
+    }
   }
 
   async openAltersklassenEditor(field: 'altersklassen' | 'jahrgangsklassen') {
