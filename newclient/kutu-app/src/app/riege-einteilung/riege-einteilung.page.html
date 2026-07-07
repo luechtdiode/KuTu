@@ -1,0 +1,124 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Riegeneinteilung</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-refresher slot="fixed" (ionRefresh)="loadData(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+      <ion-card-subtitle>UUID: {{ uuid }}</ion-card-subtitle>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-button (click)="showGeneratePanel = !showGeneratePanel" fill="outline" class="ion-margin-end" size="small">
+        <ion-icon slot="start" name="settings-outline"></ion-icon>
+        Optionen
+      </ion-button>
+      <ion-button (click)="generate()" [disabled]="loading" color="primary" size="small">
+        <ion-icon slot="start" name="flash-outline"></ion-icon>
+        Generieren
+      </ion-button>
+      <ion-button (click)="resetRiegen()" [disabled]="loading" color="danger" fill="outline" size="small" class="ion-margin-start">
+        <ion-icon slot="start" name="trash-outline"></ion-icon>
+        Zurücksetzen
+      </ion-button>
+
+      @if (showGeneratePanel) {
+        <ion-list class="ion-margin-top">
+          <ion-item>
+            <ion-label position="stacked">Max. Riegengrösse</ion-label>
+            <ion-input type="number" [(ngModel)]="generateParams.maxRiegenSize" placeholder="0 = automatisch"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Geschlechter-Trennung</ion-label>
+            <ion-select [(ngModel)]="generateParams.splitSexOption" placeholder="Keine">
+              <ion-select-option value="">Keine</ion-select-option>
+              <ion-select-option value="GemischteRiegen">Gemischte Riegen</ion-select-option>
+              <ion-select-option value="GemischterDurchgang">Gemischter Durchgang</ion-select-option>
+              <ion-select-option value="GetrennteDurchgaenge">Getrennte Durchgänge</ion-select-option>
+            </ion-select>
+          </ion-item>
+          <ion-item>
+            <ion-checkbox slot="start" [(ngModel)]="generateParams.splitPgm"></ion-checkbox>
+            <ion-label>Nach Programm trennen</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-checkbox slot="start" [(ngModel)]="generateParams.separateRiegen2Durchgaenge"></ion-checkbox>
+            <ion-label>2. Riegen separat in Durchgänge</ion-label>
+          </ion-item>
+        </ion-list>
+      }
+    </ion-card-content>
+  </ion-card>
+
+  @if (loading) {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+
+  @if (rows.length > 0 && disziplinen.length > 0) {
+    <ion-card>
+      <ion-card-content class="ion-padding-0" style="overflow-x: auto;">
+        <table class="riege-table">
+          <thead>
+            <tr>
+              <th class="col-durchgang">Durchgang</th>
+              @for (d of disziplinen; track d.id) {
+                <th class="col-geraet">{{ d.name }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row.durchgangName) {
+              <tr>
+                <td class="col-durchgang">
+                  <strong>{{ row.durchgangTitle }}</strong>
+                  @if (row.duration) {
+                    <div class="duration-info">
+                      <span>{{ formatMillis(row.duration.offsetMillis) }} | {{ formatMillis(row.duration.einturnenMillis) }}+{{ formatMillis(row.duration.geraetMillis) }} = {{ formatMillis(row.duration.totalMillis) }}</span>
+                      <br><small>{{ row.duration.athletCount }} Athleten</small>
+                    </div>
+                  }
+                </td>
+                @for (d of disziplinen; track d.id) {
+                  <td class="col-geraet"
+                    (dragover)="onDragOver($event)"
+                    (drop)="onDrop($event, row.durchgangName, d.id)"
+                    (dragleave)="onDragLeave($event)">
+                    @for (riege of row.cells[d.id]; track riege.name) {
+                      <div class="riege-chip"
+                        draggable="true"
+                        (dragstart)="onDragStart($event, riege.name, row.durchgangName, d.id)"
+                        (click)="editRiege(riege, row.durchgangName)"
+                        [class.empty-riege]="riege.kind === 1">
+                        <span class="riege-name">{{ riege.name }}</span>
+                        <span class="riege-count">{{ riege.athletCount }}</span>
+                      </div>
+                    }
+                    @if (!row.cells[d.id]?.length) {
+                      <span class="empty-cell">—</span>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </ion-card-content>
+    </ion-card>
+  } @else if (!loading) {
+    <ion-card>
+      <ion-card-content>
+        <ion-text color="medium">
+          <p class="ion-text-center">Keine Riegen vorhanden. Erstelle eine neue Einteilung.</p>
+        </ion-text>
+      </ion-card-content>
+    </ion-card>
+  }
+</ion-content>

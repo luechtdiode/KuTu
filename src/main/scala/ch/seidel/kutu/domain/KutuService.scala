@@ -7,5 +7,6 @@ trait KutuService extends DBService
   with WettkampfService 
   with RiegenService
   with DurchgangService
+  with DisziplinService
   with WertungsrichterService {
 }

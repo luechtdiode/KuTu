@@ -6,6 +6,7 @@ import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.squad.{DurchgangBuilder, DurchgangGrouper}
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
@@ -413,6 +414,153 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 entity(as[FinishDurchgangStep]) { fd =>
                   if userId.equals(wkuuid.toString) then {
                     complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
+                  } else {
+                    complete(StatusCodes.Conflict)
+                  }
+                }
+              }
+            }
+          } ~
+          pathPrefixLabeled("riege", "riege") {
+            pathEnd {
+              get {
+                onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                  val riegen = selectRiegen(wk.id)
+                  val counts = listRiegenZuWettkampf(wk.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
+                  complete(riegen.map(r => RiegeItem(
+                    name = r.r,
+                    durchgang = r.durchgang,
+                    startId = r.start.map(_.id),
+                    startName = r.start.map(_.name),
+                    kind = r.kind,
+                    athletCount = counts.getOrElse(r.r, 0)
+                  )).toJson)
+                }
+              } ~
+              put {
+                authenticated() { userId =>
+                  if userId.equals(wkuuid.toString) then {
+                    entity(as[UpdateRiegeRequest]) { request =>
+                      onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                        val updated = updateOrinsertRiege(RiegeRaw(wk.id, request.name, request.durchgang, request.startId, request.kind))
+                        complete(RiegeItem(updated.r, updated.durchgang, updated.start.map(_.id), updated.start.map(_.name), updated.kind, 0).toJson)
+                      }
+                    }
+                  } else {
+                    complete(StatusCodes.Conflict)
+                  }
+                }
+              }
+            } ~
+            pathLabeled("generate", "generate") {
+              post {
+                authenticated() { userId =>
+                  if userId.equals(wkuuid.toString) then {
+                    entity(as[RiegeSuggestionRequest]) { request =>
+                      onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                        onComplete(Future {
+                          val disziplinlist = listDisziplinesZuWettkampf(wk.id)
+                          val onDisziplin = request.onDisziplinIds.map(ids => disziplinlist.filter(d => ids.contains(d.id)).toSet)
+                          val splitSex = request.splitSexOption.flatMap {
+                            case "GemischteRiegen" => Some(GemischteRiegen)
+                            case "GemischterDurchgang" => Some(GemischterDurchgang)
+                            case "GetrennteDurchgaenge" => Some(GetrennteDurchgaenge)
+                            case _ => None
+                          }
+                          val durchgangBuilder = DurchgangBuilder(this)
+                          val riegenzuteilungen = durchgangBuilder.suggestDurchgaenge(
+                            wk.id, request.maxRiegenSize, Set.empty, Set.empty,
+                            splitSexOption = splitSex, splitPgm = request.splitPgm,
+                            onDisziplinList = onDisziplin,
+                            separateRiegen2Durchgaenge = request.separateRiegen2Durchgaenge)
+                          val suggestedGroups = DurchgangGrouper.groupDurchgaengeByKategorien(riegenzuteilungen, Int.MaxValue)
+                          cleanAllRiegenDurchgaenge(wk.id)
+                          for
+                            durchgang <- riegenzuteilungen.keys
+                            (start, riegen) <- riegenzuteilungen(durchgang)
+                            (riege, wertungen) <- riegen
+                          do {
+                            insertRiegenWertungen(RiegeRaw(
+                              wettkampfId = wk.id,
+                              r = riege,
+                              durchgang = Some(durchgang),
+                              start = Some(start.id),
+                              kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
+                            ), wertungen)
+                          }
+                          updateDurchgaenge(wk.id)
+                          suggestedGroups.foreach { suggestedDg =>
+                            if suggestedDg.title != suggestedDg.name then {
+                              renameDurchgangGroup(wk.id, suggestedDg.name, suggestedDg.title)
+                            }
+                          }
+                          val riegen = selectRiegen(wk.id)
+                          val counts = listRiegenZuWettkampf(wk.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
+                          val riegenItems = riegen.map(r => RiegeItem(
+                            name = r.r,
+                            durchgang = r.durchgang,
+                            startId = r.start.map(_.id),
+                            startName = r.start.map(_.name),
+                            kind = r.kind,
+                            athletCount = counts.getOrElse(r.r, 0)
+                          ))
+                          val durchgaenge = selectDurchgaenge(wkuuid)
+                          val athleteCountsByDurchgang = listRiegenZuWettkampf(wk.id)
+                            .groupBy(_._3).view.mapValues(_.map(_._2).sum)
+                          val durchgangItems = durchgaenge.map(d => DurchgangDurationItem(
+                            name = d.name, title = d.title,
+                            offsetMillis = d.planStartOffset,
+                            einturnenMillis = d.planEinturnen,
+                            geraetMillis = d.planGeraet,
+                            totalMillis = d.planTotal,
+                            athletCount = athleteCountsByDurchgang.get(Some(d.name)).getOrElse(0)
+                          ))
+                          RiegePreviewResponse(riegenItems, durchgangItems)
+                        }) {
+                          case Success(response) => complete(response.toJson)
+                          case Failure(e) =>
+                            log.error(e.getMessage, e)
+                            complete(StatusCodes.InternalServerError, s"Failed to generate riegen: ${e.getMessage}")
+                        }
+                      }
+                    }
+                  } else {
+                    complete(StatusCodes.Conflict)
+                  }
+                }
+              }
+            } ~
+            pathLabeled("reset", "reset") {
+              post {
+                authenticated() { userId =>
+                  if userId.equals(wkuuid.toString) then {
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      cleanAllRiegenDurchgaenge(wk.id)
+                      complete(StatusCodes.OK, JsObject.empty)
+                    }
+                  } else {
+                    complete(StatusCodes.Conflict)
+                  }
+                }
+              }
+            } ~
+            pathLabeled("duration", "duration") {
+              get {
+                authenticated() { userId =>
+                  if userId.equals(wkuuid.toString) then {
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      val durchgaenge = selectDurchgaenge(wkuuid)
+                      val athleteCountsByDurchgang = listRiegenZuWettkampf(wk.id)
+                        .groupBy(_._3).view.mapValues(_.map(_._2).sum)
+                      complete(durchgaenge.map(d => DurchgangDurationItem(
+                        name = d.name, title = d.title,
+                        offsetMillis = d.planStartOffset,
+                        einturnenMillis = d.planEinturnen,
+                        geraetMillis = d.planGeraet,
+                        totalMillis = d.planTotal,
+                        athletCount = athleteCountsByDurchgang.get(Some(d.name)).getOrElse(0)
+                      )).toJson)
+                    }
                   } else {
                     complete(StatusCodes.Conflict)
                   }
