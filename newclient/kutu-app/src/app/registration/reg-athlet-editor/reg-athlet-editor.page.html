@@ -1,0 +1,135 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/" />
+    </ion-buttons>
+    <ion-title>Anmeldung Athlet/Athletin</ion-title>
+    <ion-note slot="end"><div class="athlet">für {{wettkampf}}</div></ion-note>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content *ngIf="registration">
+  <form #athletRegistrationForm="ngForm" (ngSubmit)="save(athletRegistrationForm)" (keyup.enter)="save(athletRegistrationForm)">
+    <ion-list>
+      <ion-item-divider>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/athlete.png">
+        </ion-avatar>
+        <ion-label *ngIf="registration.id > 0">
+          Athlet / Athletin
+        </ion-label>
+        <ion-select label="Athlet / Athletin" *ngIf="registration.id === 0 && clubAthletList.length > 0" placeholder='Auswahl aus Liste' name="clubAthletid" [(ngModel)]='selectedClubAthletId' okText='Okay' cancelText='Abbrechen'>
+          <ion-select-option *ngFor='let athlet of clubAthletList' [value]='athlet.athletId'>
+            <ion-avatar slot="end">
+              <img src="assets/imgs/athlete.png">
+            </ion-avatar>
+            <ion-label>{{athlet.name}}, {{athlet.vorname}} ({{athlet.geschlecht}})<br><small> ({{athlet.gebdat | date}})</small>
+            </ion-label>
+          </ion-select-option>
+        </ion-select>        
+      </ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start" />
+        <ion-input label="Name" required placeholder="Name" type="text"  [disabled]="false" [(ngModel)]='registration.name' name="name" required />
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start" />
+        <ion-input label="Vorname" required placeholder="Vorname" type="text"  [disabled]="false" [(ngModel)]='registration.vorname' name="vorname" required />
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start" />
+        <ion-input label="Geburtsdatum" required placeholder="Geburtsdatum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='registration.gebdat' name="gebdat" required />
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start" />
+        <ion-select label="Geschlecht" required placeholder='bitte auswählen' [(ngModel)]='registration.geschlecht' name="geschlecht" okText='Okay' cancelText='Abbrechen' required>
+          <ion-select-option [value]='"W"'>weiblich</ion-select-option>
+          <ion-select-option [value]='"M"'>männlich</ion-select-option>
+        </ion-select>
+      </ion-item>
+      <ion-item-divider *ngIf="needsPGMChoice()">
+        <ion-avatar slot="start">
+          <img src="assets/imgs/wettkampf.png">
+        </ion-avatar>
+        <ion-label>Einteilung</ion-label>
+      </ion-item-divider>
+      <ion-item *ngIf="needsPGMChoice()">
+        <ion-avatar slot="start" />
+        <ion-select label="Programm/Kategorie" required placeholder='bitte auswählen' [(ngModel)]='registration.programId' name="programId" okText='Okay' cancelText='Abbrechen'>
+          <ion-select-option *ngFor='let pgm of filterPGMsForAthlet(registration)' [value]='pgm.id'>{{pgm.name}}</ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      @if (teamsAllowed()) {
+      <ion-item-divider>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/verein.png">
+        </ion-avatar>
+        <ion-label>Team-/Mannschaftszuweisung</ion-label>
+      </ion-item-divider>
+      <ion-item >
+        <ion-avatar slot="start" />
+        <ion-grid no-padding>
+          <ion-row *ngFor="let rule of teamrules">für {{rule}}</ion-row>
+          <ion-row>
+            <ion-select label="Team" placeholder='Team' [(ngModel)]='registration.team' name="team" okText='Okay' cancelText='Abbrechen'>
+              <ion-select-option [value]='0'>Keine Teamzuordnung</ion-select-option>
+              <ion-select-option *ngFor='let team of teams' [value]='team.index'>{{mapTeam(team.index)}}</ion-select-option>
+            </ion-select>
+          </ion-row>
+          @if (registration.team > 0) {
+          <ion-row>
+            <ion-select label="Reserve-Position" placeholder='Reserve' [(ngModel)]='registration.reserve' name="reserve" okText='Okay' cancelText='Abbrechen'>
+              <ion-select-option [value]='0'>Fix im Team</ion-select-option>
+              <ion-select-option *ngFor='let reserve of [1,2,3,4]' [value]='reserve'>Reserve {{reserve}}</ion-select-option>
+            </ion-select>
+          </ion-row>
+          }
+        </ion-grid>
+      </ion-item>
+      }
+      <ion-item-divider>
+        <ion-avatar slot="start">
+          <img src="assets/imgs/boden.svg">
+        </ion-avatar>
+        <ion-label>Bodenmusik (optional)</ion-label>
+      </ion-item-divider>
+      <ion-item>
+        <ion-avatar slot="start" />
+        <ion-label>Neu hochladen</ion-label>
+        <input type="file" (change)="onFileChange($event)" />
+      </ion-item>
+      <ion-item>
+        <ion-avatar slot="start" />
+        @if (registration.mediafile?.name) {
+          <ion-label>Aktuelle Datei: {{registration.mediafile?.name}}</ion-label>
+          @if (registration.mediafile?.name && registration.id > 0 && mediaSource === undefined) {
+            <ion-button [disabled]="registration.id === 0" (click)="onFileChange(null)">Zum anhören laden</ion-button>
+          }
+          <ion-button [disabled]="registration.id === 0" (click)="onRemoveMedia(null)" color="danger"><ion-icon name="trash-outline"/></ion-button>
+        } @else {
+          <ion-label>Keine Datei ausgewählt</ion-label>
+        } 
+      </ion-item>
+      @if (registration.mediafile?.name && registration.id > 0 && mediaSource) {
+      <ion-item>
+        <audio controls id="myAudio">
+          <source [attr.src]="mediaSource" type="audio/mp3">
+        </audio>
+      </ion-item>
+      }
+    </ion-list>
+    <ion-list>
+      <ion-button size="large" expand="block" type="submit" #btnSaveNext [disabled]="waiting || !isFormValid()|| !athletRegistrationForm.valid || athletRegistrationForm.untouched" color="success">
+        <ion-icon slot="start" name="" />Speichern</ion-button>
+    </ion-list>
+  </form>
+</ion-content>
+<ion-footer>
+  <ion-toolbar>
+    <ion-list>
+      <ion-button *ngIf="athletId > 0"size="large" expand="block" #btnDelete [disabled]="waiting" color="danger" (click)='delete()'>
+        <ion-icon slot="start" name="trash" />Anmeldung löschen</ion-button>
+    </ion-list>
+  </ion-toolbar>
+</ion-footer>

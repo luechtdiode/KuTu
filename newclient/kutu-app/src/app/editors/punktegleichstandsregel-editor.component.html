@@ -1,0 +1,113 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      @if (editIndex !== null) {
+        <ion-button (click)="editIndex = null">
+          <ion-icon name="arrow-back"></ion-icon>
+        </ion-button>
+      }
+    </ion-buttons>
+    <ion-title>{{ editIndex !== null ? 'Regel bearbeiten' : title }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">Abbrechen</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+@if (editIndex === null) {
+  <ion-content>
+    <ion-list>
+      <ion-reorder-group (ionItemReorder)="handleReorder($event)" [disabled]="false">
+        @for (row of rows; track $index; let i = $index) {
+          <ion-item>
+            <ion-reorder slot="end" style="display: flex !important;">
+              <ion-icon name="reorder-three-outline"></ion-icon>
+            </ion-reorder>
+            <ion-label>{{ ruleSummary(row) }}</ion-label>
+            <ion-buttons slot="end">
+              <ion-button (click)="editRuleAt(i)">
+                <ion-icon name="create" slot="icon-only"></ion-icon>
+              </ion-button>
+              <ion-button color="danger" (click)="deleteRule(i)">
+                <ion-icon name="trash" slot="icon-only"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-item>
+        }
+      </ion-reorder-group>
+    </ion-list>
+
+    <div class="ion-padding">
+      <ion-button expand="block" fill="outline" (click)="addRule()">
+        <ion-icon name="add" slot="start"></ion-icon>
+        Regel hinzufügen
+      </ion-button>
+    </div>
+
+    <ion-item>
+      <ion-label position="stacked">Formel</ion-label>
+      <ion-text>{{ currentFormula }}</ion-text>
+    </ion-item>
+    <ion-item lines="none">
+      <ion-text [color]="valid ? 'success' : 'danger'">
+        <p>{{ statusText }}</p>
+      </ion-text>
+    </ion-item>
+
+    <div class="ion-padding">
+      <ion-button expand="block" [disabled]="!valid" (click)="confirm()">
+        Übernehmen
+      </ion-button>
+    </div>
+  </ion-content>
+}
+
+@if (editIndex !== null) {
+  <ion-content class="ion-padding">
+    <ion-list>
+      <ion-item>
+        <ion-label position="stacked">Regeltyp</ion-label>
+        <ion-select [(ngModel)]="editRule.ruleType" (ngModelChange)="onEditRuleTypeChange()" interface="popover">
+          @for (rt of RULE_TYPES; track $index) {
+            <ion-select-option [value]="rt">{{ rt }}</ion-select-option>
+          }
+        </ion-select>
+      </ion-item>
+
+      @if (editRule.ruleType === 'Disziplin' || editRule.ruleType === 'StreichDisziplin') {
+        <ion-item>
+          <ion-label position="stacked">Disziplinen</ion-label>
+        </ion-item>
+        @for (d of availableDisziplinen; track $index) {
+          <ion-item>
+            <ion-checkbox slot="start" [checked]="editDisziplinenSet.has(d)" (ionChange)="toggleDisziplin(d)"></ion-checkbox>
+            <ion-label>{{ d }}</ion-label>
+          </ion-item>
+        }
+      }
+
+      @if (editRule.ruleType === 'StreichWertungen') {
+        <ion-item>
+          <ion-label position="stacked">Typ</ion-label>
+          <ion-select [(ngModel)]="editRule.typ" interface="popover">
+            @for (st of STREICH_TYPEN; track $index) {
+              <ion-select-option [value]="st">{{ st }}</ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+        <ion-item>
+          <ion-label position="stacked">Min/Max</ion-label>
+          <ion-select [(ngModel)]="editRule.minMax" interface="popover">
+            @for (mm of MINMAX_TYPEN; track $index) {
+              <ion-select-option [value]="mm">{{ mm }}</ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+      }
+    </ion-list>
+
+    <div class="ion-padding">
+      <ion-button expand="block" [disabled]="!editRuleValid" (click)="saveEdit()">Speichern</ion-button>
+    </div>
+  </ion-content>
+}
