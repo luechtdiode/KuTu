@@ -1,0 +1,139 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      @if (editIndex !== null) {
+        <ion-button (click)="editIndex = null">
+          <ion-icon name="arrow-back"></ion-icon>
+        </ion-button>
+      }
+    </ion-buttons>
+    <ion-title>{{ editIndex !== null ? 'Regel bearbeiten' : title }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">Abbrechen</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+@if (editIndex === null) {
+  <ion-content>
+    <ion-list>
+      <ion-reorder-group (ionItemReorder)="handleReorder($event)" [disabled]="false">
+        @for (row of rows; track $index; let i = $index) {
+          <ion-item>
+            <ion-reorder slot="end" style="display: flex !important;">
+              <ion-icon name="reorder-three-outline"></ion-icon>
+            </ion-reorder>
+            <ion-label>{{ ruleSummary(row) }}</ion-label>
+            <ion-buttons slot="end">
+              <ion-button (click)="editRuleAt(i)">
+                <ion-icon name="create" slot="icon-only"></ion-icon>
+              </ion-button>
+              <ion-button color="danger" (click)="deleteRule(i)">
+                <ion-icon name="trash" slot="icon-only"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-item>
+        }
+      </ion-reorder-group>
+    </ion-list>
+
+    <div class="ion-padding">
+      <ion-button expand="block" fill="outline" (click)="addRule()">
+        <ion-icon name="add" slot="start"></ion-icon>
+        Regel hinzufügen
+      </ion-button>
+    </div>
+
+    <ion-item>
+      <ion-label position="stacked">Formel</ion-label>
+      <ion-text>{{ currentFormula }}</ion-text>
+    </ion-item>
+    <ion-item lines="none">
+      <ion-text [color]="valid ? 'success' : 'danger'">
+        <p>{{ statusText }}</p>
+      </ion-text>
+    </ion-item>
+
+    <div class="ion-padding">
+      <ion-button expand="block" [disabled]="!valid" (click)="confirm()">
+        Übernehmen
+      </ion-button>
+    </div>
+  </ion-content>
+}
+
+@if (editIndex !== null) {
+  <ion-content class="ion-padding">
+    <ion-list>
+      <ion-item>
+        <ion-label position="stacked">Gruppierung der Teams</ion-label>
+        <ion-select [(ngModel)]="editRule.ruleType1" interface="popover">
+          @for (rt of RULE_TYPES_1; track $index) {
+            <ion-select-option [value]="rt">{{ rt }}</ion-select-option>
+          }
+        </ion-select>
+      </ion-item>
+
+      @if (editRule.ruleType1 !== 'Keine Teams') {
+        <ion-item>
+          <ion-label position="stacked">Auswahl der Wertungen</ion-label>
+          <ion-select [(ngModel)]="editRule.ruleType2" interface="popover">
+            @for (rt of RULE_TYPES_2; track $index) {
+              <ion-select-option [value]="rt">{{ rt }}</ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="stacked">Teamresultat Berechnung</ion-label>
+          <ion-select [(ngModel)]="editRule.aggregate" interface="popover">
+            @for (a of AGGREGATES; track $index) {
+              <ion-select-option [value]="a">{{ a }}</ion-select-option>
+            }
+          </ion-select>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="stacked">Min. Anzahl zählende Resultate</ion-label>
+          <ion-input type="text" [(ngModel)]="editRule.min" placeholder="* oder Zahl"></ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="stacked">Max. Anzahl Teilnehmer/-Innen</ion-label>
+          <ion-input type="text" [(ngModel)]="editRule.max" placeholder="* oder Zahl"></ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-checkbox slot="start" [(ngModel)]="editRule.includeSexGrouping"></ion-checkbox>
+          <ion-label>Geschlecht gruppieren (M+W)</ion-label>
+        </ion-item>
+
+        @if (availableCategories.length > 0) {
+          <ion-item>
+            <ion-label position="stacked">Kategorien</ion-label>
+          </ion-item>
+        }
+        @for (cat of availableCategories; track $index) {
+          <ion-item>
+            <ion-checkbox slot="start"
+              [checked]="editSelectedCategoriesSet.has(cat)"
+              (ionChange)="toggleCategory(cat)"></ion-checkbox>
+            <ion-label>{{ cat }}</ion-label>
+          </ion-item>
+        }
+
+        <ion-item>
+          <ion-label position="stacked">Gemischte Teams</ion-label>
+          <ion-input
+            [value]="editRule.extraTeams.join(', ')"
+            (ionChange)="onExtraTeamsChange($event)"
+            placeholder="Namen mit Komma trennen"></ion-input>
+        </ion-item>
+      }
+    </ion-list>
+
+    <div class="ion-padding">
+      <ion-button expand="block" [disabled]="!editRuleValid" (click)="saveEdit()">Speichern</ion-button>
+    </div>
+  </ion-content>
+}
