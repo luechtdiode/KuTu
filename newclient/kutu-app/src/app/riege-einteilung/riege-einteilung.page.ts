@@ -61,7 +61,7 @@ export class RiegeEinteilungPage {
     this.loading = true;
     try {
       const [riegen, disziplinen, durations] = await Promise.all([
-        firstValueFrom(this.backend.getRiegen(this.uuid)),
+        firstValueFrom(this.backend.getRiegen(this.uuid, this.secret)),
         firstValueFrom(this.backend.getDisziplinen(this.uuid)),
         firstValueFrom(this.backend.getRiegeDuration(this.uuid, this.secret)).catch(() => [] as DurchgangDurationItem[])
       ]);

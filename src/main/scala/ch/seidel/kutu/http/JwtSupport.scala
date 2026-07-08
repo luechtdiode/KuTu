@@ -16,6 +16,7 @@ import java.util.{Base64, Date}
 trait JwtSupport extends Directives {
   private lazy val userKey = "user"
   private lazy val expiredAtKey = "expiredAtKey"
+  lazy val adminKey = "admin"
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def authenticated(rejectRequest: Boolean = false): Directive1[String] = {
@@ -46,13 +47,49 @@ trait JwtSupport extends Directives {
       if rejectRequest then reject else complete(StatusCodes.Unauthorized)
   }
 
+  def authenticatedAdmin(rejectRequest: Boolean = false): Directive1[String] = {
+    optionalHeaderValueByName(jwtAuthorizationKey).flatMap {
+      case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>
+        if isTokenExpired(jwt) then complete(StatusCodes.Unauthorized -> "Token expired.")
+        else getClaims(jwt) match {
+          case Some(claims)
+            if claims.get(adminKey).contains("true") || Int.MaxValue.toString.equals(claims.get(expiredAtKey)) =>
+            getUserID(Some(claims)) match {
+              case Some(id) => provide(id)
+              case _ => if rejectRequest then reject else complete(StatusCodes.Unauthorized)
+            }
+          case _ => if rejectRequest then reject else complete(StatusCodes.Unauthorized)
+        }
+      case _ => if rejectRequest then reject else complete(StatusCodes.Unauthorized)
+    }
+  }
+
+  def requireAdmin: Directive0 = {
+    optionalHeaderValueByName(jwtAuthorizationKey).flatMap {
+      case Some(jwt) =>
+        getClaims(jwt) match {
+          case Some(claims) if claims.get(adminKey).contains("true") => pass
+          case _ => complete(StatusCodes.Unauthorized)
+        }
+      case _ => complete(StatusCodes.Unauthorized)
+    }
+  }
+
+  def currentJwtClaims: Directive1[Option[Map[String, String]]] = {
+    optionalHeaderValueByName(jwtAuthorizationKey).flatMap {
+      case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>
+        provide(getClaims(jwt))
+      case _ => provide(None)
+    }
+  }
+
   def respondWithJwtHeader(userId: String): Directive0 = {
     val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
     respondWithHeader(RawHeader(jwtAuthorizationKey, jwt.JsonWebToken(jwtHeader, claims, jwtSecretKey)))
   }
 
-  def respondWithJwtHeader(wettkampf: Wettkampf): Directive0 = {
-    val claims = setClaims(wettkampf.uuid.get, wettkampf.datum)
+  def respondWithJwtHeader(wettkampf: Wettkampf, isAdmin: Boolean = false): Directive0 = {
+    val claims = setClaims(wettkampf.uuid.get, wettkampf.datum, isAdmin)
     val jwt = ch.seidel.jwt.JsonWebToken(jwtHeader, claims, jwtSecretKey)
     respondWithHeader(RawHeader(jwtAuthorizationKey, jwt))
   }
@@ -62,7 +99,7 @@ trait JwtSupport extends Directives {
     new String(Base64.getUrlEncoder.encodeToString(s"registration&c=$competitionUUID&rid=$registrationId&rs=$token".getBytes))
   }
 
-  def setClaims(userid: String, wettkampfDate: Date): JwtClaimsSetMap = {
+  def setClaims(userid: String, wettkampfDate: Date, isAdmin: Boolean): JwtClaimsSetMap = {
     val wkStart = Instant.ofEpochMilli(wettkampfDate.getTime).truncatedTo(TimeUnit.DAYS.toChronoUnit)
     val wkEnd = wkStart.plus(Duration.ofDays(1))
     val originalTimeout = Duration.between(Instant.now(), wkEnd)
@@ -72,19 +109,30 @@ trait JwtSupport extends Directives {
       wkEnd
     }
 
-    JwtClaimsSet(Map(
+    val base = Map(
       userKey -> userid,
       expiredAtKey -> permissionTimeout.toEpochMilli
-    ))
+    )
+    val withAdmin = if isAdmin then base + (adminKey -> "true") else base
+    JwtClaimsSet(withAdmin)
   }
 
-  def setClaims(userid: String, expiryPeriodInDays: Long): JwtClaimsSetMap = JwtClaimsSet(
-    Map(
+  def setClaims(userid: String, expiryPeriodInDays: Long, isAdmin: Boolean = false): JwtClaimsSetMap = {
+    val base = Map(
       userKey -> userid,
       expiredAtKey -> (System.currentTimeMillis() + TimeUnit.DAYS
         .toMillis(expiryPeriodInDays))
     )
-  )
+    val withAdmin = if isAdmin then base + (adminKey -> "true") else base
+    JwtClaimsSet(withAdmin)
+  }
+
+  def isExpiryInfinite(claims: Map[String, String]): Boolean = {
+    claims.get(expiredAtKey).exists { value =>
+      val remaining = value.toLong - System.currentTimeMillis()
+      remaining > TimeUnit.DAYS.toMillis(36500) // > 100 years means effectively infinite
+    }
+  }
 
   private def getClaims(jwt: String) = jwt match {
     case JsonWebToken(_, claims, _) => claims.asSimpleMap.toOption

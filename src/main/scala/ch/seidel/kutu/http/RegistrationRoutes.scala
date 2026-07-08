@@ -266,24 +266,28 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
               }
             }
           } ~ pathLabeled("syncactionsadmin", "syncactionsadmin") {
-            get {
-              withRequestTimeout(60.seconds) {
-                complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map {
-                  case RegistrationSyncActions(actions) => actions.toJson(using baseSyncActionListFormat)
-                  case _ => List.empty[ch.seidel.kutu.domain.SyncAction].toJson(using baseSyncActionListFormat)
-                })
+            authenticatedAdmin() { _ =>
+              get {
+                withRequestTimeout(60.seconds) {
+                  complete(CompetitionRegistrationClientActor.publish(AskRegistrationSyncActions(wettkampf.uuid.get), clientId).map {
+                    case RegistrationSyncActions(actions) => actions.toJson(using baseSyncActionListFormat)
+                    case _ => List.empty[ch.seidel.kutu.domain.SyncAction].toJson(using baseSyncActionListFormat)
+                  })
+                }
               }
             }
           } ~ pathLabeled("sync", "sync") {
-            post {
-              entity(as[SyncApplyRequest]) { request =>
-                complete(
-                  CompetitionRegistrationClientActor.publish(ApplySyncActions(wettkampf.uuid.get, request.actions), clientId)
-                    .map {
-                      case r: ApplySyncActionsResponse => SyncApplyResponse(r.processed, r.messages).toJson(using syncApplyResponseFormat)
-                      case _ => SyncApplyResponse(0, List.empty).toJson(using syncApplyResponseFormat)
-                    }
-                )
+            authenticatedAdmin() { _ =>
+              post {
+                entity(as[SyncApplyRequest]) { request =>
+                  complete(
+                    CompetitionRegistrationClientActor.publish(ApplySyncActions(wettkampf.uuid.get, request.actions), clientId)
+                      .map {
+                        case r: ApplySyncActionsResponse => SyncApplyResponse(r.processed, r.messages).toJson(using syncApplyResponseFormat)
+                        case _ => SyncApplyResponse(0, List.empty).toJson(using syncApplyResponseFormat)
+                      }
+                  )
+                }
               }
             }
           } ~ pathPrefixLabeled("programmdisziplinlist", "programmdisziplinlist") {
@@ -420,6 +424,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
           } ~ pathPrefixLabeled(LongNumber, ":registration-id") { registrationId =>
             authenticated() { userId =>
               if userId.equals(competitionId.toString) then {
+                requireAdmin {
                 // approve registration - means assign verein-id if missing, and apply registrations
                 // This is made from the FX-Client
                 // 1. get all
@@ -456,6 +461,7 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                     log.info(s"$clientId: Vereinsregistration gelöscht durch Admin: $registrationId")
                     StatusCodes.OK
                   })
+                }
                 }
               } else if extractRegistrationId(userId).contains(registrationId) then {
                 respondWithJwtHeader(s"$registrationId") {

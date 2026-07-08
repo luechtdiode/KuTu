@@ -55,6 +55,11 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
     RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))
   }
 
+  private def adminJwtFor(userId: String): RawHeader = {
+    val claims = setClaims(userId, jwtTokenExpiryPeriodInDays, isAdmin = true)
+    RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))
+  }
+
   /** Builds a multipart/form-data entity with a "zip" part, matching the field
    *  name expected by the `fileUpload("zip")` directive in WettkampfRoutes. */
   private def zipEntity(bytes: Array[Byte], filename: String): RequestEntity =
@@ -244,7 +249,7 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/start",
         entity = HttpEntity(ContentTypes.`application/json`, startDurchgangFormat.write(sd).compactPrint)
-      ).addHeader(jwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
         status should ===(StatusCodes.Conflict)
       }
     }
@@ -255,7 +260,7 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/start",
         entity = HttpEntity(ContentTypes.`application/json`, startDurchgangFormat.write(sd).compactPrint)
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
       }
     }
@@ -279,7 +284,7 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/reset",
         entity = HttpEntity(ContentTypes.`application/json`, resetStartDurchgangFormat.write(rsd).compactPrint)
-      ).addHeader(jwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
         status should ===(StatusCodes.Conflict)
       }
     }
@@ -290,7 +295,7 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/reset",
         entity = HttpEntity(ContentTypes.`application/json`, resetStartDurchgangFormat.write(rsd).compactPrint)
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
       }
     }
@@ -314,7 +319,7 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/stop",
         entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangFormat.write(fd).compactPrint)
-      ).addHeader(jwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
         status should ===(StatusCodes.Conflict)
       }
     }
@@ -325,7 +330,7 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/stop",
         entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangFormat.write(fd).compactPrint)
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
       }
     }
@@ -349,7 +354,7 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/finishedStep",
         entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangStepFormat.write(fds).compactPrint)
-      ).addHeader(jwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
         status should ===(StatusCodes.Conflict)
       }
     }
@@ -360,7 +365,7 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/finishedStep",
         entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangStepFormat.write(fds).compactPrint)
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
       }
     }

@@ -42,7 +42,7 @@ export class AdminRegistrationsPage {
     try {
       const [registrations, syncActions] = await Promise.all([
         firstValueFrom(this.backend.getRegistrations(this.uuid, this.secret)),
-        firstValueFrom(this.backend.getSyncActions(this.uuid)).catch(() => [] as SyncAction[])
+        firstValueFrom(this.backend.getSyncActions(this.uuid, this.secret)).catch(() => [] as SyncAction[])
       ]);
       this.registrations = registrations;
       this.syncActions = syncActions;
@@ -106,7 +106,7 @@ export class AdminRegistrationsPage {
       .filter(a => a?.data)
       .map(a => this.actionToKey(a));
     try {
-      const result = await firstValueFrom(this.backend.applySyncActions(this.uuid, keys));
+      const result = await firstValueFrom(this.backend.applySyncActions(this.uuid, keys, this.secret));
       const toast = await this.toastCtrl.create({
         message: `${result.processed} Aktionen verarbeitet.${result.messages.length > 0 ? ' ' + result.messages.join(', ') : ''}`,
         duration: 3000,
