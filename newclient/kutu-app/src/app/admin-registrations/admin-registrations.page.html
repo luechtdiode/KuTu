@@ -1,0 +1,87 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Anmeldungen</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-refresher slot="fixed" (ionRefresh)="loadData(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+      <ion-card-subtitle>UUID: {{ uuid }}</ion-card-subtitle>
+    </ion-card-header>
+  </ion-card>
+
+  @if (loading) {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+
+  @if (registrations.length > 0) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Vereinsanmeldungen ({{ registrations.length }})</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list>
+          @for (reg of registrations; track reg.id) {
+            <ion-item>
+              <ion-label>
+                <h2>{{ reg.vereinname }}</h2>
+                <p>
+                  {{ reg.respVorname }} {{ reg.respName }}
+                  @if (reg.verband) { | {{ reg.verband }} }
+                </p>
+                <p class="ion-text-wrap" style="font-size: 0.8em; opacity: 0.7;">
+                  {{ reg.mail }}@if (reg.mobilephone) { | {{ reg.mobilephone }} }
+                </p>
+              </ion-label>
+              <ion-badge slot="start" color="{{ getStatusColor(reg) }}">{{ getStatusBadge(reg) }}</ion-badge>
+              @if (!isApproved(reg)) {
+                <ion-button slot="end" fill="clear" color="success" (click)="approveRegistration(reg)">
+                  <ion-icon slot="icon-only" name="checkmark-circle"></ion-icon>
+                </ion-button>
+              }
+              <ion-button slot="end" fill="clear" color="danger" (click)="deleteRegistration(reg)">
+                <ion-icon slot="icon-only" name="trash"></ion-icon>
+              </ion-button>
+            </ion-item>
+          }
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+  } @else if (!loading) {
+    <ion-card>
+      <ion-card-content>
+        <ion-text color="medium">
+          <p class="ion-text-center">Keine Anmeldungen vorhanden.</p>
+        </ion-text>
+      </ion-card-content>
+    </ion-card>
+  }
+
+  @if (syncActions.length > 0) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Sync-Aktionen ({{ syncActions.length }})</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list>
+          @for (action of syncActions; track action.caption) {
+            <ion-item>
+              <ion-label class="ion-text-wrap">
+                <p>{{ action.caption }}</p>
+              </ion-label>
+              <ion-badge slot="end" color="medium">{{ action.verein.vereinname }}</ion-badge>
+            </ion-item>
+          }
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+  }
+</ion-content>

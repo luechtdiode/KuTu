@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, AthletRegistration } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -70,5 +70,29 @@ export class AdminBackendService {
 
   getDisziplinen(uuid: string): Observable<Geraet[]> {
     return this.http.get<Geraet[]>(this.api + 'durchgang/' + uuid + '/geraete');
+  }
+
+  getRegistrations(uuid: string, secret: string): Observable<ClubRegistration[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ClubRegistration[]>(this.api + 'registrations/' + uuid, { headers });
+  }
+
+  approveRegistration(uuid: string, regId: number, verein: Verein, secret: string): Observable<ClubRegistration> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put<ClubRegistration>(this.api + 'registrations/' + uuid + '/' + regId, verein, { headers });
+  }
+
+  deleteRegistration(uuid: string, regId: number, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete(this.api + 'registrations/' + uuid + '/' + regId, { headers, responseType: 'text' });
+  }
+
+  getSyncActions(uuid: string): Observable<SyncAction[]> {
+    return this.http.get<SyncAction[]>(this.api + 'registrations/' + uuid + '/syncactions');
+  }
+
+  getAthletRegistrations(uuid: string, regId: number, secret: string): Observable<AthletRegistration[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<AthletRegistration[]>(this.api + 'registrations/' + uuid + '/' + regId + '/athletes', { headers });
   }
 }
