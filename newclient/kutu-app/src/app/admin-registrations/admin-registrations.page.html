@@ -69,11 +69,18 @@
     <ion-card>
       <ion-card-header>
         <ion-card-title>Sync-Aktionen ({{ syncActions.length }})</ion-card-title>
+        <ion-item (click)="toggleAllSyncAction()" [color]="isAllSelected() ? 'light' : ''" button>
+          <ion-icon slot="start" [name]="isAllSelected() ? 'checkbox' : 'square-outline'" color="primary"></ion-icon>
+          <ion-label class="ion-text-wrap">
+            <p>Alle Synchronisations-Actions selektieren</p>
+          </ion-label>
+        </ion-item>
       </ion-card-header>
       <ion-card-content>
         <ion-list>
-          @for (action of syncActions; track action.caption) {
-            <ion-item>
+          @for (action of syncActions; track $index; let i = $index) {
+            <ion-item (click)="toggleSyncAction(i)" [color]="isSelected(i) ? 'light' : ''" button>
+              <ion-icon slot="start" [name]="isSelected(i) ? 'checkbox' : 'square-outline'" color="primary"></ion-icon>
               <ion-label class="ion-text-wrap">
                 <p>{{ action.caption }}</p>
               </ion-label>
@@ -81,6 +88,12 @@
             </ion-item>
           }
         </ion-list>
+        @if (selectedCount > 0) {
+          <ion-button expand="block" color="primary" [disabled]="applying" (click)="applySelected()">
+            <ion-icon slot="start" name="sync"></ion-icon>
+            {{ applying ? 'Verarbeite...' : selectedCount + ' ausgewählte Aktionen ausführen' }}
+          </ion-button>
+        }
       </ion-card-content>
     </ion-card>
   }
