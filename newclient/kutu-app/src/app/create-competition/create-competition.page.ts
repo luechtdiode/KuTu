@@ -162,11 +162,15 @@ export class CreateCompetitionPage {
     const modal = await this.modalCtrl.create({
       component: TermsModalComponent
     });
+    modal.onDidDismiss().then(result => {
+      this.ngZone.run(() => {
+        if (result !== null && result !== undefined) {
+          this.form.termsAccepted = true;
+          this.cdr.detectChanges();
+        }
+      });
+    });
     await modal.present();
-    const { data } = await modal.onDidDismiss();
-    if (data === true) {
-      this.form.termsAccepted = true;
-    }
   }
 
   async openAltersklassenEditor(field: 'altersklassen' | 'jahrgangsklassen') {
