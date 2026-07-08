@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, AthletRegistration } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -88,7 +88,11 @@ export class AdminBackendService {
   }
 
   getSyncActions(uuid: string): Observable<SyncAction[]> {
-    return this.http.get<SyncAction[]>(this.api + 'registrations/' + uuid + '/syncactions');
+    return this.http.get<SyncAction[]>(this.api + 'registrations/' + uuid + '/syncactionsadmin');
+  }
+
+  applySyncActions(uuid: string, keys: SyncActionKey[]): Observable<SyncApplyResponse> {
+    return this.http.post<SyncApplyResponse>(this.api + 'registrations/' + uuid + '/sync', { actions: keys });
   }
 
   getAthletRegistrations(uuid: string, regId: number, secret: string): Observable<AthletRegistration[]> {

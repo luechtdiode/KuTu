@@ -138,6 +138,28 @@ export interface JudgeRegistrationProgramItem {
  export interface SyncAction {
    caption: string;
    verein: ClubRegistration;
+   data: SyncActionData;
+ }
+ export interface SyncActionData {
+   registrationId: number;
+   type: string;
+   athletId?: number;
+   athletRegistrationId?: number;
+   oldVereinId?: number;
+ }
+ export interface SyncActionKey {
+   registrationId: number;
+   actionType?: string;
+   caption?: string;
+   athletId?: number;
+   oldVereinId?: number;
+ }
+ export interface SyncApplyRequest {
+   actions: SyncActionKey[];
+ }
+ export interface SyncApplyResponse {
+   processed: number;
+   messages: string[];
  }
 
  export interface ScoreCalcVariable {
