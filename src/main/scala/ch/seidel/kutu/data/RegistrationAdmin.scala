@@ -188,7 +188,7 @@ object RegistrationAdmin {
         (vereinregistration, athletRegistration, parsed, candidate.toAthletView(resolvedVerein))
       }
       logger.info(s"Normalize Athlet-List duration: ${java.time.Duration.between(start, Instant.now())}")
-      doSyncUnassignedClubRegistrations(wkInfo, service)(changelist)._2.map(PublicSyncAction(_))
+      doSyncUnassignedClubRegistrations(wkInfo, service)(changelist)._2
     }
   }
 

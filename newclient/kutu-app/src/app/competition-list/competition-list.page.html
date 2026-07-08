@@ -23,6 +23,9 @@
               <p>{{ s.datum }}</p>
               <p class="ion-text-wrap" style="font-size: 0.7em; opacity: 0.6;">UUID: {{ s.uuid }}</p>
             </ion-label>
+            <ion-button slot="end" fill="clear" (click)="openRegistrations(s)">
+              <ion-icon slot="icon-only" name="people"></ion-icon>
+            </ion-button>
             <ion-button slot="end" fill="clear" (click)="openRiegen(s)">
               <ion-icon slot="icon-only" name="git-network"></ion-icon>
             </ion-button>
