@@ -35,8 +35,13 @@ trait LoginRoutes extends SprayJsonSupport with EnrichedJson with JwtSupport wit
       authenticated() { userId =>
         if wettkampfExists(userId) then {
           val wettkampf = readWettkampf(userId)
-          respondWithJwtHeader(wettkampf) {
-            complete(StatusCodes.OK)
+          currentJwtClaims { claims =>
+            val isAdmin = claims.exists(c =>
+              c.get(adminKey).contains("true") || isExpiryInfinite(c)
+            )
+            respondWithJwtHeader(wettkampf, isAdmin = isAdmin) {
+              complete(StatusCodes.OK)
+            }
           }
         }
         else {
