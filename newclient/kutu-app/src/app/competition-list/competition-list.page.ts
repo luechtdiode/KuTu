@@ -58,6 +58,10 @@ export class CompetitionListPage {
     this.nav.navigateRoot('/admin/riege-einteilung/' + s.uuid);
   }
 
+  openRegistrations(s: StoredSecret) {
+    this.nav.navigateRoot('/admin/registrations/' + s.uuid);
+  }
+
   private async deleteCompetition(s: StoredSecret) {
     try {
       await firstValueFrom(this.backend.deleteCompetition(s.uuid, s.secret));
