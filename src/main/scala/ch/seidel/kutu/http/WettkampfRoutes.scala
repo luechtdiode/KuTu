@@ -93,7 +93,7 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
     val uploadProm = Promise[String]()
     val uploadFut = uploadProm.future
     if Config.isLocalHostServer && remoteHost.startsWith("localhost") && !wettkampf.hasSecred(homedir, remoteHostOrigin) then {
-      wettkampf.saveSecret(homedir, remoteHostOrigin, JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue), jwtSecretKey))
+      wettkampf.saveSecret(homedir, remoteHostOrigin, JsonWebToken(jwtHeader, setClaims(uuid, Int.MaxValue, isAdmin = true), jwtSecretKey))
     }
     val hadSecret = wettkampf.hasSecred(homedir, remoteHostOrigin)
 
@@ -309,7 +309,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                       termsAcceptedAt = Some(new java.sql.Timestamp(System.currentTimeMillis())),
                       termsVersion = Some(request.termsVersion)
                     )
-                    val claims = setClaims(uuid, Int.MaxValue)
+                    val claims = setClaims(uuid, Int.MaxValue, isAdmin = true)
                     val secret = JsonWebToken(jwtHeader, claims, jwtSecretKey)
                     wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, secret)
                     val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
@@ -369,7 +369,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
       pathPrefixLabeled("competition" / JavaUUID, "competition/:competition-id") { wkuuid =>
         pathLabeled("start", "start") {
           post {
-            authenticated() { userId =>
+            authenticatedAdmin() { userId =>
               entity(as[StartDurchgang]) { sd =>
                 if userId.equals(wkuuid.toString) then {
                   AbuseHandler.clearAbusedClients()
@@ -381,13 +381,26 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
             }
           }
         } ~
-          pathLabeled("reset", "reset") {
+        pathLabeled("reset", "reset") {
+        post {
+          authenticatedAdmin() { userId =>
+            entity(as[ResetStartDurchgang]) { rsd =>
+              if userId.equals(wkuuid.toString) then {
+                AbuseHandler.clearAbusedClients()
+                complete(CompetitionCoordinatorClientActor.publish(rsd, clientId))
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            }
+          }
+        }
+      } ~
+        pathLabeled("stop", "stop") {
           post {
-            authenticated() { userId =>
-              entity(as[ResetStartDurchgang]) { rsd =>
+            authenticatedAdmin() { userId =>
+              entity(as[FinishDurchgang]) { fd =>
                 if userId.equals(wkuuid.toString) then {
-                  AbuseHandler.clearAbusedClients()
-                  complete(CompetitionCoordinatorClientActor.publish(rsd, clientId))
+                  complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
                 } else {
                   complete(StatusCodes.Conflict)
                 }
@@ -395,328 +408,325 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
             }
           }
         } ~
-          pathLabeled("stop", "stop") {
-            post {
-              authenticated() { userId =>
-                entity(as[FinishDurchgang]) { fd =>
-                  if userId.equals(wkuuid.toString) then {
-                    complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
-                  } else {
-                    complete(StatusCodes.Conflict)
-                  }
+        pathLabeled("finishedStep", "finishedStep") {
+          post {
+            authenticatedAdmin() { userId =>
+              entity(as[FinishDurchgangStep]) { fd =>
+                if userId.equals(wkuuid.toString) then {
+                  complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
+                } else {
+                  complete(StatusCodes.Conflict)
                 }
               }
             }
-          } ~
-          pathLabeled("finishedStep", "finishedStep") {
-            post {
-              authenticated() { userId =>
-                entity(as[FinishDurchgangStep]) { fd =>
-                  if userId.equals(wkuuid.toString) then {
-                    complete(CompetitionCoordinatorClientActor.publish(fd, clientId))
-                  } else {
-                    complete(StatusCodes.Conflict)
-                  }
-                }
-              }
-            }
-          } ~
-          pathPrefixLabeled("riege", "riege") {
-            pathEnd {
-              get {
-                onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                  val riegen = selectRiegen(wk.id)
-                  val counts = listRiegenZuWettkampf(wk.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
-                  complete(riegen.map(r => RiegeItem(
-                    name = r.r,
-                    durchgang = r.durchgang,
-                    startId = r.start.map(_.id),
-                    startName = r.start.map(_.name),
-                    kind = r.kind,
-                    athletCount = counts.getOrElse(r.r, 0)
-                  )).toJson)
-                }
-              } ~
-              put {
-                authenticated() { userId =>
-                  if userId.equals(wkuuid.toString) then {
-                    entity(as[UpdateRiegeRequest]) { request =>
-                      onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                        val updated = updateOrinsertRiege(RiegeRaw(wk.id, request.name, request.durchgang, request.startId, request.kind))
-                        complete(RiegeItem(updated.r, updated.durchgang, updated.start.map(_.id), updated.start.map(_.name), updated.kind, 0).toJson)
-                      }
-                    }
-                  } else {
-                    complete(StatusCodes.Conflict)
-                  }
-                }
-              }
-            } ~
-            pathLabeled("generate", "generate") {
-              post {
-                authenticated() { userId =>
-                  if userId.equals(wkuuid.toString) then {
-                    entity(as[RiegeSuggestionRequest]) { request =>
-                      onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                        onComplete(Future {
-                          val disziplinlist = listDisziplinesZuWettkampf(wk.id)
-                          val onDisziplin = request.onDisziplinIds.map(ids => disziplinlist.filter(d => ids.contains(d.id)).toSet)
-                          val splitSex = request.splitSexOption.flatMap {
-                            case "GemischteRiegen" => Some(GemischteRiegen)
-                            case "GemischterDurchgang" => Some(GemischterDurchgang)
-                            case "GetrennteDurchgaenge" => Some(GetrennteDurchgaenge)
-                            case _ => None
-                          }
-                          val durchgangBuilder = DurchgangBuilder(this)
-                          val riegenzuteilungen = durchgangBuilder.suggestDurchgaenge(
-                            wk.id, request.maxRiegenSize, Set.empty, Set.empty,
-                            splitSexOption = splitSex, splitPgm = request.splitPgm,
-                            onDisziplinList = onDisziplin,
-                            separateRiegen2Durchgaenge = request.separateRiegen2Durchgaenge)
-                          val suggestedGroups = DurchgangGrouper.groupDurchgaengeByKategorien(riegenzuteilungen, Int.MaxValue)
-                          cleanAllRiegenDurchgaenge(wk.id)
-                          for
-                            durchgang <- riegenzuteilungen.keys
-                            (start, riegen) <- riegenzuteilungen(durchgang)
-                            (riege, wertungen) <- riegen
-                          do {
-                            insertRiegenWertungen(RiegeRaw(
-                              wettkampfId = wk.id,
-                              r = riege,
-                              durchgang = Some(durchgang),
-                              start = Some(start.id),
-                              kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
-                            ), wertungen)
-                          }
-                          updateDurchgaenge(wk.id)
-                          suggestedGroups.foreach { suggestedDg =>
-                            if suggestedDg.title != suggestedDg.name then {
-                              renameDurchgangGroup(wk.id, suggestedDg.name, suggestedDg.title)
-                            }
-                          }
-                          val riegen = selectRiegen(wk.id)
-                          val counts = listRiegenZuWettkampf(wk.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
-                          val riegenItems = riegen.map(r => RiegeItem(
-                            name = r.r,
-                            durchgang = r.durchgang,
-                            startId = r.start.map(_.id),
-                            startName = r.start.map(_.name),
-                            kind = r.kind,
-                            athletCount = counts.getOrElse(r.r, 0)
-                          ))
-                          val durchgaenge = selectDurchgaenge(wkuuid)
-                          val athleteCountsByDurchgang = listRiegenZuWettkampf(wk.id)
-                            .groupBy(_._3).view.mapValues(_.map(_._2).sum)
-                          val durchgangItems = durchgaenge.map(d => DurchgangDurationItem(
-                            name = d.name, title = d.title,
-                            offsetMillis = d.planStartOffset,
-                            einturnenMillis = d.planEinturnen,
-                            geraetMillis = d.planGeraet,
-                            totalMillis = d.planTotal,
-                            athletCount = athleteCountsByDurchgang.get(Some(d.name)).getOrElse(0)
-                          ))
-                          RiegePreviewResponse(riegenItems, durchgangItems)
-                        }) {
-                          case Success(response) => complete(response.toJson)
-                          case Failure(e) =>
-                            log.error(e.getMessage, e)
-                            complete(StatusCodes.InternalServerError, s"Failed to generate riegen: ${e.getMessage}")
-                        }
-                      }
-                    }
-                  } else {
-                    complete(StatusCodes.Conflict)
-                  }
-                }
-              }
-            } ~
-            pathLabeled("reset", "reset") {
-              post {
-                authenticated() { userId =>
-                  if userId.equals(wkuuid.toString) then {
-                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                      cleanAllRiegenDurchgaenge(wk.id)
-                      complete(StatusCodes.OK, JsObject.empty)
-                    }
-                  } else {
-                    complete(StatusCodes.Conflict)
-                  }
-                }
-              }
-            } ~
-            pathLabeled("duration", "duration") {
-              get {
-                authenticated() { userId =>
-                  if userId.equals(wkuuid.toString) then {
-                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                      val durchgaenge = selectDurchgaenge(wkuuid)
-                      val athleteCountsByDurchgang = listRiegenZuWettkampf(wk.id)
-                        .groupBy(_._3).view.mapValues(_.map(_._2).sum)
-                      complete(durchgaenge.map(d => DurchgangDurationItem(
-                        name = d.name, title = d.title,
-                        offsetMillis = d.planStartOffset,
-                        einturnenMillis = d.planEinturnen,
-                        geraetMillis = d.planGeraet,
-                        totalMillis = d.planTotal,
-                        athletCount = athleteCountsByDurchgang.get(Some(d.name)).getOrElse(0)
-                      )).toJson)
-                    }
-                  } else {
-                    complete(StatusCodes.Conflict)
-                  }
-                }
-              }
-            }
-          } ~
+          }
+        } ~
+        pathPrefixLabeled("riege", "riege") {
           pathEnd {
+            authenticatedAdmin() { userId =>
+              if userId.equals(wkuuid.toString) then {
+                get {
+                  onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                    val riegen = selectRiegen(wk.id)
+                    val counts = listRiegenZuWettkampf(wk.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
+                    complete(riegen.map(r => RiegeItem(
+                      name = r.r,
+                      durchgang = r.durchgang,
+                      startId = r.start.map(_.id),
+                      startName = r.start.map(_.name),
+                      kind = r.kind,
+                      athletCount = counts.getOrElse(r.r, 0)
+                    )).toJson)
+                  }
+                }
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            } ~
+            put {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[UpdateRiegeRequest]) { request =>
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      val updated = updateOrinsertRiege(RiegeRaw(wk.id, request.name, request.durchgang, request.startId, request.kind))
+                      complete(RiegeItem(updated.r, updated.durchgang, updated.start.map(_.id), updated.start.map(_.name), updated.kind, 0).toJson)
+                    }
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathLabeled("generate", "generate") {
             post {
-              extractUri { uri =>
-                withoutRequestTimeout {
-                  onSuccess(wettkampfExistsAsync(wkuuid.toString)) {
-                    case exists if !exists =>
-                      fileUpload("zip") {
-                        case (metadata, file: Source[ByteString, Any]) =>
-                          // do something with the file and file metadata ...
-                          log.info(s"receiving new wettkampf: $metadata, $wkuuid")
-                          import Core.materializer
-                          val is = file.async.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
-                          val processor = Future[(Wettkampf,JwtClaimsSetMap)] {
-                            try {
-                              val wettkampf = ResourceExchanger.importWettkampf(is)
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[RiegeSuggestionRequest]) { request =>
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      onComplete(Future {
+                        val disziplinlist = listDisziplinesZuWettkampf(wk.id)
+                        val onDisziplin = request.onDisziplinIds.map(ids => disziplinlist.filter(d => ids.contains(d.id)).toSet)
+                        val splitSex = request.splitSexOption.flatMap {
+                          case "GemischteRiegen" => Some(GemischteRiegen)
+                          case "GemischterDurchgang" => Some(GemischterDurchgang)
+                          case "GetrennteDurchgaenge" => Some(GetrennteDurchgaenge)
+                          case _ => None
+                        }
+                        val durchgangBuilder = DurchgangBuilder(this)
+                        val riegenzuteilungen = durchgangBuilder.suggestDurchgaenge(
+                          wk.id, request.maxRiegenSize, Set.empty, Set.empty,
+                          splitSexOption = splitSex, splitPgm = request.splitPgm,
+                          onDisziplinList = onDisziplin,
+                          separateRiegen2Durchgaenge = request.separateRiegen2Durchgaenge)
+                        val suggestedGroups = DurchgangGrouper.groupDurchgaengeByKategorien(riegenzuteilungen, Int.MaxValue)
+                        cleanAllRiegenDurchgaenge(wk.id)
+                        for
+                          durchgang <- riegenzuteilungen.keys
+                          (start, riegen) <- riegenzuteilungen(durchgang)
+                          (riege, wertungen) <- riegen
+                        do {
+                          insertRiegenWertungen(RiegeRaw(
+                            wettkampfId = wk.id,
+                            r = riege,
+                            durchgang = Some(durchgang),
+                            start = Some(start.id),
+                            kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
+                          ), wertungen)
+                        }
+                        updateDurchgaenge(wk.id)
+                        suggestedGroups.foreach { suggestedDg =>
+                          if suggestedDg.title != suggestedDg.name then {
+                            renameDurchgangGroup(wk.id, suggestedDg.name, suggestedDg.title)
+                          }
+                        }
+                        val riegen = selectRiegen(wk.id)
+                        val counts = listRiegenZuWettkampf(wk.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
+                        val riegenItems = riegen.map(r => RiegeItem(
+                          name = r.r,
+                          durchgang = r.durchgang,
+                          startId = r.start.map(_.id),
+                          startName = r.start.map(_.name),
+                          kind = r.kind,
+                          athletCount = counts.getOrElse(r.r, 0)
+                        ))
+                        val durchgaenge = selectDurchgaenge(wkuuid)
+                        val athleteCountsByDurchgang = listRiegenZuWettkampf(wk.id)
+                          .groupBy(_._3).view.mapValues(_.map(_._2).sum)
+                        val durchgangItems = durchgaenge.map(d => DurchgangDurationItem(
+                          name = d.name, title = d.title,
+                          offsetMillis = d.planStartOffset,
+                          einturnenMillis = d.planEinturnen,
+                          geraetMillis = d.planGeraet,
+                          totalMillis = d.planTotal,
+                          athletCount = athleteCountsByDurchgang.get(Some(d.name)).getOrElse(0)
+                        ))
+                        RiegePreviewResponse(riegenItems, durchgangItems)
+                      }) {
+                        case Success(response) => complete(response.toJson)
+                        case Failure(e) =>
+                          log.error(e.getMessage, e)
+                          complete(StatusCodes.InternalServerError, s"Failed to generate riegen: ${e.getMessage}")
+                      }
+                    }
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathLabeled("reset", "reset") {
+            post {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                    cleanAllRiegenDurchgaenge(wk.id)
+                    complete(StatusCodes.OK, JsObject.empty)
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathLabeled("duration", "duration") {
+            get {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                    val durchgaenge = selectDurchgaenge(wkuuid)
+                    val athleteCountsByDurchgang = listRiegenZuWettkampf(wk.id)
+                      .groupBy(_._3).view.mapValues(_.map(_._2).sum)
+                    complete(durchgaenge.map(d => DurchgangDurationItem(
+                      name = d.name, title = d.title,
+                      offsetMillis = d.planStartOffset,
+                      einturnenMillis = d.planEinturnen,
+                      geraetMillis = d.planGeraet,
+                      totalMillis = d.planTotal,
+                      athletCount = athleteCountsByDurchgang.get(Some(d.name)).getOrElse(0)
+                    )).toJson)
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          }
+        } ~
+        pathEnd {
+          post {
+            extractUri { uri =>
+              withoutRequestTimeout {
+                onSuccess(wettkampfExistsAsync(wkuuid.toString)) {
+                  case exists if !exists =>
+                    fileUpload("zip") {
+                      case (metadata, file: Source[ByteString, Any]) =>
+                        // do something with the file and file metadata ...
+                        log.info(s"receiving new wettkampf: $metadata, $wkuuid")
+                        import Core.materializer
+                        val is = file.async.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
+                        val processor = Future[(Wettkampf,JwtClaimsSetMap)] {
+                          try {
+                            val wettkampf = ResourceExchanger.importWettkampf(is)
+                            val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
+                            val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
+                            AthletIndexActor.publish(ResyncIndex)
+                            CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
+                            val claims = setClaims(wkuuid.toString, Int.MaxValue, isAdmin = true)
+                            (wettkampf, claims)
+                          } finally {
+                            is.close()
+                          }
+                        }
+                        onComplete(processor) {
+                          case Success((wettkampf, claims)) =>
+                            respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
+                              if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
+                                complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
+                              } else {
+                                complete(StatusCodes.OK)
+                              }
+                            }
+
+                          case Failure(e) =>
+                            log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                            complete(StatusCodes.Conflict, s"Wettkampf $wkuuid konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
+                        }
+                    }
+                  case _ =>
+                    log.warning(s"wettkampf $wkuuid cannot be uploaded twice")
+                    complete(StatusCodes.Conflict, s"Wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
+                }
+              }
+            }
+          } ~
+          put {
+            extractUri { uri =>
+              authenticated() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  withoutRequestTimeout {
+                    fileUpload("zip") {
+                      case (metadata, file: Source[ByteString, Any]) =>
+                        // do something with the file and file metadata ...
+                        log.info(s"receiving and updating wettkampf: $metadata, $wkuuid")
+                        import Core.materializer
+                        val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
+                        val processor = Future {
+                          try {
+                            val before = readWettkampf(wkuuid.toString)
+                            val wettkampf = ResourceExchanger.importWettkampf(is)
+                            AthletIndexActor.publish(ResyncIndex)
+                            CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
+                            CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
+                            AbuseHandler.clearAbusedClients()
+                            if !before.notificationEMail.equalsIgnoreCase(wettkampf.notificationEMail) then {
                               val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
                               val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
-                              AthletIndexActor.publish(ResyncIndex)
                               CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
-                              val claims = setClaims(wkuuid.toString, Int.MaxValue)
-                              (wettkampf, claims)
-                            } finally {
-                              is.close()
                             }
+                            wettkampf
+                          } finally {
+                            is.close()
                           }
-                          onComplete(processor) {
-                            case Success((wettkampf, claims)) =>
-                              respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
-                                if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
-                                  complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
-                                } else {
-                                  complete(StatusCodes.OK)
-                                }
-                              }
-
-                            case Failure(e) =>
-                              log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
-                              complete(StatusCodes.Conflict, s"Wettkampf $wkuuid konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
-                          }
-                      }
-                    case _ =>
-                      log.warning(s"wettkampf $wkuuid cannot be uploaded twice")
-                      complete(StatusCodes.Conflict, s"Wettkampf $wkuuid kann nicht mehrfach hochgeladen werden.")
-                  }
-                }
-              }
-            } ~
-              put {
-                extractUri { uri =>
-                  authenticated() { userId =>
-                    if userId.equals(wkuuid.toString) then {
-                      withoutRequestTimeout {
-                        fileUpload("zip") {
-                          case (metadata, file: Source[ByteString, Any]) =>
-                            // do something with the file and file metadata ...
-                            log.info(s"receiving and updating wettkampf: $metadata, $wkuuid")
-                            import Core.materializer
-                            val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
-                            val processor = Future {
-                              try {
-                                val before = readWettkampf(wkuuid.toString)
-                                val wettkampf = ResourceExchanger.importWettkampf(is)
-                                AthletIndexActor.publish(ResyncIndex)
-                                CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
-                                CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
-                                AbuseHandler.clearAbusedClients()
-                                if !before.notificationEMail.equalsIgnoreCase(wettkampf.notificationEMail) then {
-                                  val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
-                                  val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
-                                  CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
-                                }
-                                wettkampf
-                              } finally {
-                                is.close()
-                              }
-                            }
-
-                            onComplete(processor) {
-                              case Success(wettkampf) =>
-                                log.info(s"wettkampf ${wettkampf.easyprint} updated")
-                                if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
-                                  complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
-                                } else {
-                                  complete(StatusCodes.OK)
-                                }
-                              case Failure(e) =>
-                                log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
-                                complete(StatusCodes.BadRequest,
-                                  s"""Der Wettkampf ${metadata.fileName}
-                                     |konnte wg. einem technischen Fehler nicht hochgeladen werden!
-                                     |=>${e.getMessage}""".
-                                    stripMargin)
-                          }
-                      }
-                    }
-                  }
-                    else {
-                      complete(
-                        StatusCodes.Unauthorized)
-                    }
-                  }
-                }
-              } ~
-              delete {
-                authenticated() { userId =>
-                  if userId.equals(wkuuid.toString) then {
-                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wettkampf =>
-                      log.info("deleting wettkampf: " + wettkampf)
-                      complete(
-                        CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString), clientId)
-                        .andThen {
-                          case _ =>
-                            CompetitionRegistrationClientActor.stop(wkuuid.toString)
-                            deleteRegistrations(UUID.fromString(wkuuid.toString))
-                            deleteWettkampf(wettkampf.id)
-                            StatusCodes.OK
                         }
-                      )
-                    }
-                  } else {
-                    complete(StatusCodes.Unauthorized)
-                  }
-                }
-              } ~
-              get {
-                authenticatedId { authUserId =>
-                  log.info("serving wettkampf: " + wkuuid)
-                  val wettkampf = readWettkampf(wkuuid.toString)
-                  val isAdmin = authUserId.exists(_ == wkuuid.toString)
-                  onComplete(Future {
-                    val bos = new ByteArrayOutputStream()
-                    ResourceExchanger.exportWettkampfToStream(wettkampf, bos, withSecret = isAdmin)
-                    HttpEntity(
-                      MediaTypes.`application/zip`,
-                      bos.toByteArray
-                    )
-                  }){
-                    case Success(entity) =>
-                      complete(entity)
-                    case Failure(e) =>
-                      log.error(e, s"wettkampf $wkuuid cannot be exported: " + e.toString)
-                      complete(StatusCodes.BadRequest,
-                        s"""Der Wettkampf ${wettkampf.easyprint}
-                            |konnte wg. einem technischen Fehler nicht vollständig zum Download exportiert werden.
-                            |=>${e.getMessage}""".stripMargin)
+
+                        onComplete(processor) {
+                          case Success(wettkampf) =>
+                            log.info(s"wettkampf ${wettkampf.easyprint} updated")
+                            if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
+                              complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
+                            } else {
+                              complete(StatusCodes.OK)
+                            }
+                          case Failure(e) =>
+                            log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                            complete(StatusCodes.BadRequest,
+                              s"""Der Wettkampf ${metadata.fileName}
+                                 |konnte wg. einem technischen Fehler nicht hochgeladen werden!
+                                 |=>${e.getMessage}""".
+                                stripMargin)
+                      }
                   }
                 }
               }
+                else {
+                  complete(
+                    StatusCodes.Unauthorized)
+                }
+              }
+            }
+          } ~
+          delete {
+            authenticated() { userId =>
+              if userId.equals(wkuuid.toString) then {
+                onSuccess(readWettkampfAsync(wkuuid.toString)) { wettkampf =>
+                  log.info("deleting wettkampf: " + wettkampf)
+                  complete(
+                    CompetitionCoordinatorClientActor.publish(Delete(wkuuid.toString), clientId)
+                    .andThen {
+                      case _ =>
+                        CompetitionRegistrationClientActor.stop(wkuuid.toString)
+                        deleteRegistrations(UUID.fromString(wkuuid.toString))
+                        deleteWettkampf(wettkampf.id)
+                        StatusCodes.OK
+                    }
+                  )
+                }
+              } else {
+                complete(StatusCodes.Unauthorized)
+              }
+            }
+          } ~
+          get {
+            extractUri { uri =>
+              authenticatedId { authUserId =>
+                log.info("serving wettkampf: " + wkuuid)
+                val wettkampf = readWettkampf(wkuuid.toString)
+                val isAdmin = authUserId.exists(_ == wkuuid.toString)
+                val adminJwt = if isAdmin then Some(JsonWebToken(jwtHeader, setClaims(wkuuid.toString, Int.MaxValue, isAdmin = true), jwtSecretKey)) else None
+                val adminOrigin = if isAdmin then Some(uri.authority.host.toString) else None
+                onComplete(Future {
+                  val bos = new ByteArrayOutputStream()
+                  ResourceExchanger.exportWettkampfToStream(wettkampf, bos, withSecret = isAdmin, adminJwt = adminJwt, adminOrigin = adminOrigin)
+                  HttpEntity(
+                    MediaTypes.`application/zip`,
+                    bos.toByteArray
+                  )
+                }){
+                  case Success(entity) =>
+                    complete(entity)
+                  case Failure(e) =>
+                    log.error(e, s"wettkampf $wkuuid cannot be exported: " + e.toString)
+                    complete(StatusCodes.BadRequest,
+                      s"""Der Wettkampf ${wettkampf.easyprint}
+                          |konnte wg. einem technischen Fehler nicht vollständig zum Download exportiert werden.
+                          |=>${e.getMessage}""".stripMargin)
+                }
+              }
+            }
           }
+        }
       }
     }
   }

@@ -44,8 +44,9 @@ export class AdminBackendService {
     return this.http.get<string[]>(this.api + 'competition/programmkategorien/' + programId);
   }
 
-  getRiegen(uuid: string): Observable<RiegeItem[]> {
-    return this.http.get<RiegeItem[]>(this.api + 'competition/' + uuid + '/riege');
+  getRiegen(uuid: string, secret: string): Observable<RiegeItem[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<RiegeItem[]>(this.api + 'competition/' + uuid + '/riege', { headers });
   }
 
   updateRiege(uuid: string, request: UpdateRiegeRequest, secret: string): Observable<number> {
@@ -87,16 +88,18 @@ export class AdminBackendService {
     return this.http.delete(this.api + 'registrations/' + uuid + '/' + regId, { headers, responseType: 'text' });
   }
 
-  getSyncActions(uuid: string): Observable<SyncAction[]> {
-    return this.http.get<SyncAction[]>(this.api + 'registrations/' + uuid + '/syncactionsadmin');
+  getSyncActions(uuid: string, secret: string): Observable<SyncAction[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<SyncAction[]>(this.api + 'registrations/' + uuid + '/syncactionsadmin', { headers});
   }
-
-  applySyncActions(uuid: string, keys: SyncActionKey[]): Observable<SyncApplyResponse> {
-    return this.http.post<SyncApplyResponse>(this.api + 'registrations/' + uuid + '/sync', { actions: keys });
+  applySyncActions(uuid: string, keys: SyncActionKey[], secret: string): Observable<SyncApplyResponse> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<SyncApplyResponse>(this.api + 'registrations/' + uuid + '/sync', { actions: keys }, { headers});
   }
 
   getAthletRegistrations(uuid: string, regId: number, secret: string): Observable<AthletRegistration[]> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.get<AthletRegistration[]>(this.api + 'registrations/' + uuid + '/' + regId + '/athletes', { headers });
   }
+
 }
