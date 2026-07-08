@@ -821,7 +821,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     exportWettkampfToStream(wettkampf, new FileOutputStream(filename), withSecret = true, withMediaFiles = true)
   }
 
-  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false, withMediaFiles: Boolean = false): Unit = {
+  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false, withMediaFiles: Boolean = false, adminJwt: Option[String] = None, adminOrigin: Option[String] = None): Unit = {
     val zip = new ZipOutputStream(os)
     zip.putNextEntry(new ZipEntry("wettkampf.csv"))
     zip.write((getHeader[Wettkampf] + "\n" + getValues(wettkampf)).getBytes("utf-8"))
@@ -939,17 +939,21 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           logger.info("scoredef-file was taken " + scoredefFile.getName)
         }
     }
-    if withSecret && wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin) then {
-      val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile
-      zip.putNextEntry(new ZipEntry(secretfile.getName))
-      val fis = new FileInputStream(secretfile)
-      val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-      Iterator
-        .continually(fis.read(bytes))
-        .takeWhile(b => -1 != b)
-        .foreach(read => zip.write(bytes, 0, read))
-      zip.closeEntry()
-      logger.info("secret was taken " + secretfile.getName)
+    if withSecret then {
+      val secretContent = adminJwt.orElse {
+        if wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin) then {
+          val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile
+          Some(scala.io.Source.fromFile(secretfile).mkString)
+        } else None
+      }
+      secretContent.foreach { secret =>
+        val origin = adminOrigin.getOrElse(Config.remoteHostOrigin)
+        val secretfile = wettkampf.filePath(Config.homedir, origin).toFile
+        zip.putNextEntry(new ZipEntry(secretfile.getName))
+        zip.write(secret.getBytes("utf-8"))
+        zip.closeEntry()
+        logger.info("secret was taken " + secretfile.getName)
+      }
     }
     if withSecret && wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin) then {
       val secretfile = wettkampf.fromOriginFilePath(Config.homedir, Config.remoteHostOrigin).toFile

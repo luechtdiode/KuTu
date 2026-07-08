@@ -1263,7 +1263,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
     val process = KuTuApp.invokeAsyncWithBusyIndicator(caption) {
       if Config.isLocalHostServer then {
         if !p.toWettkampf.hasSecred(homedir, "localhost") then {
-          p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue), jwtSecretKey))
+          p.toWettkampf.saveSecret(homedir, "localhost", jwt.JsonWebToken(jwtHeader, setClaims(p.uuid.get, Int.MaxValue, isAdmin = true), jwtSecretKey))
         }
         httpRenewLoginRequest   (s"$remoteBaseUrl/api/loginrenew", p.uuid.get, p.toWettkampf.readSecret(homedir, "localhost").get)
       } else if !p.toWettkampf.hasRemote(homedir, remoteHostOrigin) then {

@@ -28,6 +28,11 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
     RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))
   }
 
+  private def adminJwtFor(userId: String): RawHeader = {
+    val claims = setClaims(userId, jwtTokenExpiryPeriodInDays, isAdmin = true)
+    RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))
+  }
+
   private val emptySuggestionBody: String = {
     val req = RiegeSuggestionRequest()
     riegeSuggestionRequestFormat.write(req).compactPrint
@@ -38,7 +43,8 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
     // ── GET /api/competition/{uuid}/riege (empty) ────────────────────────────
 
     "return empty list when no riegen exist" in {
-      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege") ~> withRoutes ~> check {
+      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege")
+        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
         contentType should ===(ContentTypes.`application/json`)
         val items = responseAs[String].parseJson.convertTo[List[RiegeItem]]
@@ -63,7 +69,7 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/riege/generate",
         entity = HttpEntity(ContentTypes.`application/json`, emptySuggestionBody)
-      ).addHeader(jwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
         status should ===(StatusCodes.Conflict)
       }
     }
@@ -75,7 +81,7 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/riege/generate",
         entity = HttpEntity(ContentTypes.`application/json`, emptySuggestionBody)
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
         contentType should ===(ContentTypes.`application/json`)
         val response = responseAs[String].parseJson.convertTo[RiegePreviewResponse]
@@ -99,7 +105,8 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
     // ── GET /api/competition/{uuid}/riege (after generate) ───────────────────
 
     "return non-empty riegen list after generation" in {
-      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege") ~> withRoutes ~> check {
+      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege")
+        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
         val items = responseAs[String].parseJson.convertTo[List[RiegeItem]]
         items should not be empty
@@ -121,7 +128,7 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/riege/generate",
         entity = HttpEntity(ContentTypes.`application/json`, largeGroupBody)
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
         val response = responseAs[String].parseJson.convertTo[RiegePreviewResponse]
         response.riegen should not be empty
@@ -140,7 +147,7 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/riege/generate",
         entity = HttpEntity(ContentTypes.`application/json`, separatedBody)
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
         val response = responseAs[String].parseJson.convertTo[RiegePreviewResponse]
         response.riegen should not be empty
@@ -153,7 +160,8 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
     "update a riege's durchgang via PUT" in {
       // First read the current state to get a riege name
       val currentItems = {
-        val resp = HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege") ~> withRoutes ~> check {
+        val resp = HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege")
+          .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
           responseAs[String].parseJson.convertTo[List[RiegeItem]]
         }
         resp
@@ -173,7 +181,7 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
         PUT,
         s"/api/competition/${testWettkampf.uuid.get}/riege",
         entity = HttpEntity(ContentTypes.`application/json`, updateBody)
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
         val updated = responseAs[String].parseJson.convertTo[RiegeItem]
         updated.name should ===(targetRiege.name)
@@ -203,11 +211,12 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
 
     "reset all riegen with valid JWT" in {
       HttpRequest(POST, s"/api/competition/${testWettkampf.uuid.get}/riege/reset")
-        .addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
       }
       // Verify it's empty after reset
-      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege") ~> withRoutes ~> check {
+      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege")
+        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         val items = responseAs[String].parseJson.convertTo[List[RiegeItem]]
         items shouldBe empty
       }
@@ -221,12 +230,12 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
         POST,
         s"/api/competition/${testWettkampf.uuid.get}/riege/generate",
         entity = HttpEntity(ContentTypes.`application/json`, emptySuggestionBody)
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
       }
 
       HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege/duration")
-        .addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
         val items = responseAs[String].parseJson.convertTo[List[DurchgangDurationItem]]
         items should not be empty
@@ -247,7 +256,7 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
 
     "clean up after all tests" in {
       HttpRequest(POST, s"/api/competition/${testWettkampf.uuid.get}/riege/reset")
-        .addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
       }
     }

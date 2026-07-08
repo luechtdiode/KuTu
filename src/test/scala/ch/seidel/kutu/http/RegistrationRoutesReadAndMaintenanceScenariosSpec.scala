@@ -24,10 +24,15 @@ class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {
     RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))
   }
 
+  private def adminJwtFor(userId: String): RawHeader = {
+    val claims = setClaims(userId, jwtTokenExpiryPeriodInDays, isAdmin = true)
+    RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))
+  }
+
   private def registrationJwt(reg: Registration): RawHeader = jwtFor(reg.id.toString)
 
   // Sync-admin endpoints compare authenticated userId against competition UUID string.
-  private def syncAdminJwt: RawHeader = jwtFor(wk.uuid.get)
+  private def syncAdminJwt: RawHeader = adminJwtFor(wk.uuid.get)
 
   private def newRegistration(name: String): Registration =
     createRegistration(NewRegistration(
@@ -172,7 +177,7 @@ class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {
         HttpMethods.POST,
         s"/api/registrations/${wk.uuid.get}/sync",
         entity = HttpEntity(ContentTypes.`application/json`, request.toJson.compactPrint)
-      ) ~> routes ~> check {
+      ).addHeader(syncAdminJwt) ~> routes ~> check {
         status should ===(StatusCodes.OK)
         val response = entityAs[String].parseJson.convertTo[SyncApplyResponse]
         response.processed should ===(0)
@@ -186,7 +191,7 @@ class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {
         HttpMethods.POST,
         s"/api/registrations/${wk.uuid.get}/sync",
         entity = HttpEntity(ContentTypes.`application/json`, request.toJson.compactPrint)
-      ) ~> routes ~> check {
+      ).addHeader(syncAdminJwt) ~> routes ~> check {
         status should ===(StatusCodes.OK)
         val response = entityAs[String].parseJson.convertTo[SyncApplyResponse]
         // Unknown keys can't match in-memory sync actions, so nothing is processed
