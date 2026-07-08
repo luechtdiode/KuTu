@@ -68,6 +68,10 @@ const routes: Routes = [
   {
     path: 'admin/riege-einteilung/:uuid',
     loadChildren: () => import('./riege-einteilung/riege-einteilung.module').then(m => m.RiegeEinteilungPageModule)
+  },
+  {
+    path: 'admin/registrations/:uuid',
+    loadChildren: () => import('./admin-registrations/admin-registrations.module').then(m => m.AdminRegistrationsPageModule)
   }
 
 ];
