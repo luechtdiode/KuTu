@@ -47,6 +47,9 @@ case class RegistrationSyncActions(syncActions: List[SyncAction]) extends Regist
 
 case class RegistrationActionWithContext(action: RegistrationAction, context: String) extends RegistrationProtokoll
 
+case class ApplySyncActions(override val wettkampfUUID: String, actions: List[SyncActionKey]) extends RegistrationAction
+case class ApplySyncActionsResponse(processed: Int, messages: List[String]) extends RegistrationEvent
+
 class CompetitionRegistrationClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with KutuService {
   def shortName: String = self.toString().split("/").last.split("#").head + "/" + clientId()
 
@@ -182,6 +185,24 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
         syncActionReceivers = List()
       }
 
+    case ApplySyncActions(_, actionKeys) =>
+      val replyTo = sender()
+      val matched = matchActionsByKeys(actionKeys, syncState.syncActions)
+      Future {
+        val msgs = RegistrationAdmin.processSyncActionsLocally(wettkampfInfo, this, matched)
+        (matched.size, msgs)
+      }.onComplete {
+        case Success((count, messages)) =>
+          replyTo ! ApplySyncActionsResponse(count, messages)
+          RegistrationAdmin.computeSyncActions(wettkampfInfo, this).onComplete {
+            case Success(actions) => self ! RegistrationSyncActions(actions)
+            case _ => self ! RegistrationSyncActions(List.empty)
+          }
+        case Failure(e) =>
+          log.error("Error applying sync actions", e)
+          replyTo ! ApplySyncActionsResponse(0, List(s"Error: ${e.getMessage}"))
+      }
+
     case CheckSyncChangedForNotifier =>
       notifyChangesToEMail()
   }
@@ -230,6 +251,30 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     val wk = readWettkampf(wettkampfUUID)
     if wk.datum.toLocalDate.plusDays(1).isAfter(LocalDate.now()) then {
       this.rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
+    }
+  }
+
+  private def matchActionsByKeys(keys: List[SyncActionKey], actions: List[SyncAction]): List[SyncAction] = {
+    keys.flatMap { key =>
+      def matchesRegistration(action: SyncAction): Boolean = action.verein.id == key.registrationId
+      def matchesCaption(action: SyncAction): Boolean = key.caption.contains(action.caption)
+      def matchesAthletId(action: SyncAction): Boolean = key.athletId.exists(id => action match {
+        case ar: AddRegistration => id == ar.suggestion.id || (ar.athletRegistrationId > 0 && id == ar.athletRegistrationId)
+        case mr: MoveRegistration => id == mr.suggestion.id || (mr.athletRegistrationId > 0 && id == mr.athletRegistrationId)
+        case rr: RemoveRegistration => id == rr.suggestion.id || (rr.athletRegistrationId > 0 && id == rr.athletRegistrationId)
+        case ra: RenameAthletAction => ra.athletReg.athletId.contains(id)
+        case am: AddMedia => am.athletReg.athletId.contains(id)
+        case um: UpdateAthletMediaAction => um.athletReg.athletId.contains(id)
+        case _ => false
+      })
+      actions.find {
+        case av: AddVereinAction => matchesRegistration(av)
+        case av: ApproveVereinAction => matchesRegistration(av)
+        case rv: RenameVereinAction => matchesRegistration(rv) && key.oldVereinId.contains(rv.oldVerein.id)
+        case action =>
+          val typeOk = key.actionType.isEmpty || key.actionType == action.getClass.getSimpleName
+          typeOk && matchesRegistration(action) && (matchesAthletId(action) || matchesCaption(action))
+      }
     }
   }
 }

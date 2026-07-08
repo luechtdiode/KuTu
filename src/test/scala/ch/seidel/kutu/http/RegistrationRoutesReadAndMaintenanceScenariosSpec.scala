@@ -3,11 +3,12 @@ package ch.seidel.kutu.http
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
 import ch.seidel.kutu.base.KuTuBaseSpec
-import ch.seidel.kutu.domain.{JudgeRegistration, NewRegistration, Registration, Wettkampf}
+import ch.seidel.kutu.domain.{JudgeRegistration, NewRegistration, Registration, SyncActionKey, SyncApplyRequest, SyncApplyResponse, Wettkampf}
 import ch.seidel.kutu.mail.MockedSMTPMailer
 import org.apache.pekko.http.scaladsl.model.HttpMethods.GET
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
-import org.apache.pekko.http.scaladsl.model.{HttpRequest, MediaTypes, StatusCodes}
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethods, HttpRequest, MediaTypes, StatusCodes}
+import spray.json._
 
 class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {
 
@@ -162,6 +163,34 @@ class RegistrationRoutesReadAndMaintenanceScenariosSpec extends KuTuBaseSpec {
         status should ===(StatusCodes.OK)
         val json = entityAs[String]
         json.startsWith("[") shouldBe true
+      }
+    }
+
+    "accept empty sync apply" in {
+      val request = SyncApplyRequest(List.empty)
+      HttpRequest(
+        HttpMethods.POST,
+        s"/api/registrations/${wk.uuid.get}/sync",
+        entity = HttpEntity(ContentTypes.`application/json`, request.toJson.compactPrint)
+      ) ~> routes ~> check {
+        status should ===(StatusCodes.OK)
+        val response = entityAs[String].parseJson.convertTo[SyncApplyResponse]
+        response.processed should ===(0)
+        response.messages shouldBe empty
+      }
+    }
+
+    "accept sync apply with unknown keys" in {
+      val request = SyncApplyRequest(List(SyncActionKey(registrationId = 999L, athletId = Some(1L))))
+      HttpRequest(
+        HttpMethods.POST,
+        s"/api/registrations/${wk.uuid.get}/sync",
+        entity = HttpEntity(ContentTypes.`application/json`, request.toJson.compactPrint)
+      ) ~> routes ~> check {
+        status should ===(StatusCodes.OK)
+        val response = entityAs[String].parseJson.convertTo[SyncApplyResponse]
+        // Unknown keys can't match in-memory sync actions, so nothing is processed
+        response.processed should ===(0)
       }
     }
   }

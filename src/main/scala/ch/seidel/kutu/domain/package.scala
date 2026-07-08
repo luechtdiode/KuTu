@@ -1657,9 +1657,9 @@ package object domain {
           RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView.copy(gebdat = existing.gebdat), expected.toPublicView.copy(gebdat = expected.gebdat))
         else
           RenameAthletAction(verein.toPublicView, athlet.toPublicView, existing.toPublicView, expected.toPublicView)
-      case AddRegistration(verein, programId, athlet, suggestion, team, media, reserve) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team, media, reserve)
-      case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion, reserve) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView, reserve)
-      case RemoveRegistration(verein, programId, athlet, suggestion) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView)
+      case AddRegistration(verein, programId, athlet, suggestion, team, media, reserve, athletRegistrationId) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team, media, reserve, athletRegistrationId)
+      case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion, toReserve, athletRegistrationId) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView, toReserve, athletRegistrationId)
+      case RemoveRegistration(verein, programId, athlet, suggestion, athletRegistrationId) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, athletRegistrationId)
       case am:AddMedia => AddMedia(am.verein.toPublicView, am.athletReg.toPublicView)
     }
   }
@@ -1681,16 +1681,16 @@ package object domain {
     override val caption = s"Verein bestätigen: ${verein.vereinname}"
   }
 
-  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int, media: Option[MediaAdmin], reserve: Int = 0) extends SyncAction {
+  case class AddRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, team: Int, media: Option[MediaAdmin], reserve: Int = 0, athletRegistrationId: Long = 0) extends SyncAction {
     override val caption = s"Neue Anmeldung verarbeiten: ${suggestion.easyprint}"
   }
 
-  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, fromTeam: Int, toProgramid: Long, toTeam: Int, athlet: Athlet, suggestion: AthletView, toReserve: Int = 0) extends SyncAction {
+  case class MoveRegistration(override val verein: Registration, fromProgramId: Long, fromTeam: Int, toProgramid: Long, toTeam: Int, athlet: Athlet, suggestion: AthletView, toReserve: Int = 0, athletRegistrationId: Long = 0) extends SyncAction {
     override val caption: String = if fromTeam != toTeam && fromProgramId == toProgramid then s"Team Einteilung verarbeiten: ${suggestion.easyprint}"
     else s"Program-Umteilung verarbeiten: ${suggestion.easyprint}"
   }
 
-  case class RemoveRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView) extends SyncAction {
+  case class RemoveRegistration(override val verein: Registration, programId: Long, athlet: Athlet, suggestion: AthletView, athletRegistrationId: Long = 0) extends SyncAction {
     override val caption = s"Abmeldung verarbeiten: ${suggestion.easyprint}"
   }
 
@@ -1748,6 +1748,10 @@ package object domain {
         gebdat = expected.gebdat
       )
   }
+
+  case class SyncActionKey(registrationId: Long, athletId: Option[Long] = None, oldVereinId: Option[Long] = None, actionType: String = "", caption: Option[String] = None)
+  case class SyncApplyRequest(actions: List[SyncActionKey])
+  case class SyncApplyResponse(processed: Int, messages: List[String])
 
   case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject
 

@@ -274,6 +274,18 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                 })
               }
             }
+          } ~ pathLabeled("sync", "sync") {
+            post {
+              entity(as[SyncApplyRequest]) { request =>
+                complete(
+                  CompetitionRegistrationClientActor.publish(ApplySyncActions(wettkampf.uuid.get, request.actions), clientId)
+                    .map {
+                      case r: ApplySyncActionsResponse => SyncApplyResponse(r.processed, r.messages).toJson(using syncApplyResponseFormat)
+                      case _ => SyncApplyResponse(0, List.empty).toJson(using syncApplyResponseFormat)
+                    }
+                )
+              }
+            }
           } ~ pathPrefixLabeled("programmdisziplinlist", "programmdisziplinlist") {
             pathEndOrSingleSlash {
               get {
@@ -437,6 +449,13 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       complete(StatusCodes.Conflict)
                     }
                   }
+                } ~ delete { // delete  Vereinsregistration (admin)
+                  complete(Future {
+                    deleteRegistration(registrationId)
+                    CompetitionRegistrationClientActor.publish(RegistrationChanged(wettkampf.uuid.get), clientId)
+                    log.info(s"$clientId: Vereinsregistration gelöscht durch Admin: $registrationId")
+                    StatusCodes.OK
+                  })
                 }
               } else if extractRegistrationId(userId).contains(registrationId) then {
                 respondWithJwtHeader(s"$registrationId") {
