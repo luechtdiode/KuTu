@@ -1219,6 +1219,147 @@ class RegistrationAdminSpec extends KuTuBaseSpec with PatienceConfiguration {
       testService.savedMedias.size should be(2)
       testService.requestedMediaDownloads.flatten.size should be(2)
     }
+
+    // ===== Tests for processSyncActionsLocally =====
+    "processSyncActionsLocally should handle empty sync actions" in {
+      val result = processSyncActionsLocally(wkInfo, this, List.empty)
+      result shouldBe a[List[_]]
+    }
+
+    "processSyncActionsLocally should process AddVereinAction and create new clubs" in {
+      val reg = createRegistration(NewRegistration(
+        testWettkampf.id,
+        "LocalSyncNewClub", "Verband1",
+        "Contact", "Name",
+        "0791234567", "test@test.com", "secret"
+      ))
+
+      val syncActions = List(AddVereinAction(reg))
+      val result = processSyncActionsLocally(wkInfo, this, syncActions)
+
+      // Verein should have been created
+      selectVereine.exists(_.name == "LocalSyncNewClub") should be(true)
+    }
+
+    "processSyncActionsLocally should process AddRegistration with existing verein" in {
+      val clubId = createVerein("LocalAddRegClub", Some("Verband1"))
+      val club = Verein(clubId, "LocalAddRegClub", Some("Verband1"))
+
+      val reg = createRegistration(NewRegistration(
+        testWettkampf.id,
+        "LocalAddRegClub", "Verband1",
+        "Contact", "Name",
+        "0791234567", "test@test.com", "secret"
+      ))
+      updateRegistration(reg.copy(vereinId = Some(clubId)))
+
+      val athlet = Athlet(0).copy(name = "LocalAddAthlet", vorname = "Test", verein = Some(clubId))
+      val athletView = athlet.toAthletView(Some(club))
+      val programmes = readWettkampfLeafs(testWettkampf.programmId)
+      if programmes.nonEmpty then {
+        val syncActions = List(AddRegistration(reg, programmes.head.id, athlet, athletView, 0, None))
+        val result = processSyncActionsLocally(wkInfo, this, syncActions)
+
+        // Athlete should have been inserted and assigned
+        selectAthletes.exists(a => a.name == "LocalAddAthlet" && a.vorname == "Test") should be(true)
+      }
+    }
+
+    "processSyncActionsLocally should process RemoveRegistration" in {
+      val clubId = createVerein("LocalRemoveClub", Some("Verband1"))
+      val athlet = insertAthlete(Athlet(clubId).copy(
+        name = "LocalRemoveAthlet", vorname = "Test",
+        gebdat = Some(Date.valueOf(LocalDate.now().minus(15, ChronoUnit.YEARS)))
+      ))
+
+      val programmes = readWettkampfLeafs(testWettkampf.programmId)
+      if programmes.nonEmpty then {
+        assignAthletsToWettkampf(testWettkampf.id, Set(programmes.head.id), Set((athlet.id, None)), None)
+
+        val reg = createRegistration(NewRegistration(
+          testWettkampf.id,
+          "LocalRemoveClub", "Verband1",
+          "Contact", "Name",
+          "0791234567", "test@test.com", "secret"
+        ))
+
+        val athletView = athlet.toAthletView(Some(Verein(clubId, "LocalRemoveClub", Some("Verband1"))))
+        val syncActions = List(RemoveRegistration(reg, programmes.head.id, athlet, athletView))
+        val result = processSyncActionsLocally(wkInfo, this, syncActions)
+
+        // Athlete should be unassigned
+        val wertungen = listAthletWertungenZuWettkampf(athlet.id, testWettkampf.id)
+        wertungen should be(empty)
+      }
+    }
+
+    "processSyncActionsLocally should process MoveRegistration" in {
+      val clubId = createVerein("LocalMoveClub", Some("Verband1"))
+      val athlet = insertAthlete(Athlet(clubId).copy(
+        name = "LocalMoveAthlet", vorname = "Test",
+        gebdat = Some(Date.valueOf(LocalDate.now().minus(15, ChronoUnit.YEARS)))
+      ))
+
+      val programmes = readWettkampfLeafs(testWettkampf.programmId)
+      if programmes.size >= 2 then {
+        assignAthletsToWettkampf(testWettkampf.id, Set(programmes.head.id), Set((athlet.id, None)), None)
+
+        val reg = createRegistration(NewRegistration(
+          testWettkampf.id,
+          "LocalMoveClub", "Verband1",
+          "Contact", "Name",
+          "0791234567", "test@test.com", "secret"
+        ))
+
+        val athletView = athlet.toAthletView(Some(Verein(clubId, "LocalMoveClub", Some("Verband1"))))
+        val syncActions = List(MoveRegistration(reg, programmes.head.id, 0, programmes(1).id, 1, athlet, athletView))
+        val result = processSyncActionsLocally(wkInfo, this, syncActions)
+
+        // Athlete should be moved to new program
+        val wertungen = listAthletWertungenZuWettkampf(athlet.id, testWettkampf.id)
+        wertungen.exists(_.wettkampfdisziplin.programm.id == programmes(1).id) should be(true)
+      }
+    }
+
+    "processSyncActionsLocally should process RenameVereinAction" in {
+      val clubId = createVerein("OldLocalName", Some("Verband1"))
+      val club = Verein(clubId, "OldLocalName", Some("Verband1"))
+
+      val reg = createRegistration(NewRegistration(
+        testWettkampf.id,
+        "NewLocalName", "Verband1",
+        "Contact", "Name",
+        "0791234567", "test@test.com", "secret"
+      ))
+      updateRegistration(reg.copy(vereinId = Some(clubId), selectedInitialClub = Some(club)))
+
+      val syncActions = List(RenameVereinAction(reg, club))
+      val result = processSyncActionsLocally(wkInfo, this, syncActions)
+
+      // Verein should have been renamed
+      val updatedClub = selectVereine.find(_.id == clubId)
+      updatedClub.map(_.name) should be(Some("NewLocalName"))
+    }
+
+    "processSyncActionsLocally should process ApproveVereinAction" in {
+      val clubId = createVerein("LocalApproveClub", Some("Verband1"))
+      val club = Verein(clubId, "LocalApproveClub", Some("Verband1"))
+
+      val reg = createRegistration(NewRegistration(
+        testWettkampf.id,
+        "LocalApproveClub", "Verband1",
+        "Contact", "Name",
+        "0791234567", "test@test.com", "secret"
+      ))
+
+      val approvedReg = reg.copy(vereinId = Some(clubId))
+      val syncActions = List(ApproveVereinAction(approvedReg))
+      val result = processSyncActionsLocally(wkInfo, this, syncActions)
+
+      // Registration should now reference the verein
+      val updatedReg = selectRegistration(reg.id)
+      updatedReg.vereinId should be(Some(clubId))
+    }
   }
 
   // Test service implementation for processSync testing
@@ -1275,13 +1416,13 @@ class RegistrationAdminSpec extends KuTuBaseSpec with PatienceConfiguration {
       assignedAthletes += ((wId, pgmIds, athletIds, team))
     }
 
-    override def moveToProgram(wId: Long, pgmId: Long, team: Int, reserve: Int, athleteView: AthletView): Unit = {
-      baseService.moveToProgram(wId, pgmId, team, reserve, athleteView)
+    override def moveToProgram(wId: Long, pgmId: Long, team: Int, reserve: Int, athleteView: AthletView, publishWS: Boolean = true): Unit = {
+      baseService.moveToProgram(wId, pgmId, team, reserve, athleteView, publishWS)
       movedToProgram += ((wId, pgmId, team, athleteView))
     }
 
-    override def unassignAthletFromWettkampf(wertungIds: Set[Long]): Unit = {
-      baseService.unassignAthletFromWettkampf(wertungIds)
+    override def unassignAthletFromWettkampf(wertungIds: Set[Long], publishWS: Boolean = true): Unit = {
+      baseService.unassignAthletFromWettkampf(wertungIds, publishWS)
       unassignedAthletes += wertungIds
     }
 
