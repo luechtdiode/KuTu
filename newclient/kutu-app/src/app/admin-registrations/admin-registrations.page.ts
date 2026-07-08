@@ -3,7 +3,7 @@ import { AlertController, ToastController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
-import { ClubRegistration, SyncAction, Verein } from '../backend-types';
+import { ClubRegistration, SyncAction, SyncActionKey, Verein } from '../backend-types';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -16,6 +16,8 @@ export class AdminRegistrationsPage {
   wettkampfTitle = '';
   registrations: ClubRegistration[] = [];
   syncActions: SyncAction[] = [];
+  selectedSyncIndices = new Set<number>();
+  applying = false;
   loading = false;
 
   private cdr = inject(ChangeDetectorRef);
@@ -49,7 +51,74 @@ export class AdminRegistrationsPage {
       this.syncActions = [];
     } finally {
       this.loading = false;
+      this.selectedSyncIndices.clear();
       this.cdr.detectChanges();
+    }
+  }
+
+  toggleSyncAction(index: number) {
+    if (this.selectedSyncIndices.has(index)) {
+      this.selectedSyncIndices.delete(index);
+    } else {
+      this.selectedSyncIndices.add(index);
+    }
+  }
+
+  toggleAllSyncAction() {
+    if (this.selectedSyncIndices.size < this.syncActions.length) {
+      for(const index of [...this.syncActions.map((v,i)=>i)]) {
+        if (!this.selectedSyncIndices.has(index)) {
+          this.selectedSyncIndices.add(index);
+        }
+      }
+    } else {
+      this.selectedSyncIndices.clear();
+    }
+  }
+
+  isAllSelected(): boolean {
+    return this.selectedSyncIndices.size > 0 && this.selectedSyncIndices.size === this.syncActions.length;
+  }
+
+  isSelected(index: number): boolean {
+    return this.selectedSyncIndices.has(index);
+  }
+
+  get selectedCount(): number {
+    return this.selectedSyncIndices.size;
+  }
+
+  private actionToKey(action: SyncAction): SyncActionKey {
+    return {
+      registrationId: action.data.registrationId,
+      actionType: action.data.type,
+      caption: action.caption,
+      athletId: action.data.athletId,
+      oldVereinId: action.data.oldVereinId
+    };
+  }
+
+  async applySelected() {
+    if (this.selectedSyncIndices.size === 0) return;
+    this.applying = true;
+    const keys = Array.from(this.selectedSyncIndices)
+      .map(i => this.syncActions[i])
+      .filter(a => a?.data)
+      .map(a => this.actionToKey(a));
+    try {
+      const result = await firstValueFrom(this.backend.applySyncActions(this.uuid, keys));
+      const toast = await this.toastCtrl.create({
+        message: `${result.processed} Aktionen verarbeitet.${result.messages.length > 0 ? ' ' + result.messages.join(', ') : ''}`,
+        duration: 3000,
+        color: result.processed > 0 ? 'success' : 'warning'
+      });
+      await toast.present();
+      await this.loadData();
+    } catch (e: any) {
+      const toast = await this.toastCtrl.create({ message: 'Fehler: ' + (e.message || e), duration: 3000, color: 'danger' });
+      await toast.present();
+    } finally {
+      this.applying = false;
     }
   }
 
