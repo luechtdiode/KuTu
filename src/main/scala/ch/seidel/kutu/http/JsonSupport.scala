@@ -305,14 +305,58 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     override def write(obj: SyncAction): JsValue = {
       obj match {
         case be: SyncAction =>
+          val dataMap = collection.mutable.Map(
+            "registrationId" -> JsNumber(be.verein.id),
+            "type" -> JsString(obj.getClass.getSimpleName)
+          )
+          obj match {
+            case rv: RenameVereinAction => dataMap += ("oldVereinId" -> JsNumber(rv.oldVerein.id))
+            case ar: AddRegistration =>
+              dataMap += ("athletId" -> JsNumber(ar.suggestion.id))
+              if (ar.athletRegistrationId > 0) dataMap += ("athletRegistrationId" -> JsNumber(ar.athletRegistrationId))
+            case mr: MoveRegistration =>
+              dataMap += ("athletId" -> JsNumber(mr.suggestion.id))
+              if (mr.athletRegistrationId > 0) dataMap += ("athletRegistrationId" -> JsNumber(mr.athletRegistrationId))
+            case rr: RemoveRegistration =>
+              dataMap += ("athletId" -> JsNumber(rr.suggestion.id))
+              if (rr.athletRegistrationId > 0) dataMap += ("athletRegistrationId" -> JsNumber(rr.athletRegistrationId))
+            case ra: RenameAthletAction => ra.athletReg.athletId.foreach(id => dataMap += ("athletId" -> JsNumber(id)))
+            case am: AddMedia => am.athletReg.athletId.foreach(id => dataMap += ("athletId" -> JsNumber(id)))
+            case um: UpdateAthletMediaAction => um.athletReg.athletId.foreach(id => dataMap += ("athletId" -> JsNumber(id)))
+            case _ =>
+          }
           val jv = JsObject()
           jv.addFields(Map(
             "caption" -> JsString(be.caption),
-            "verein" -> registrationFormat.write(be.verein)
+            "verein" -> registrationFormat.write(be.verein),
+            "data" -> JsObject(dataMap.toMap)
           ))
         case null => throw new Exception(s"Unable to find jsonFormatter for $obj")
       }
     }
   }
   given baseSyncActionListFormat: RootJsonFormat[List[SyncAction]] = listFormat(using syncActionFormatter)
+
+  given syncActionKeyFormat: RootJsonFormat[SyncActionKey] = new RootJsonFormat[SyncActionKey] {
+    override def read(json: JsValue): SyncActionKey = {
+      val fields = json.asJsObject.fields
+      SyncActionKey(
+        registrationId = fields("registrationId").convertTo[Long],
+        athletId = fields.get("athletId").flatMap(_.convertTo[Option[Long]]),
+        oldVereinId = fields.get("oldVereinId").flatMap(_.convertTo[Option[Long]]),
+        actionType = fields.get("actionType").flatMap(_.convertTo[Option[String]]).getOrElse(""),
+        caption = fields.get("caption").flatMap(_.convertTo[Option[String]])
+      )
+    }
+    override def write(obj: SyncActionKey): JsValue = {
+      val m: collection.mutable.Map[String, JsValue] = collection.mutable.Map("registrationId" -> JsNumber(obj.registrationId))
+      obj.athletId.foreach(v => m += ("athletId" -> JsNumber(v)))
+      obj.oldVereinId.foreach(v => m += ("oldVereinId" -> JsNumber(v)))
+      if (obj.actionType.nonEmpty) m += ("actionType" -> JsString(obj.actionType))
+      obj.caption.foreach(v => m += ("caption" -> JsString(v)))
+      JsObject(m.toMap)
+    }
+  }
+  given syncApplyRequestFormat: RootJsonFormat[SyncApplyRequest] = jsonFormat1(SyncApplyRequest.apply)
+  given syncApplyResponseFormat: RootJsonFormat[SyncApplyResponse] = jsonFormat2(SyncApplyResponse.apply)
 }

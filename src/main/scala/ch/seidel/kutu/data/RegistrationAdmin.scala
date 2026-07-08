@@ -113,7 +113,7 @@ object RegistrationAdmin {
 
     val removeActions: Seq[SyncAction] = nonMatchinProgramAssignment.get("Entfernen") match {
       case Some(list) => list
-        .map(t => RemoveRegistration(t._1, t._2.wettkampfdisziplin.programm.id, t._2.athlet.toAthlet, t._2.athlet))
+        .map(t => RemoveRegistration(t._1, t._2.wettkampfdisziplin.programm.id, t._2.athlet.toAthlet, t._2.athlet, 0L))
         .toSet.toVector
       case _ => Vector()
     }
@@ -131,7 +131,8 @@ object RegistrationAdmin {
             r._2.programId,
             r._2.team.getOrElse(0),
             r._3, r._4,
-            r._2.reserve))
+            r._2.reserve,
+            r._2.id))
           case _ => None
         }
         case _ => None
@@ -140,7 +141,7 @@ object RegistrationAdmin {
         case Some(moveRegistration) =>
           Some(moveRegistration)
         case None if !r._2.isEmptyRegistration =>
-          Some(AddRegistration(r._1, r._2.programId, r._3, r._4, r._2.team.getOrElse(0), r._2.mediafile, r._2.reserve))
+          Some(AddRegistration(r._1, r._2.programId, r._3, r._4, r._2.team.getOrElse(0), r._2.mediafile, r._2.reserve, r._2.id))
         case None => None
       }
     }
@@ -201,7 +202,7 @@ object RegistrationAdmin {
       service.insertVerein(addVereinAction.verein.toVerein)
     }
     val addRegistrations: immutable.Seq[AddRegistration] = syncActions.flatMap {
-      case ar@AddRegistration(reg, _, _, candidateView, _, media, _) =>
+      case ar@AddRegistration(reg, _, _, candidateView, _, media, _, _) =>
         if candidateView.verein.isEmpty then {
           newClubs.find(c => c.name.equals(reg.vereinname) && c.verband.getOrElse("").equals(reg.verband)) match {
             case Some(verein) =>
@@ -256,7 +257,9 @@ object RegistrationAdmin {
     }
 
     for (wertungenIds: Set[Long] <- syncActions.flatMap {
-      case rr: RemoveRegistration => Some(service.listAthletWertungenZuWettkampf(rr.suggestion.id, wkInfo.wettkampf.id).map(_.id).toSet)
+      case rr: RemoveRegistration =>
+        val ids = service.listAthletWertungenZuWettkampf(rr.suggestion.id, wkInfo.wettkampf.id).map(_.id).toSet
+        if (ids.nonEmpty) Some(ids) else None
       case _ => None
     }) {
       // implicit pushing to ws-client
@@ -297,7 +300,7 @@ object RegistrationAdmin {
     }
 
     for (((progId, team, reserve), idAndathletes) <- addRegistrations.map {
-      case AddRegistration(_, programId, _, candidateView, team, media, reserve) =>
+      case AddRegistration(_, programId, _, candidateView, team, media, reserve, _) =>
         val (pgmId, athlId) = mapAddRegistration(service, programId, candidateView)
         (pgmId, team, reserve, media.map(_.toMedia), athlId)
     }.groupBy(t => (t._1, t._2, t._3))) {
@@ -307,7 +310,7 @@ object RegistrationAdmin {
     }
 
     for (((progId, team), addActions) <- addRegistrations.groupBy {
-      case AddRegistration(_, programId, _, _, team, _, _) => (programId, team)
+      case AddRegistration(_, programId, _, _, team, _, _, _) => (programId, team)
     }) {
       WebSocketClient.publish(AthletsAddedToWettkampf(
         addActions.map(aa => (aa.suggestion, aa.media.map(_.toMedia))).toList,
@@ -355,7 +358,134 @@ object RegistrationAdmin {
     Await.result(service.updateAllWertungenAsync(newLocalWertungen), Duration.Inf)
   }
 
+  def processSyncActionsLocally(wkInfo: WettkampfInfo, service: KutuService, syncActions: List[SyncAction]): List[String] = {
+    val newClubs = for (addVereinAction: AddVereinAction <- syncActions.flatMap {
+      case av: AddVereinAction => Some(av)
+      case _ => None
+    }) yield {
+      val c = service.insertVerein(addVereinAction.verein.toVerein)
+      service.updateRegistration(addVereinAction.verein.copy(vereinId = Some(c.id)))
+      c
+    }
+    val addRegistrations: immutable.Seq[AddRegistration] = syncActions.flatMap {
+      case ar@AddRegistration(reg, _, _, candidateView, _, media, _, _) =>
+        if candidateView.verein.isEmpty then {
+          newClubs.find(c => c.name.equals(reg.vereinname) && c.verband.getOrElse("").equals(reg.verband)) match {
+            case Some(verein) =>
+              val registration = ar.copy(
+                verein = ar.verein.copy(vereinId = Some(verein.id)),
+                suggestion = ar.suggestion.withBestMatchingGebDat(ar.athlet.gebdat).copy(verein = Some(verein))
+              )
+              Some(registration)
+            case None =>
+              None
+          }
+        } else {
+          Some(ar)
+        }
+      case _ => None
+    }
+    lazy val hadRiege2 = service.hasWettkampfRiege2Assignments(wkInfo.wettkampf.id)
+
+    for (renameAthlete: RenameAthletAction <- syncActions.flatMap {
+      case ra: RenameAthletAction => Some(ra)
+      case _ => None
+    }) {
+      val preparedUpdate = renameAthlete.applyLocalChange
+      if renameAthlete.isSexChange then {
+        adjustWertungRiegen(wkInfo.wettkampf.toWettkampf, service, preparedUpdate, hadRiege2)
+      }
+      service.insertAthletes(List((preparedUpdate.id.toString, preparedUpdate)))
+    }
+
+    for (renameVereinAction: RenameVereinAction <- syncActions.flatMap {
+      case rv: RenameVereinAction => Some(rv)
+      case _ => None
+    }) {
+      service.updateVerein(renameVereinAction.prepareLocalUpdate)
+    }
+
+    for (approveVereinAction: ApproveVereinAction <- syncActions.flatMap {
+      case av: ApproveVereinAction => Some(av)
+      case _ => None
+    }) {
+      service.updateRegistration(approveVereinAction.verein)
+    }
+
+    for (moveRegistration: MoveRegistration <- syncActions.flatMap {
+      case mr: MoveRegistration => Some(mr)
+      case _ => None
+    }) {
+      service.moveToProgram(wkInfo.wettkampf.id, moveRegistration.toProgramid, moveRegistration.toTeam, moveRegistration.toReserve, moveRegistration.suggestion, publishWS = false)
+    }
+
+    for (wertungenIds: Set[Long] <- syncActions.flatMap {
+      case rr: RemoveRegistration =>
+        val ids = service.listAthletWertungenZuWettkampf(rr.suggestion.id, wkInfo.wettkampf.id).map(_.id).toSet
+        if (ids.nonEmpty) Some(ids) else None
+      case _ => None
+    }) {
+      service.unassignAthletFromWettkampf(wertungenIds, publishWS = false)
+    }
+
+    service.saveOrUpdateMedias(syncActions.flatMap {
+      case ar: AddRegistration => ar.media
+      case mr: UpdateAthletMediaAction => mr.athletReg.mediafile
+      case am: AddMedia => am.athletReg.mediafile
+      case _ => None
+    }.distinct)
+
+    for (((progId, team, reserve), idAndathletes) <- addRegistrations.map {
+      case AddRegistration(_, programId, _, candidateView, team, media, reserve, _) =>
+        val (pgmId, athlId) = mapAddRegistration(service, programId, candidateView)
+        (pgmId, team, reserve, media.map(_.toMedia), athlId)
+    }.groupBy(t => (t._1, t._2, t._3))) {
+      val athletIds = idAndathletes.map(x => (x._5, x._4)).toSet
+      service.assignAthletsToWettkampf(wkInfo.wettkampf.id, Set(progId), athletIds, Some(team), Some(reserve))
+    }
+
+    for (ma: UpdateAthletMediaAction <- syncActions.flatMap {
+      case ma: UpdateAthletMediaAction => Some(ma)
+      case _ => None
+    }) {
+      service.updateWertung(ma.wertung.copy(mediafile = ma.athletReg.mediafile.map(_.toMedia)))
+    }
+
+    for (am: AddMedia <- syncActions.flatMap {
+      case am: AddMedia => Some(am)
+      case _ => None
+    }) {
+      am.athletReg.athletId.foreach { athletId =>
+        val wertungen = service.selectWertungen(athletId = Some(athletId), wettkampfId = Some(wkInfo.wettkampf.id))
+        for w <- wertungen do {
+          service.updateWertung(w.toWertung.copy(mediafile = am.athletReg.mediafile.map(_.toMedia)))
+        }
+      }
+    }
+
+    cleanUnusedRiegen(wkInfo.wettkampf.id)
+
+    val einteilungen = service.selectRiegen(wkInfo.wettkampf.id)
+    if einteilungen.nonEmpty then {
+      val unassignedRiegen = service.listRiegenZuWettkampf(wkInfo.wettkampf.id)
+        .filter(r => r._3.isEmpty || r._4.isEmpty)
+        .toList
+      for r <- unassignedRiegen do {
+        service.updateOrinsertRiege(
+          RiegeRaw(wettkampfId = wkInfo.wettkampf.id, r = r._1, durchgang = r._3, start = r._4.map(_.id), kind = 0))
+      }
+      unassignedRiegen.map(r => s"Neue Riege ${r._1}, mit provisorischer Einteilung. Durchgang: ${r._3.getOrElse("nicht zugewiesen")}, Startgerät ${r._4.map(_.name).getOrElse("nicht zugewiesen")}")
+    } else {
+      List.empty
+    }
+  }
+
   private def mapAddRegistration(service: RegistrationRoutes, programId: Long, candidateView: AthletView) = {
+    val id = service.insertAthlete(candidateView.toAthlet).id
+    (programId, id)
+  }
+
+  private def mapAddRegistration(service: KutuService, programId: Long, candidateView: AthletView) = {
     val id = service.insertAthlete(candidateView.toAthlet).id
     (programId, id)
   }

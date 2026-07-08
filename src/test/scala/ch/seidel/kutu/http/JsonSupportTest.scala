@@ -1,8 +1,9 @@
 package ch.seidel.kutu.http
 
 import ch.seidel.kutu.actors.{AthletWertungUpdated, KutuAppEvent}
+import ch.seidel.kutu.domain.{SyncActionKey, SyncApplyRequest, SyncApplyResponse}
 import org.scalatest.funsuite.AnyFunSuite
-import spray.json.enrichAny
+import spray.json.{JsNumber, _}
 
 class JsonSupportTest extends AnyFunSuite with JsonSupport with EnrichedJson {
 
@@ -36,4 +37,65 @@ class JsonSupportTest extends AnyFunSuite with JsonSupport with EnrichedJson {
     assert(event.wertung.reserve === Some(3))
   }
 
+  test("testSyncActionKeySerializationRoundtrip") {
+    val key = SyncActionKey(registrationId = 42L, athletId = Some(7L), oldVereinId = None)
+    val json = key.toJson.compactPrint
+    val deserialized = json.parseJson.convertTo[SyncActionKey]
+    assert(deserialized === key)
+  }
+
+  test("testSyncActionKeySerializationRoundtripWithOldVerein") {
+    val key = SyncActionKey(registrationId = 1L, athletId = None, oldVereinId = Some(99L))
+    val json = key.toJson.compactPrint
+    val deserialized = json.parseJson.convertTo[SyncActionKey]
+    assert(deserialized === key)
+  }
+
+  test("testSyncActionKeySerializationDefaultValues") {
+    val key = SyncActionKey(registrationId = 5L)
+    val json = key.toJson.compactPrint
+    val deserialized = json.parseJson.convertTo[SyncActionKey]
+    assert(deserialized === key)
+    val fields = json.parseJson.asJsObject.fields
+    assert(fields("registrationId") === JsNumber(5))
+    assert(fields.get("athletId") === None)
+    assert(fields.get("oldVereinId") === None)
+  }
+
+  test("testSyncApplyRequestSerializationRoundtrip") {
+    val request = SyncApplyRequest(List(
+      SyncActionKey(1L, Some(2L)),
+      SyncActionKey(3L, Some(4L), Some(5L))
+    ))
+    val json = request.toJson.compactPrint
+    val deserialized = json.parseJson.convertTo[SyncApplyRequest]
+    assert(deserialized === request)
+    val actions = json.parseJson.asJsObject.fields("actions").asInstanceOf[spray.json.JsArray]
+    assert(actions.elements.length === 2)
+  }
+
+  test("testSyncApplyRequestSerializationEmptyList") {
+    val request = SyncApplyRequest(List.empty)
+    val json = request.toJson.compactPrint
+    val deserialized = json.parseJson.convertTo[SyncApplyRequest]
+    assert(deserialized === request)
+    assert(deserialized.actions.isEmpty)
+  }
+
+  test("testSyncApplyResponseSerializationRoundtrip") {
+    val response = SyncApplyResponse(processed = 3, messages = List("ok", "created new team"))
+    val json = response.toJson.compactPrint
+    val deserialized = json.parseJson.convertTo[SyncApplyResponse]
+    assert(deserialized === response)
+    val fields = json.parseJson.asJsObject.fields
+    assert(fields("processed") === JsNumber(3))
+    assert(fields("messages").asInstanceOf[spray.json.JsArray].elements.length === 2)
+  }
+
+  test("testSyncApplyResponseSerializationEmptyMessages") {
+    val response = SyncApplyResponse(processed = 0, messages = List.empty)
+    val json = response.toJson.compactPrint
+    val deserialized = json.parseJson.convertTo[SyncApplyResponse]
+    assert(deserialized === response)
+  }
 }
