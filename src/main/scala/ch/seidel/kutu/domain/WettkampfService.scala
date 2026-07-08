@@ -848,7 +848,8 @@ trait WettkampfService extends DBService
     durchgaenge
   }
 
-  def unassignAthletFromWettkampf(wertungId: Set[Long]): Unit = {
+  def unassignAthletFromWettkampf(wertungId: Set[Long], publishWS: Boolean = true): Unit = {
+    if (wertungId.isEmpty) return
     val wertung = getWertung(wertungId.head)
     val durchgaenge: Set[String] = Await.result(database.run {
       sql"""      select distinct durchgang from riege r inner join wertung w on (
@@ -866,10 +867,12 @@ trait WettkampfService extends DBService
               """.transactionally
     }, Duration.Inf)
 
-    val awu = AthletRemovedFromWettkampf(wertung.athlet, wertung.wettkampf.uuid.get)
-    WebSocketClient.publish(awu)
-    for durchgang <- durchgaenge do {
-      WebSocketClient.publish(DurchgangChanged(durchgang, wertung.wettkampf.uuid.get, wertung.athlet))
+    if (publishWS) {
+      val awu = AthletRemovedFromWettkampf(wertung.athlet, wertung.wettkampf.uuid.get)
+      WebSocketClient.publish(awu)
+      for durchgang <- durchgaenge do {
+        WebSocketClient.publish(DurchgangChanged(durchgang, wertung.wettkampf.uuid.get, wertung.athlet))
+      }
     }
   }
 
@@ -1054,15 +1057,17 @@ trait WettkampfService extends DBService
     }
   }
 
-  def moveToProgram(wId: Long, pgmId: Long, team: Int, reserve: Int, athelteView: AthletView): Unit = {
+  def moveToProgram(wId: Long, pgmId: Long, team: Int, reserve: Int, athelteView: AthletView, publishWS: Boolean = true): Unit = {
     val wettkampf = readWettkampf(wId)
     val movedInWettkampf = AthletMovedInWettkampf(athelteView, wettkampf.uuid.getOrElse(""), pgmId, team, reserve)
     val durchgaenge = moveToProgram(movedInWettkampf)
 
-    WebSocketClient.publish(movedInWettkampf)
+    if (publishWS) {
+      WebSocketClient.publish(movedInWettkampf)
 
-    for durchgang <- durchgaenge do {
-      WebSocketClient.publish(DurchgangChanged(durchgang, wettkampf.uuid.get, athelteView))
+      for durchgang <- durchgaenge do {
+        WebSocketClient.publish(DurchgangChanged(durchgang, wettkampf.uuid.get, athelteView))
+      }
     }
   }
 
