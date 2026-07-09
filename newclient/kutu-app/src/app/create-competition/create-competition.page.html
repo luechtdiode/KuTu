@@ -11,12 +11,8 @@
   <ion-list>
 
     <ion-item>
-      <ion-label position="stacked">Datum</ion-label>
-      <ion-datetime
-        presentation="date"
-        [(ngModel)]="form.datum"
-        [value]="form.datum"
-      ></ion-datetime>
+      <ion-label position="stacked">Tag, an dem der Wettkampf startet</ion-label>
+      <ion-input label="Wettkampf-Datum" required placeholder="Wettkampf-Datum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='form.datum' name="datum" required />
     </ion-item>
 
     <ion-item>
