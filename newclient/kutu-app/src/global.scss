@@ -130,6 +130,12 @@ td.drag-over {
   height: 100%;
   object-fit: contain;
 }
+.compact-radio {
+  --min-height: 36px;
+  --padding-start: 8px;
+  --inner-padding-end: 8px;
+  font-size: 0.9rem;
+}
 .preset-row {
   display: flex;
   align-items: center;
