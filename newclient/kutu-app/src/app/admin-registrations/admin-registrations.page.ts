@@ -1,9 +1,9 @@
 import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { AlertController, ToastController } from '@ionic/angular';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
-import { ClubRegistration, SyncAction, SyncActionKey, Verein } from '../backend-types';
+import { ClubRegistration, SyncAction, SyncActionKey, Verein, RiegeItem } from '../backend-types';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -19,9 +19,11 @@ export class AdminRegistrationsPage {
   selectedSyncIndices = new Set<number>();
   applying = false;
   loading = false;
+  unassignedRiegenCount = 0;
 
   private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
   private alertCtrl = inject(AlertController);
@@ -37,18 +39,21 @@ export class AdminRegistrationsPage {
     await this.loadData();
   }
 
-  private async loadData() {
+  async loadData() {
     this.loading = true;
     try {
-      const [registrations, syncActions] = await Promise.all([
+      const [registrations, syncActions, riegen] = await Promise.all([
         firstValueFrom(this.backend.getRegistrations(this.uuid, this.secret)),
-        firstValueFrom(this.backend.getSyncActions(this.uuid, this.secret)).catch(() => [] as SyncAction[])
+        firstValueFrom(this.backend.getSyncActions(this.uuid, this.secret)).catch(() => [] as SyncAction[]),
+        firstValueFrom(this.backend.getRiegen(this.uuid, this.secret)).catch(() => [] as RiegeItem[])
       ]);
       this.registrations = registrations;
       this.syncActions = syncActions;
+      this.unassignedRiegenCount = riegen.filter(r => !r.durchgang).length;
     } catch {
       this.registrations = [];
       this.syncActions = [];
+      this.unassignedRiegenCount = 0;
     } finally {
       this.loading = false;
       this.selectedSyncIndices.clear();
@@ -187,5 +192,9 @@ export class AdminRegistrationsPage {
 
   getStatusColor(reg: ClubRegistration): string {
     return this.isApproved(reg) ? 'success' : 'warning';
+  }
+
+  goToRiegenEinteilung() {
+    this.router.navigate(['/admin/riege-einteilung', this.uuid]);
   }
 }
