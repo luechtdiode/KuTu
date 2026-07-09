@@ -360,6 +360,7 @@ export interface AthletMediaIsFree {
 
 export interface RiegeSuggestionRequest {
   maxRiegenSize?: number;
+  maxParallelDg?: number;
   splitPgm?: boolean;
   splitSexOption?: string;
   onDisziplinIds?: number[];

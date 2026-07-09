@@ -734,51 +734,22 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
            if txtGruppengroesse.text.value.nonEmpty then {
              KuTuApp.invokeWithBusyIndicator {
                val durchgangBuilder = DurchgangBuilder(service)
+
                val maxRiegenSizeValue = str2Int(txtGruppengroesse.text.value)
                val splitSex = cbSplitSex.getSelectionModel.getSelectedItem match {
                  case item: SexDivideRule => Some(item)
                  case null => None
                }
 
-               // Suggest durchgaenge (riegen assignment)
-               val riegenzuteilungen = durchgangBuilder.suggestDurchgaenge(
-                 wettkampf.id,
+               durchgangBuilder.generateRiegen(wettkampf.toWettkampf,
                  maxRiegenSizeValue, durchgang,
                  splitSexOption = splitSex,
                  splitPgm = chkSplitPgm.selected.value,
                  onDisziplinList = getSelectedDisziplines,
-                 separateRiegen2Durchgaenge = chkSeparateRiegen2Durchgang.selected.value)
+                 separateRiegen2Durchgaenge = chkSeparateRiegen2Durchgang.selected.value,
+                 maxParallelDg = getMaxParallelDurchgaengeProGruppe
+               )
 
-               // Derive durchgang groups from the same suggestion result (single-pass)
-               val suggestedGroups = DurchgangGrouper.groupDurchgaengeByKategorien(
-                 riegenzuteilungen,
-                 getMaxParallelDurchgaengeProGruppe)
-
-               if durchgang.isEmpty then {
-                 service.cleanAllRiegenDurchgaenge(wettkampf.id)
-               }
-               for
-                 durchgang <- riegenzuteilungen.keys
-                 (start, riegen) <- riegenzuteilungen(durchgang)
-                 (riege, wertungen) <- riegen
-               do {
-                 service.insertRiegenWertungen(RiegeRaw(
-                   wettkampfId = wettkampf.id,
-                   r = riege,
-                   durchgang = Some(durchgang),
-                   start = Some(start.id),
-                   kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
-                 ), wertungen, deriveRiege2Barren = isDerivedRiege2Barren)
-               }
-
-
-               service.updateDurchgaenge(wettkampf.id)
-               // Apply suggested titles after durchgaenge have been updated in persistence
-               suggestedGroups.foreach { suggestedDg =>
-                 if suggestedDg.title != suggestedDg.name then {
-                   service.renameDurchgangGroup(wettkampf.id, suggestedDg.name, suggestedDg.title)
-                 }
-               }
                reloadData()
                riegenFilterView.sort()
                durchgangView.sort()

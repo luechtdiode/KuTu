@@ -1,11 +1,13 @@
 package ch.seidel.kutu.http
 
 import ch.seidel.jwt.JsonWebToken
+import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
 import ch.seidel.kutu.actors.{FinishDurchgang, FinishDurchgangStep, ResetStartDurchgang, StartDurchgang}
 import ch.seidel.kutu.base.KuTuBaseSpec
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.{ProgrammRaw, Wettkampf}
+import ch.seidel.kutu.renderer.ServerPrintUtil
 import org.apache.pekko.http.scaladsl.model.*
 import org.apache.pekko.http.scaladsl.model.HttpMethods.{DELETE, GET, POST, PUT}
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
@@ -44,6 +46,10 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
 
     // ── delete-test setup ──────────────────────────────────────────────────────
     forDeletionWettkampf = insertGeTuWettkampf("WkRoutesDeleteWK", 1)
+
+    // ── logo-test setup: remove any leftover logo files from previous runs ────
+    val logoFile = ServerPrintUtil.locateLogoFile(testWettkampf.prepareFilePath(Config.homedir, readOnly = true))
+    if logoFile.exists() then logoFile.delete()
   }
 
   // ─── helpers ───────────────────────────────────────────────────────────────
@@ -367,6 +373,136 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangStepFormat.write(fds).compactPrint)
       ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
+      }
+    }
+
+    // ── GET/POST /api/competition/:wkuuid/logo ──────────────────────────────
+
+    "reject logo upload without JWT" in {
+      val pngBytes = Array[Byte](0x89.toByte, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+      HttpRequest(
+        POST,
+        s"/api/competition/${testWettkampf.uuid.get}/logo",
+        entity = Multipart.FormData(
+          Multipart.FormData.BodyPart.Strict(
+            "logo",
+            HttpEntity(MediaTypes.`image/png`, pngBytes),
+            Map("filename" -> "logo.png"),
+            Seq.empty
+          )
+        ).toEntity
+      ) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Unauthorized)
+      }
+    }
+
+    "reject logo upload with a JWT for a different UUID" in {
+      val pngBytes = Array[Byte](0x89.toByte, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+      HttpRequest(
+        POST,
+        s"/api/competition/${testWettkampf.uuid.get}/logo",
+        entity = Multipart.FormData(
+          Multipart.FormData.BodyPart.Strict(
+            "logo",
+            HttpEntity(MediaTypes.`image/png`, pngBytes),
+            Map("filename" -> "logo.png"),
+            Seq.empty
+          )
+        ).toEntity
+      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Conflict)
+      }
+    }
+
+    "return 404 when no logo exists" in {
+      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo")
+        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.NotFound)
+      }
+    }
+
+    "upload a PNG logo and return OK" in {
+      val pngBytes = Array[Byte](
+        0x89.toByte, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+      )
+      HttpRequest(
+        POST,
+        s"/api/competition/${testWettkampf.uuid.get}/logo",
+        entity = Multipart.FormData(
+          Multipart.FormData.BodyPart.Strict(
+            "logo",
+            HttpEntity(MediaTypes.`image/png`, pngBytes),
+            Map("filename" -> "logo.png"),
+            Seq.empty
+          )
+        ).toEntity
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.OK)
+      }
+    }
+
+    "return the uploaded PNG logo with correct content type" in {
+      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo")
+        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.OK)
+        contentType.mediaType should ===(MediaTypes.`image/png`)
+      }
+    }
+
+    "upload an SVG logo and return OK" in {
+      val svgContent = """<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>"""
+      HttpRequest(
+        POST,
+        s"/api/competition/${testWettkampf.uuid.get}/logo",
+        entity = Multipart.FormData(
+          Multipart.FormData.BodyPart.Strict(
+            "logo",
+            HttpEntity(MediaTypes.`image/svg+xml`, svgContent.getBytes("UTF-8")),
+            Map("filename" -> "logo.svg"),
+            Seq.empty
+          )
+        ).toEntity
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.OK)
+      }
+    }
+
+    "return the uploaded SVG logo with correct content type" in {
+      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo")
+        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.OK)
+        contentType.mediaType should ===(MediaTypes.`image/svg+xml`)
+      }
+    }
+
+    "reject logo upload with disallowed file extension" in {
+      HttpRequest(
+        POST,
+        s"/api/competition/${testWettkampf.uuid.get}/logo",
+        entity = Multipart.FormData(
+          Multipart.FormData.BodyPart.Strict(
+            "logo",
+            HttpEntity(MediaTypes.`application/octet-stream`, Array[Byte](0x00, 0x01, 0x02)),
+            Map("filename" -> "logo.gif"),
+            Seq.empty
+          )
+        ).toEntity
+      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Conflict)
+        responseAs[String] should include("Ungültiges Format")
+      }
+    }
+
+    "reject logo GET without JWT" in {
+      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo") ~> withRoutes ~> check {
+        status should ===(StatusCodes.Unauthorized)
+      }
+    }
+
+    "reject logo GET with a JWT for a different UUID" in {
+      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo")
+        .addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Conflict)
       }
     }
   }
