@@ -105,4 +105,16 @@ td.drag-over {
   color: var(--ion-color-step-400, #aaa);
   font-size: 0.8rem;
 }
+.logo-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.logo-preview img {
+  max-height: 60px;
+  max-width: 120px;
+  border-radius: 4px;
+  border: 1px solid var(--ion-color-step-200, #dedede);
+}
 

@@ -111,6 +111,10 @@ export function parseApiDate(dateStr: string): string {
   return dateStr.substring(0, 10);
 }
 
+export function formatDisplayDate(dateStr: string): string {
+  return dateStr.substring(0, 10);
+}
+
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');

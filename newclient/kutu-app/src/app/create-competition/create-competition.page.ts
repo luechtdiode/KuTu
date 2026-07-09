@@ -1,4 +1,5 @@
 import { Component, inject, NgZone, ChangeDetectorRef } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { ToastController, NavController, ModalController } from '@ionic/angular';
 import { AdminBackendService } from '../services/admin-backend.service';
 import { SecretService } from '../services/secret.service';
@@ -101,6 +102,8 @@ export class CreateCompetitionPage {
   submitting = false;
   disziplinen: string[] = [];
   kategorien: string[] = [];
+  selectedLogo: File | null = null;
+  logoPreview: string | null = null;
 
   altersklassenPreset = 'Ohne';
   jahrgangsklassenPreset = 'Ohne';
@@ -115,10 +118,52 @@ export class CreateCompetitionPage {
   private toastCtrl = inject(ToastController);
   private nav = inject(NavController);
   private modalCtrl = inject(ModalController);
+  private route = inject(ActivatedRoute);
+
+  get isEditMode(): boolean {
+    return !!this.editUuid;
+  }
+
+  editUuid: string | null = null;
+  private editSecret: string | null = null;
+  private editId: number | null = null;
 
   ionViewWillEnter() {
+    this.editUuid = this.route.snapshot.paramMap.get('uuid');
     this.backend.getProgramme().subscribe(pgm => {
       this.programme = pgm;
+      if (this.editUuid) {
+        const stored = this.secretService.getSecret(this.editUuid);
+        if (!stored) {
+          this.nav.navigateRoot('/admin/competitions');
+          return;
+        }
+        this.editSecret = stored.secret;
+        this.backend.getCompetitionDetails(this.editUuid, stored.secret).subscribe(data => {
+          this.editId = data.id;
+          this.form.datum = data.datum.split('T')[0];
+          this.form.titel = data.titel;
+          this.form.programmId = data.programmId;
+          this.form.notificationEMail = data.notificationEMail;
+          this.form.auszeichnung = data.auszeichnung;
+          this.form.auszeichnungendnote = data.auszeichnungendnote;
+          this.form.altersklassen = data.altersklassen;
+          this.form.jahrgangsklassen = data.jahrgangsklassen;
+          this.form.punktegleichstandsregel = data.punktegleichstandsregel;
+          this.form.rotation = data.rotation;
+          this.form.teamrule = data.teamrule;
+          this.onProgramChange();
+          this.backend.getCompetitionLogo(this.editUuid!, stored.secret).subscribe({
+            next: blob => {
+              if (this.logoPreview) URL.revokeObjectURL(this.logoPreview);
+              this.logoPreview = URL.createObjectURL(blob);
+              this.cdr.detectChanges();
+            },
+            error: () => { /* no logo exists — leave preview empty */ }
+          });
+          this.cdr.detectChanges();
+        });
+      }
     });
   }
 
@@ -146,6 +191,13 @@ export class CreateCompetitionPage {
   }
 
   isValid(): boolean {
+    if (this.isEditMode) {
+      return !!(
+        this.form.titel.trim() &&
+        this.form.programmId &&
+        this.form.notificationEMail.trim()
+      );
+    }
     return !!(
       this.form.titel.trim() &&
       this.form.programmId &&
@@ -248,12 +300,70 @@ export class CreateCompetitionPage {
     await modal.present();
   }
 
+  onLogoSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedLogo = input.files[0];
+      this.logoPreview = URL.createObjectURL(this.selectedLogo);
+    }
+  }
+
+  removeLogo() {
+    this.selectedLogo = null;
+    if (this.logoPreview) {
+      URL.revokeObjectURL(this.logoPreview);
+      this.logoPreview = null;
+    }
+  }
+
   async submit() {
     if (this.submitting) return;
     this.submitting = true;
 
     try {
       const datumStr = formatDateForApi(new Date(this.form.datum + 'T12:00:00.000Z'));
+
+      if (this.isEditMode && this.editUuid && this.editSecret && this.editId) {
+        await firstValueFrom(
+          this.backend.updateCompetition(this.editUuid, this.editSecret, {
+            id: this.editId,
+            datum: datumStr,
+            titel: this.form.titel,
+            programmId: this.form.programmId!,
+            notificationEMail: this.form.notificationEMail,
+            auszeichnung: this.form.auszeichnung || 40,
+            auszeichnungendnote: this.form.auszeichnungendnote || 0,
+            altersklassen: this.form.altersklassen,
+            jahrgangsklassen: this.form.jahrgangsklassen,
+            punktegleichstandsregel: this.form.punktegleichstandsregel,
+            rotation: this.form.rotation,
+            teamrule: this.form.teamrule
+          })
+        );
+
+        if (this.selectedLogo) {
+          try {
+            await firstValueFrom(this.backend.uploadLogo(this.editUuid, this.editSecret, this.selectedLogo));
+          } catch {
+            const toast = await this.toastCtrl.create({
+              message: 'Logo konnte nicht hochgeladen werden.',
+              duration: 4000,
+              color: 'warning'
+            });
+            await toast.present();
+          }
+        }
+
+        const toast = await this.toastCtrl.create({
+          message: `Wettkampf "${this.form.titel}" gespeichert.`,
+          duration: 3000,
+          color: 'success'
+        });
+        await toast.present();
+        this.nav.navigateRoot('/admin/competitions');
+        return;
+      }
+
       const response = await firstValueFrom(
         this.backend.createCompetition({
           datum: datumStr,
@@ -282,6 +392,19 @@ export class CreateCompetitionPage {
         secret: response.secret
       });
 
+      if (this.selectedLogo) {
+        try {
+          await firstValueFrom(this.backend.uploadLogo(response.uuid, response.secret, this.selectedLogo));
+        } catch {
+          const toast = await this.toastCtrl.create({
+            message: 'Wettkampf angelegt, aber Logo konnte nicht hochgeladen werden.',
+            duration: 4000,
+            color: 'warning'
+          });
+          await toast.present();
+        }
+      }
+
       const toast = await this.toastCtrl.create({
         message: `Wettkampf "${response.titel}" angelegt! Prüfe dein Email-Postfach zur Bestätigung.`,
         duration: 5000,
@@ -304,8 +427,9 @@ export class CreateCompetitionPage {
       await toast.present();
       this.nav.navigateRoot('/admin/competitions');
     } catch (e: any) {
+      const detail = typeof e.error === 'string' ? e.error : e.message || 'Unbekannter Fehler';
       const toast = await this.toastCtrl.create({
-        message: 'Fehler: ' + (e.error || e.message || 'Unbekannter Fehler'),
+        message: 'Fehler: ' + detail,
         duration: 5000,
         color: 'danger'
       });

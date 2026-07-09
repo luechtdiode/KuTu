@@ -1074,6 +1074,37 @@ package object domain {
     secret: String
   ) extends DataObject
 
+  case class AdminUpdateCompetitionRequest(
+    id: Long,
+    datum: java.sql.Date,
+    titel: String,
+    programmId: Long,
+    notificationEMail: String,
+    auszeichnung: Int,
+    auszeichnungendnote: scala.math.BigDecimal,
+    altersklassen: String,
+    jahrgangsklassen: String,
+    punktegleichstandsregel: String,
+    rotation: String,
+    teamrule: String
+  ) extends DataObject
+
+  case class AdminGetCompetitionResponse(
+    id: Long,
+    uuid: String,
+    datum: java.sql.Date,
+    titel: String,
+    programmId: Long,
+    auszeichnung: Int,
+    auszeichnungendnote: scala.math.BigDecimal,
+    notificationEMail: String,
+    altersklassen: String,
+    jahrgangsklassen: String,
+    punktegleichstandsregel: String,
+    rotation: String,
+    teamrule: String
+  ) extends DataObject
+
   case class RiegeSuggestionRequest(
     maxRiegenSize: Int = 0,
     maxParallelDg: Int = 0,
