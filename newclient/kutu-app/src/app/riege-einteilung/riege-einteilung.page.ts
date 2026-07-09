@@ -1,10 +1,11 @@
 import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
-import { AlertController, ToastController } from '@ionic/angular';
+import { AlertController, ToastController, ModalController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
 import { RiegeItem, RiegeSuggestionRequest, DurchgangDurationItem, UpdateRiegeRequest, Geraet, StoredSecret } from '../backend-types';
 import { firstValueFrom } from 'rxjs';
+import { RiegeEditModalComponent } from '../editors/riege-edit-modal.component';
 
 interface CellRiege {
   name: string;
@@ -35,6 +36,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   logoUrl = '';
 
   disziplinen: Geraet[] = [];
+  durchgangNames: string[] = [];
   groups: TableGroup[] = [];
   unassignedRiegen: CellRiege[] = [];
   generateParams: RiegeSuggestionRequest = {
@@ -54,6 +56,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   private backend = inject(AdminBackendService);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
+  private modalCtrl = inject(ModalController);
 
   async ionViewWillEnter() {
     this.uuid = this.route.snapshot.paramMap.get('uuid') || '';
@@ -107,6 +110,7 @@ export class RiegeEinteilungPage implements OnDestroy {
       .map(r => ({ name: r.name, kind: r.kind, athletCount: r.athletCount }));
 
     const durchgangNames = [...new Set(riegen.map(r => r.durchgang).filter(Boolean))] as string[];
+    this.durchgangNames = durchgangNames;
     const durMap = new Map(durations.map(d => [d.name, d]));
 
     const rows = durchgangNames.map(dgName => {
@@ -228,30 +232,30 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   async editRiege(item: CellRiege, durchgang: string, startId: number) {
-    const alert = await this.alertCtrl.create({
-      header: 'Riege bearbeiten',
-      inputs: [
-        { name: 'name', type: 'text', value: item.name, placeholder: 'Name' },
-      ],
-      buttons: [
-        { text: 'Abbrechen', role: 'cancel' },
-        {
-          text: 'Speichern',
-          handler: async (data) => {
-            if (data.name === item.name) return;
-            try {
-              const request: UpdateRiegeRequest =  { startId: startId, name: data.name, kind: item.kind, durchgang: durchgang };
-              await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
-              await this.loadData();
-            } catch {
-              const toast = await this.toastCtrl.create({ message: 'Fehler beim Speichern', duration: 3000, color: 'danger' });
-              await toast.present();
-            }
-          }
-        }
-      ]
+    const modal = await this.modalCtrl.create({
+      component: RiegeEditModalComponent,
+      componentProps: {
+        name: item.name,
+        durchgang,
+        startId,
+        kind: item.kind,
+        disziplinen: this.disziplinen,
+      }
     });
-    await alert.present();
+    modal.onDidDismiss().then(async (result) => {
+      if (!result.data) return;
+      const { name, durchgang: newDg, startId: newStartId, kind } = result.data;
+      if (name === item.name && newDg === durchgang && newStartId === startId) return;
+      try {
+        const request: UpdateRiegeRequest = { name, durchgang: newDg, startId: newStartId, kind };
+        await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
+        await this.loadData();
+      } catch {
+        const toast = await this.toastCtrl.create({ message: 'Fehler beim Speichern', duration: 3000, color: 'danger' });
+        await toast.present();
+      }
+    });
+    await modal.present();
   }
 
   formatMillis(ms: number): string {
