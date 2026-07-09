@@ -52,14 +52,14 @@ jobs:
           node-version: 24
       - name: Build Mobile-App
         run: |
-          cd newclient/resultcatcher
+          cd newclient/kutu-app
           npm install -g cordova @ionic/cli
           npm i
           ionic build --prod --engine=browser
           cd ../..
           rm -rf ./src/main/resources/app
           mkdir ./src/main/resources/app
-          cp -R -f ./newclient/resultcatcher/www/* ./src/main/resources/app
+          cp -R -f ./newclient/kutu-app/www/* ./src/main/resources/app
       - name: Autocommit Client
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
