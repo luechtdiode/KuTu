@@ -35,6 +35,7 @@ export class RiegeEinteilungPage {
 
   disziplinen: Geraet[] = [];
   groups: TableGroup[] = [];
+  unassignedRiegen: CellRiege[] = [];
   generateParams: RiegeSuggestionRequest = {
     maxRiegenSize: 11,
     maxParallelDg: 0,
@@ -63,7 +64,7 @@ export class RiegeEinteilungPage {
     await this.loadData();
   }
 
-  private async loadData() {
+  async loadData() {
     this.loading = true;
     try {
       const [riegen, disziplinen, durations] = await Promise.all([
@@ -83,6 +84,10 @@ export class RiegeEinteilungPage {
   }
 
   private buildTable(riegen: RiegeItem[], durations: DurchgangDurationItem[]) {
+    this.unassignedRiegen = riegen
+      .filter(r => !r.durchgang)
+      .map(r => ({ name: r.name, kind: r.kind, athletCount: r.athletCount }));
+
     const durchgangNames = [...new Set(riegen.map(r => r.durchgang).filter(Boolean))] as string[];
     const durMap = new Map(durations.map(d => [d.name, d]));
 
@@ -174,6 +179,7 @@ export class RiegeEinteilungPage {
   onDragOver(event: DragEvent) {
     event.preventDefault();
     event.dataTransfer!.dropEffect = 'move';
+    (event.currentTarget as HTMLElement)?.classList.add('drag-over');
   }
 
   onDragLeave(event: DragEvent) {

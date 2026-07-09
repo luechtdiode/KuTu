@@ -67,6 +67,28 @@
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
+  @if (unassignedRiegen.length > 0) {
+    <ion-card class="unassigned-card">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="warning-outline" color="warning"></ion-icon>
+          Noch nicht eingeteilte Riegen ({{ unassignedRiegen.length }})
+        </ion-card-title>
+        <ion-card-subtitle>Ziehe eine Riege auf eine Zelle in der Tabelle, um sie einem Durchgang und Gerät zuzuweisen.</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content class="unassigned-chips">
+        @for (riege of unassignedRiegen; track riege.name) {
+          <div class="riege-chip unassigned"
+            draggable="true"
+            (dragstart)="onDragStart($event, riege.name, '', null)">
+            <span class="riege-name">{{ riege.name }}</span>
+            <span class="riege-count">{{ riege.athletCount }}</span>
+          </div>
+        }
+      </ion-card-content>
+    </ion-card>
+  }
+
   @if (groups.length > 0 && disziplinen.length > 0) {
     <ion-card>
       <ion-card-content class="ion-padding-0" style="overflow-x: auto;">
