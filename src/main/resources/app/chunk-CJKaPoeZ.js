@@ -1,0 +1,5 @@
+<<<<<<<< HEAD:src/main/resources/app/chunk-WdB7yBnW.js
+import {c}from'./chunk-D4Sqesge.js';import {bd as an,bk as U$1,bl as mt,bm as ms}from'./main-BR3RNEX7.js';var a=()=>":host(.ion-color){color:var(--ion-color-base)}",n=class{constructor(o){an(this,o);}render(){let o=U$1(this);return mt(ms,{key:"bfaa49d35f43b8036725ae8a322c716fc6e43bdf",class:c(this.color,{[o]:true})},mt("slot",{key:"c04880cd1935b42cbe60f58fd523b4d8a96072dc"}))}};n.style=a();export{n as ion_text};
+========
+import {c}from'./chunk-CiAbfV-O.js';import {bL as an,bS as U$1,bT as mt,bU as ms}from'./main-QVV5BHDH.js';var a=()=>":host(.ion-color){color:var(--ion-color-base)}",n=class{constructor(o){an(this,o);}render(){let o=U$1(this);return mt(ms,{key:"bfaa49d35f43b8036725ae8a322c716fc6e43bdf",class:c(this.color,{[o]:true})},mt("slot",{key:"c04880cd1935b42cbe60f58fd523b4d8a96072dc"}))}};n.style=a();export{n as ion_text};
+>>>>>>>> b4ac3259 (update with generated Client from Github Actions CI for build  with [skip ci]):src/main/resources/app/chunk-CJKaPoeZ.js

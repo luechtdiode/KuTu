@@ -140,4 +140,21 @@ td.drag-over {
 .preset-row ion-button {
   flex-shrink: 0;
 }
+.unassigned-card {
+  --background: var(--ion-color-warning-tint, #fff3e0);
+}
+.unassigned-card ion-card-title {
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.unassigned-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.riege-chip.unassigned {
+  background: var(--ion-color-warning, #eb8d00);
+}
 

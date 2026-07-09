@@ -1,0 +1,5 @@
+<<<<<<<< HEAD:src/main/resources/app/chunk-C6cBXnG_.js
+import {O,p}from'./chunk-nBdER95u.js';import {bA as $n,bM as E,bF as pt,C}from'./main-BR3RNEX7.js';var h=()=>{let e=window;e.addEventListener("statusTap",()=>{$n(()=>{let m=e.innerWidth,d=e.innerHeight,o=document.elementFromPoint(m/2,d/2);if(!o)return;let t=O(o);t&&new Promise(l=>E(t,l)).then(()=>{pt(()=>C(null,null,function*(){t.style.setProperty("--overflow","hidden"),yield p(t,300),t.style.removeProperty("--overflow");}));});});});};export{h as startStatusTap};
+========
+import {O,p}from'./chunk-npe6kISe.js';import {c6 as $n,cj as E,cb as pt,C}from'./main-QVV5BHDH.js';var h=()=>{let e=window;e.addEventListener("statusTap",()=>{$n(()=>{let m=e.innerWidth,d=e.innerHeight,o=document.elementFromPoint(m/2,d/2);if(!o)return;let t=O(o);t&&new Promise(l=>E(t,l)).then(()=>{pt(()=>C(null,null,function*(){t.style.setProperty("--overflow","hidden"),yield p(t,300),t.style.removeProperty("--overflow");}));});});});};export{h as startStatusTap};
+>>>>>>>> b4ac3259 (update with generated Client from Github Actions CI for build  with [skip ci]):src/main/resources/app/chunk-Cg_MO7OF.js

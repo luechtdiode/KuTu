@@ -23,6 +23,26 @@
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
+  @if (!loading && unassignedRiegenCount > 0) {
+    <ion-card color="warning">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="warning-outline"></ion-icon>
+          {{ unassignedRiegenCount }} Riegen noch nicht eingeteilt
+        </ion-card-title>
+        <ion-card-subtitle>
+          Es gibt Riegen ohne Durchgang- und Gerätezuweisung.
+        </ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-button expand="block" color="dark" fill="outline" (click)="goToRiegenEinteilung()">
+          <ion-icon slot="start" name="swap-horizontal-outline"></ion-icon>
+          Zur Riegeneinteilung
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+  }
+
   @if (registrations.length > 0) {
     <ion-card>
       <ion-card-header>
