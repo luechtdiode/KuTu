@@ -31,7 +31,6 @@ export class PunktegleichstandsregelEditorComponent implements OnInit {
   dirty = false;
   editIndex: number | null = null;
   editRule: StructuredRule = this.emptyRule();
-  editDisziplinenSet = new Set<string>();
 
   private modalCtrl = inject(ModalController);
 
@@ -60,9 +59,14 @@ export class PunktegleichstandsregelEditorComponent implements OnInit {
 
   get editRuleValid(): boolean {
     if (this.editRule.ruleType === 'Disziplin' || this.editRule.ruleType === 'StreichDisziplin') {
-      return this.editDisziplinenSet.size > 0;
+      return this.editRule.disziplinen.length > 0;
     }
     return true;
+  }
+
+  get remainingDisziplinen(): string[] {
+    const selected = new Set(this.editRule.disziplinen);
+    return this.availableDisziplinen.filter(d => !selected.has(d));
   }
 
   ruleSummary(r: StructuredRule): string {
@@ -71,33 +75,37 @@ export class PunktegleichstandsregelEditorComponent implements OnInit {
 
   addRule() {
     this.editRule = this.emptyRule();
-    this.editDisziplinenSet = new Set();
     this.editIndex = this.rows.length;
   }
 
   editRuleAt(index: number) {
     const r = this.rows[index];
     this.editRule = { ...r, disziplinen: [...r.disziplinen] };
-    this.editDisziplinenSet = new Set(r.disziplinen);
     this.editIndex = index;
   }
 
   onEditRuleTypeChange() {
-    // Reset disziplinen when switching away from Disziplin types
     if (this.editRule.ruleType !== 'Disziplin' && this.editRule.ruleType !== 'StreichDisziplin') {
-      this.editDisziplinenSet = new Set();
       this.editRule.disziplinen = [];
     }
   }
 
-  toggleDisziplin(d: string) {
-    if (this.editDisziplinenSet.has(d)) {
-      this.editDisziplinenSet.delete(d);
-    } else {
-      this.editDisziplinenSet.add(d);
-    }
-    // Always use insertion order from availableDisziplinen
-    this.editRule.disziplinen = this.availableDisziplinen.filter(x => this.editDisziplinenSet.has(x));
+  removeDisziplin(index: number) {
+    this.editRule.disziplinen = this.editRule.disziplinen.filter((_, i) => i !== index);
+  }
+
+  addDisziplin(d: string) {
+    this.editRule.disziplinen = [...this.editRule.disziplinen, d];
+  }
+
+  handleDisziplinReorder(event: CustomEvent<ItemReorderEventDetail>) {
+    const from = event.detail.from;
+    const to = event.detail.to;
+    const newList = [...this.editRule.disziplinen];
+    const [moved] = newList.splice(from, 1);
+    newList.splice(to, 0, moved);
+    this.editRule.disziplinen = newList;
+    event.detail.complete();
   }
 
   saveEdit() {
