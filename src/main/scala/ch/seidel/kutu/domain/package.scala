@@ -1076,10 +1076,11 @@ package object domain {
 
   case class RiegeSuggestionRequest(
     maxRiegenSize: Int = 0,
+    maxParallelDg: Int = 0,
     splitPgm: Boolean = true,
     splitSexOption: Option[String] = None,
     onDisziplinIds: Option[Set[Long]] = None,
-    separateRiegen2Durchgaenge: Boolean = false
+    separateRiegen2Durchgaenge: Boolean = true
   ) extends DataObject
 
   case class UpdateRiegeRequest(
