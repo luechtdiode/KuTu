@@ -438,23 +438,17 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                       athletCount = counts.getOrElse(r.r, 0)
                     )).toJson)
                   }
-                }
-              } else {
-                complete(StatusCodes.Conflict)
-              }
-            } ~
-            put {
-              authenticatedAdmin() { userId =>
-                if userId.equals(wkuuid.toString) then {
+                } ~
+                put {
                   entity(as[UpdateRiegeRequest]) { request =>
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
                       val updated = updateOrinsertRiege(RiegeRaw(wk.id, request.name, request.durchgang, request.startId, request.kind))
                       complete(RiegeItem(updated.r, updated.durchgang, updated.start.map(_.id), updated.start.map(_.name), updated.kind, 0).toJson)
                     }
                   }
-                } else {
-                  complete(StatusCodes.Conflict)
                 }
+              } else {
+                complete(StatusCodes.Conflict)
               }
             }
           } ~
@@ -474,32 +468,17 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                           case _ => None
                         }
                         val durchgangBuilder = DurchgangBuilder(this)
-                        val riegenzuteilungen = durchgangBuilder.suggestDurchgaenge(
-                          wk.id, request.maxRiegenSize, Set.empty, Set.empty,
-                          splitSexOption = splitSex, splitPgm = request.splitPgm,
+
+                        durchgangBuilder.generateRiegen(wk,
+                          durchgangfilter = Set.empty,
                           onDisziplinList = onDisziplin,
-                          separateRiegen2Durchgaenge = request.separateRiegen2Durchgaenge)
-                        val suggestedGroups = DurchgangGrouper.groupDurchgaengeByKategorien(riegenzuteilungen, Int.MaxValue)
-                        cleanAllRiegenDurchgaenge(wk.id)
-                        for
-                          durchgang <- riegenzuteilungen.keys
-                          (start, riegen) <- riegenzuteilungen(durchgang)
-                          (riege, wertungen) <- riegen
-                        do {
-                          insertRiegenWertungen(RiegeRaw(
-                            wettkampfId = wk.id,
-                            r = riege,
-                            durchgang = Some(durchgang),
-                            start = Some(start.id),
-                            kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
-                          ), wertungen)
-                        }
-                        updateDurchgaenge(wk.id)
-                        suggestedGroups.foreach { suggestedDg =>
-                          if suggestedDg.title != suggestedDg.name then {
-                            renameDurchgangGroup(wk.id, suggestedDg.name, suggestedDg.title)
-                          }
-                        }
+                          maxRiegenSize = request.maxRiegenSize,
+                          maxParallelDg = request.maxParallelDg,
+                          splitSexOption = splitSex,
+                          splitPgm = request.splitPgm,
+                          separateRiegen2Durchgaenge = request.separateRiegen2Durchgaenge
+                        )
+                        // prepare response
                         val riegen = selectRiegen(wk.id)
                         val counts = listRiegenZuWettkampf(wk.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
                         val riegenItems = riegen.map(r => RiegeItem(
