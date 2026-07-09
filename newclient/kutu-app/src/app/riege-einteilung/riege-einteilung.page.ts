@@ -31,10 +31,10 @@ export class RiegeEinteilungPage {
   disziplinen: Geraet[] = [];
   rows: TableRow[] = [];
   generateParams: RiegeSuggestionRequest = {
-    maxRiegenSize: 6,
+    maxRiegenSize: 11,
     splitPgm: true,
     splitSexOption: '',
-    separateRiegen2Durchgaenge: false
+    separateRiegen2Durchgaenge: true
   };
   showGeneratePanel = false;
   loading = false;

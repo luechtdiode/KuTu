@@ -1,5 +1,6 @@
 package ch.seidel.kutu.squad
 
+import ch.seidel.kutu.KuTuApp
 import ch.seidel.kutu.domain.*
 import org.slf4j.LoggerFactory
 
@@ -17,6 +18,77 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
       fullGrouper: List[WertungView => String],
       jahrgangGroup: Boolean,
       disziplinGeschlecht: Map[Long, (Int, Int)] = Map.empty)
+
+
+  def generateRiegen(wettkampf: Wettkampf, maxRiegenSize: Int = 0,
+                     durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,
+                     splitSexOption: Option[SexDivideRule] = None, splitPgm: Boolean = true,
+                     onDisziplinList: Option[Set[Disziplin]] = None,
+                     separateRiegen2Durchgaenge: Boolean = false,
+                     maxParallelDg: Int = 2
+                    ): Unit = {
+
+    val wettkampfId = wettkampf.id
+    lazy val wettkampfdisziplinViews: List[WettkampfdisziplinView] = service.listWettkampfDisziplineViews(wettkampf)
+    lazy val disziplinList: List[Disziplin] = wettkampfdisziplinViews.foldLeft(List[Disziplin]()) { (acc, dv) =>
+      if !acc.contains(dv.disziplin) then acc :+ dv.disziplin else acc
+    }
+
+    /**
+     * Es gibt drei Möglichkeiten, wie Riegen2 in den Durchgängen verteilt werden kann:
+     * 1. chkSeparateRiegen2Durchgang wird angekreuzt und es wird sowieso die Riege2-Zuteilungen im separaten Durchgang
+     *    einteilen, unabhängig davon, ob Barren in der Liste selektiert ist.
+     * 2a. chkSeparateRiegen2Durchgang wird nicht angekreuzt, aber Barren ist in der Liste der selektierten Disziplinen.
+     *    Dann wird der Barren in die normale Rotation im selben Durchgang für alle Riegen eingeplant.
+     * 2b. chkSeparateRiegen2Durchgang wird nicht angekreuzt, und der Barren in der Liste ist ebenfalls nicht angekreuzt,
+     *    aber es ist ein GeTu Wettkampf mit M+W Beteiligung, wobei automatisch eine Riege2 mit Barrenzuteilung für
+     *    alle M-Turner im selben Durchgang aber als separate Rotation eingeplant.
+     *
+     * @return
+     */
+    def isDerivedRiege2Barren: Boolean =
+      !separateRiegen2Durchgaenge &&
+        !onDisziplinList.exists(_.exists(d => d.name.equalsIgnoreCase("Barren"))) &&
+        disziplinList.exists(g => g.name.equalsIgnoreCase("Barren"))
+
+    // Suggest durchgaenge (riegen assignment)
+    val riegenzuteilungen = suggestDurchgaenge(
+      wettkampfId, maxRiegenSize, durchgangfilter,
+      splitSexOption = splitSexOption,
+      splitPgm = splitPgm,
+      onDisziplinList = onDisziplinList,
+      separateRiegen2Durchgaenge = separateRiegen2Durchgaenge)
+
+    // Derive durchgang groups from the same suggestion result (single-pass)
+    val suggestedGroups = DurchgangGrouper.groupDurchgaengeByKategorien(
+      riegenzuteilungen,
+      maxParallelDg)
+
+    if durchgangfilter.isEmpty then {
+      service.cleanAllRiegenDurchgaenge(wettkampfId)
+    }
+    for
+      durchgang <- riegenzuteilungen.keys
+      (start, riegen) <- riegenzuteilungen(durchgang)
+      (riege, wertungen) <- riegen
+    do {
+      service.insertRiegenWertungen(RiegeRaw(
+        wettkampfId = wettkampfId,
+        r = riege,
+        durchgang = Some(durchgang),
+        start = Some(start.id),
+        kind = if wertungen.nonEmpty then RiegeRaw.KIND_STANDARD else RiegeRaw.KIND_EMPTY_RIEGE
+      ), wertungen, deriveRiege2Barren = isDerivedRiege2Barren)
+    }
+
+    service.updateDurchgaenge(wettkampfId)
+    // Apply suggested titles after durchgaenge have been updated in persistence
+    suggestedGroups.foreach { suggestedDg =>
+      if suggestedDg.title != suggestedDg.name then {
+        service.renameDurchgangGroup(wettkampfId, suggestedDg.name, suggestedDg.title)
+      }
+    }
+  }
 
   def suggestDurchgaenge(wettkampfId: Long, maxRiegenSize: Int = 0,
       durchgangfilter: Set[String] = Set.empty, programmfilter: Set[Long] = Set.empty,

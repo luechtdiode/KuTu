@@ -34,12 +34,16 @@
         <ion-list class="ion-margin-top">
           <ion-item>
             <ion-label position="stacked">Max. Riegengrösse</ion-label>
-            <ion-input type="number" [(ngModel)]="generateParams.maxRiegenSize" placeholder="0 = automatisch"></ion-input>
+            <ion-input type="number" [(ngModel)]="generateParams.maxRiegenSize" placeholder="0 = automatisch, keine Aufteilung in mehrere Durchgänge"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Max. Anzahl parallel geführter Durchgänge in einer Abteilung</ion-label>
+            <ion-input type="number" [(ngModel)]="generateParams.maxParallelDg" placeholder="0 = Keine Gruppierung"></ion-input>
           </ion-item>
           <ion-item>
             <ion-label position="stacked">Geschlechter-Trennung</ion-label>
             <ion-select [(ngModel)]="generateParams.splitSexOption" placeholder="Keine">
-              <ion-select-option value="">Keine</ion-select-option>
+              <ion-select-option value="">Automatisch</ion-select-option>
               <ion-select-option value="GemischteRiegen">Gemischte Riegen</ion-select-option>
               <ion-select-option value="GemischterDurchgang">Gemischter Durchgang</ion-select-option>
               <ion-select-option value="GetrennteDurchgaenge">Getrennte Durchgänge</ion-select-option>
@@ -79,6 +83,9 @@
               <tr>
                 <td class="col-durchgang">
                   <strong>{{ row.durchgangTitle }}</strong>
+                  @if (row.durchgangTitle !== row.durchgangName) {
+                    {{ row.durchgangName }}
+                  }
                   @if (row.duration) {
                     <div class="duration-info">
                       <span>{{ formatMillis(row.duration.offsetMillis) }} | {{ formatMillis(row.duration.einturnenMillis) }}+{{ formatMillis(row.duration.geraetMillis) }} = {{ formatMillis(row.duration.totalMillis) }}</span>
