@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { AlertController, ToastController } from '@ionic/angular';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SecretService } from '../services/secret.service';
@@ -10,10 +10,11 @@ import { firstValueFrom } from 'rxjs';
   templateUrl: 'admin-registrations.page.html',
   standalone: false
 })
-export class AdminRegistrationsPage {
+export class AdminRegistrationsPage implements OnDestroy {
   uuid = '';
   secret = '';
   wettkampfTitle = '';
+  logoUrl = '';
   registrations: ClubRegistration[] = [];
   syncActions: SyncAction[] = [];
   selectedSyncIndices = new Set<number>();
@@ -39,6 +40,10 @@ export class AdminRegistrationsPage {
     await this.loadData();
   }
 
+  ngOnDestroy() {
+    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+  }
+
   async loadData() {
     this.loading = true;
     try {
@@ -59,6 +64,19 @@ export class AdminRegistrationsPage {
       this.selectedSyncIndices.clear();
       this.cdr.detectChanges();
     }
+    this.loadLogo();
+  }
+
+  private loadLogo() {
+    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+    this.logoUrl = '';
+    this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
+      next: blob => {
+        this.logoUrl = URL.createObjectURL(blob);
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
   }
 
   toggleSyncAction(index: number) {

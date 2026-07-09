@@ -14,8 +14,14 @@
 
   <ion-card>
     <ion-card-header>
-      <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
-      <ion-card-subtitle>UUID: {{ uuid }}</ion-card-subtitle>
+      <ion-item lines="none" class="ion-no-padding">
+        @if (logoUrl) {
+        <ion-avatar slot="start" class="toolbar-logo">
+          <img [src]="logoUrl" alt="Logo" />
+        </ion-avatar>
+        }
+        <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+      </ion-item>
     </ion-card-header>
     <ion-card-content>
       <ion-button (click)="showGeneratePanel = !showGeneratePanel" fill="outline" class="ion-margin-end" size="small">
@@ -135,7 +141,7 @@
                         <div class="riege-chip"
                           draggable="true"
                           (dragstart)="onDragStart($event, riege.name, row.durchgangName, d.id)"
-                          (click)="editRiege(riege, row.durchgangName)"
+                          (click)="editRiege(riege, row.durchgangName, d.id)"
                           [class.empty-riege]="riege.kind === 1">
                           <span class="riege-name">{{ riege.name }}</span>
                           <span class="riege-count">{{ riege.athletCount }}</span>
