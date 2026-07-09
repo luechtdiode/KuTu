@@ -19,6 +19,11 @@ interface TableRow {
   cells: { [disziplinId: number]: CellRiege[] };
 }
 
+interface TableGroup {
+  title: string;
+  rows: TableRow[];
+}
+
 @Component({
   templateUrl: 'riege-einteilung.page.html',
   standalone: false
@@ -29,9 +34,10 @@ export class RiegeEinteilungPage {
   wettkampfTitle = '';
 
   disziplinen: Geraet[] = [];
-  rows: TableRow[] = [];
+  groups: TableGroup[] = [];
   generateParams: RiegeSuggestionRequest = {
     maxRiegenSize: 11,
+    maxParallelDg: 0,
     splitPgm: true,
     splitSexOption: '',
     separateRiegen2Durchgaenge: true
@@ -68,7 +74,7 @@ export class RiegeEinteilungPage {
       this.disziplinen = disziplinen;
       this.buildTable(riegen, durations);
     } catch {
-      this.rows = [];
+      this.groups = [];
       this.disziplinen = [];
     } finally {
       this.loading = false;
@@ -80,7 +86,7 @@ export class RiegeEinteilungPage {
     const durchgangNames = [...new Set(riegen.map(r => r.durchgang).filter(Boolean))] as string[];
     const durMap = new Map(durations.map(d => [d.name, d]));
 
-    this.rows = durchgangNames.map(dgName => {
+    const rows = durchgangNames.map(dgName => {
       const cells: { [disziplinId: number]: CellRiege[] } = {};
       for (const d of this.disziplinen) {
         cells[d.id] = [];
@@ -98,6 +104,20 @@ export class RiegeEinteilungPage {
         cells
       };
     });
+
+    const groupMap = new Map<string, TableRow[]>();
+    for (const row of rows) {
+      const t = row.durchgangTitle;
+      if (!groupMap.has(t)) groupMap.set(t, []);
+      groupMap.get(t)!.push(row);
+    }
+
+    this.groups = [...groupMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([title, groupRows]) => ({
+        title,
+        rows: groupRows.sort((a, b) => a.durchgangName.localeCompare(b.durchgangName))
+      }));
   }
 
   async generate() {
@@ -219,6 +239,6 @@ export class RiegeEinteilungPage {
   }
 
   totalAthleten(): number {
-    return this.rows.reduce((sum, r) => sum + Object.values(r.cells).reduce((s, c) => s + c.reduce((a, ri) => a + ri.athletCount, 0), 0), 0);
+    return this.groups.reduce((sum, g) => sum + g.rows.reduce((s, r) => s + Object.values(r.cells).reduce((s2, c) => s2 + c.reduce((a, ri) => a + ri.athletCount, 0), 0), 0), 0);
   }
 }

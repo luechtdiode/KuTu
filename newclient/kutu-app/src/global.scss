@@ -38,7 +38,7 @@
   text-align: left;
 }
 .riege-table thead th {
-  background: var(--ion-color-step-100, #f4f4f4);
+  background: var(--ion-color-primary-tint, #d7e3ff);
   font-weight: 600;
   position: sticky;
   top: 0;
@@ -50,6 +50,15 @@
 }
 .riege-table .col-geraet {
   min-width: 120px;
+}
+.riege-table .group-header-row td {
+  background: var(--ion-color-primary-tint, #d7e3ff);
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-bottom: 2px solid var(--ion-color-primary, #3880ff);
+}
+.riege-table .dg-name {
+  font-weight: 600;
 }
 .duration-info {
   font-size: 0.75em;

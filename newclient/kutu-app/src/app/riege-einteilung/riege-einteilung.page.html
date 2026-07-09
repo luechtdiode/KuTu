@@ -66,7 +66,7 @@
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
-  @if (rows.length > 0 && disziplinen.length > 0) {
+  @if (groups.length > 0 && disziplinen.length > 0) {
     <ion-card>
       <ion-card-content class="ion-padding-0" style="overflow-x: auto;">
         <table class="riege-table">
@@ -79,41 +79,52 @@
             </tr>
           </thead>
           <tbody>
-            @for (row of rows; track row.durchgangName) {
-              <tr>
-                <td class="col-durchgang">
-                  <strong>{{ row.durchgangTitle }}</strong>
-                  @if (row.durchgangTitle !== row.durchgangName) {
-                    {{ row.durchgangName }}
-                  }
-                  @if (row.duration) {
-                    <div class="duration-info">
-                      <span>{{ formatMillis(row.duration.offsetMillis) }} | {{ formatMillis(row.duration.einturnenMillis) }}+{{ formatMillis(row.duration.geraetMillis) }} = {{ formatMillis(row.duration.totalMillis) }}</span>
-                      <br><small>{{ row.duration.athletCount }} Athleten</small>
-                    </div>
-                  }
-                </td>
-                @for (d of disziplinen; track d.id) {
-                  <td class="col-geraet"
-                    (dragover)="onDragOver($event)"
-                    (drop)="onDrop($event, row.durchgangName, d.id)"
-                    (dragleave)="onDragLeave($event)">
-                    @for (riege of row.cells[d.id]; track riege.name) {
-                      <div class="riege-chip"
-                        draggable="true"
-                        (dragstart)="onDragStart($event, riege.name, row.durchgangName, d.id)"
-                        (click)="editRiege(riege, row.durchgangName)"
-                        [class.empty-riege]="riege.kind === 1">
-                        <span class="riege-name">{{ riege.name }}</span>
-                        <span class="riege-count">{{ riege.athletCount }}</span>
+            @for (group of groups; track group.title) {
+              @if (group.rows.length > 1) {
+                <tr class="group-header-row">
+                  <td class="col-durchgang" [attr.colspan]="disziplinen.length + 1">
+                    <strong>{{ group.title }}</strong>
+                  </td>
+                </tr>
+              }
+              @for (row of group.rows; track row.durchgangName) {
+                <tr>
+                  <td class="col-durchgang">
+                    @if (group.rows.length > 1 || group.title === row.durchgangName) {
+                      <strong>{{ row.durchgangName }}</strong>
+                    } @else {
+                      <strong>{{ group.title }}</strong>
+                      <span class="dg-name">{{ row.durchgangName }}</span>
+                    }
+                    @if (row.duration) {
+                      <div class="duration-info">
+                        <span>Einturnen {{ formatMillis(row.duration.einturnenMillis) }} + Gerät {{ formatMillis(row.duration.geraetMillis) }} = Total {{ formatMillis(row.duration.totalMillis) }}</span>
+                        <br><small>{{ row.duration.athletCount }} Athleten</small>
                       </div>
                     }
-                    @if (!row.cells[d.id]?.length) {
-                      <span class="empty-cell">—</span>
-                    }
                   </td>
-                }
-              </tr>
+                  @for (d of disziplinen; track d.id) {
+                    <td class="col-geraet"
+                      (dragover)="onDragOver($event)"
+                      (drop)="onDrop($event, row.durchgangName, d.id)"
+                      (dragleave)="onDragLeave($event)">
+                      @for (riege of row.cells[d.id]; track riege.name) {
+                        <div class="riege-chip"
+                          draggable="true"
+                          (dragstart)="onDragStart($event, riege.name, row.durchgangName, d.id)"
+                          (click)="editRiege(riege, row.durchgangName)"
+                          [class.empty-riege]="riege.kind === 1">
+                          <span class="riege-name">{{ riege.name }}</span>
+                          <span class="riege-count">{{ riege.athletCount }}</span>
+                        </div>
+                      }
+                      @if (!row.cells[d.id]?.length) {
+                        <span class="empty-cell">—</span>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
             }
           </tbody>
         </table>
