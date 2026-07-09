@@ -76,12 +76,32 @@
 
       @if (editRule.ruleType === 'Disziplin' || editRule.ruleType === 'StreichDisziplin') {
         <ion-item>
-          <ion-label position="stacked">Disziplinen</ion-label>
+          <ion-label position="stacked">Disziplinen (Reihenfolge durch Ziehen änderbar)</ion-label>
         </ion-item>
-        @for (d of availableDisziplinen; track $index) {
+        <ion-reorder-group (ionItemReorder)="handleDisziplinReorder($event)" [disabled]="false">
+          @for (d of editRule.disziplinen; track $index; let i = $index) {
+            <ion-item>
+              <ion-reorder slot="start" style="display: flex !important;">
+                <ion-icon name="reorder-three-outline"></ion-icon>
+              </ion-reorder>
+              <ion-label>{{ d }}</ion-label>
+              <ion-button slot="end" fill="clear" color="danger" (click)="removeDisziplin(i)">
+                <ion-icon name="close" slot="icon-only"></ion-icon>
+              </ion-button>
+            </ion-item>
+          }
+        </ion-reorder-group>
+        @if (remainingDisziplinen.length > 0) {
           <ion-item>
-            <ion-checkbox slot="start" [checked]="editDisziplinenSet.has(d)" (ionChange)="toggleDisziplin(d)"></ion-checkbox>
-            <ion-label>{{ d }}</ion-label>
+            <ion-select
+              interface="alert"
+              placeholder="Disziplin hinzufügen"
+              (ionChange)="addDisziplin($event.detail.value)"
+            >
+              @for (d of remainingDisziplinen; track $index) {
+                <ion-select-option [value]="d">{{ d }}</ion-select-option>
+              }
+            </ion-select>
           </ion-item>
         }
       }
