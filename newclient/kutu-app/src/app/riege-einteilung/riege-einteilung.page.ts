@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { AlertController, ToastController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
@@ -28,10 +28,11 @@ interface TableGroup {
   templateUrl: 'riege-einteilung.page.html',
   standalone: false
 })
-export class RiegeEinteilungPage {
+export class RiegeEinteilungPage implements OnDestroy {
   uuid = '';
   secret = '';
   wettkampfTitle = '';
+  logoUrl = '';
 
   disziplinen: Geraet[] = [];
   groups: TableGroup[] = [];
@@ -64,6 +65,10 @@ export class RiegeEinteilungPage {
     await this.loadData();
   }
 
+  ngOnDestroy() {
+    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+  }
+
   async loadData() {
     this.loading = true;
     try {
@@ -81,6 +86,19 @@ export class RiegeEinteilungPage {
       this.loading = false;
       this.cdr.detectChanges();
     }
+    this.loadLogo();
+  }
+
+  private loadLogo() {
+    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+    this.logoUrl = '';
+    this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
+      next: blob => {
+        this.logoUrl = URL.createObjectURL(blob);
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
   }
 
   private buildTable(riegen: RiegeItem[], durations: DurchgangDurationItem[]) {
@@ -209,7 +227,7 @@ export class RiegeEinteilungPage {
     });
   }
 
-  async editRiege(item: CellRiege, durchgang: string) {
+  async editRiege(item: CellRiege, durchgang: string, startId: number) {
     const alert = await this.alertCtrl.create({
       header: 'Riege bearbeiten',
       inputs: [
@@ -222,7 +240,7 @@ export class RiegeEinteilungPage {
           handler: async (data) => {
             if (data.name === item.name) return;
             try {
-              const request: UpdateRiegeRequest =  { name: data.name };
+              const request: UpdateRiegeRequest =  { startId: startId, name: data.name, kind: item.kind, durchgang: durchgang };
               await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
               await this.loadData();
             } catch {
