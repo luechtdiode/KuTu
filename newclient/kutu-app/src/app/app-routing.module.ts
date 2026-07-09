@@ -62,6 +62,10 @@ const routes: Routes = [
     loadChildren: () => import('./create-competition/create-competition.module').then(m => m.CreateCompetitionPageModule)
   },
   {
+    path: 'admin/competitions/:uuid/edit',
+    loadChildren: () => import('./create-competition/create-competition.module').then(m => m.CreateCompetitionPageModule)
+  },
+  {
     path: 'admin/security',
     loadChildren: () => import('./security/security.module').then(m => m.SecurityPageModule)
   },
