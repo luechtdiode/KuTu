@@ -6,6 +6,7 @@ import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.renderer.ServerPrintUtil
 import ch.seidel.kutu.squad.{DurchgangBuilder, DurchgangGrouper}
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
@@ -326,6 +327,65 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
               }
             }
           }
+        } ~
+        pathPrefixLabeled(JavaUUID, ":uuid") { wkuuid =>
+          get {
+            authenticatedAdmin() { userId =>
+              if userId.equals(wkuuid.toString) then {
+                onSuccess(readWettkampfAsync(wkuuid.toString)) { wettkampf =>
+                  complete(AdminGetCompetitionResponse(
+                    id = wettkampf.id,
+                    uuid = wettkampf.uuid.get,
+                    datum = wettkampf.datum,
+                    titel = wettkampf.titel,
+                    programmId = wettkampf.programmId,
+                    auszeichnung = wettkampf.auszeichnung,
+                    auszeichnungendnote = wettkampf.auszeichnungendnote,
+                    notificationEMail = wettkampf.notificationEMail,
+                    altersklassen = wettkampf.altersklassen.getOrElse(""),
+                    jahrgangsklassen = wettkampf.jahrgangsklassen.getOrElse(""),
+                    punktegleichstandsregel = wettkampf.punktegleichstandsregel.getOrElse(""),
+                    rotation = wettkampf.rotation.getOrElse(""),
+                    teamrule = wettkampf.teamrule.getOrElse("")
+                  ).toJson)
+                }
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            }
+          } ~
+          put {
+            authenticatedAdmin() { userId =>
+              if userId.equals(wkuuid.toString) then {
+                entity(as[AdminUpdateCompetitionRequest]) { request =>
+                  onComplete(Future {
+                    saveWettkampf(
+                      id = request.id,
+                      datum = request.datum,
+                      titel = request.titel,
+                      programmId = Set(request.programmId),
+                      notificationEMail = request.notificationEMail,
+                      auszeichnung = request.auszeichnung,
+                      auszeichnungendnote = request.auszeichnungendnote,
+                      uuidOption = Some(wkuuid.toString),
+                      altersklassen = request.altersklassen,
+                      jahrgangsklassen = request.jahrgangsklassen,
+                      punktegleichstandsregel = request.punktegleichstandsregel,
+                      rotation = request.rotation,
+                      teamrule = request.teamrule
+                    )
+                  }) {
+                    case Success(wk) => complete(JsObject("status" -> JsString("ok"), "easyprint" -> JsString(wk.easyprint)))
+                    case Failure(e) =>
+                      log.error(e, "Failed to update competition")
+                      complete(StatusCodes.InternalServerError, s"Failed to update competition: ${e.getMessage}")
+                  }
+                }
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            }
+          }
         }
       } ~
       pathLabeled("competition" / "ws", "competition/ws") {
@@ -549,6 +609,67 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 } else {
                   complete(StatusCodes.Conflict)
                 }
+              }
+            }
+          }
+        } ~
+        pathLabeled("logo", "logo") {
+          get {
+            authenticatedAdmin() { userId =>
+              if userId.equals(wkuuid.toString) then {
+                onSuccess(readWettkampfAsync(wkuuid.toString)) { wettkampf =>
+                  val competitionDir = wettkampf.prepareFilePath(Config.homedir, readOnly = true)
+                  val logofile = ServerPrintUtil.locateLogoFile(competitionDir)
+                  if logofile.exists() then {
+                    val contentType = ContentType(logofile.getName match {
+                      case n if n.endsWith(".svg") => MediaTypes.`image/svg+xml`
+                      case n if n.endsWith(".png") => MediaTypes.`image/png`
+                      case n if n.endsWith(".jpg") || n.endsWith(".jpeg") => MediaTypes.`image/jpeg`
+                      case _ => MediaTypes.`application/octet-stream`
+                    })
+                    getFromFile(logofile, contentType)
+                  } else {
+                    complete(StatusCodes.NotFound)
+                  }
+                }
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            }
+          } ~
+          post {
+            authenticatedAdmin() { userId =>
+              if userId.equals(wkuuid.toString) then {
+                withSizeLimit(Config.logoFileMaxSize) {
+                  withoutRequestTimeout {
+                    fileUpload("logo") {
+                      case (metadata, file: Source[ByteString, Any]) =>
+                        val allowedExtensions = List("svg", "png", "jpg", "jpeg")
+                        val fileext = metadata.fileName.split("\\.").last.toLowerCase
+                        if allowedExtensions.contains(fileext) && metadata.contentType.mediaType.toString.startsWith("image/") then {
+                          import Core.materializer
+                          val is = file.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
+                          val processor = readWettkampfAsync(wkuuid.toString).flatMap { wettkampf =>
+                            Future {
+                              try {
+                                LogoHandler.handleLogoUpload(wettkampf, fileext, is)
+                              } finally { is.close() }
+                            }
+                          }
+                          onComplete(processor) {
+                    case Success(_) => complete(StatusCodes.OK)
+                            case Failure(e) =>
+                              log.error(e.getMessage, e)
+                              complete(StatusCodes.Conflict, s"Logo konnte nicht gespeichert werden: ${e.getMessage}")
+                          }
+                        } else {
+                          complete(StatusCodes.Conflict, s"Ungültiges Format. Erlaubt sind: ${allowedExtensions.mkString(", ")}")
+                        }
+                    }
+                  }
+                }
+              } else {
+                complete(StatusCodes.Conflict)
               }
             }
           }

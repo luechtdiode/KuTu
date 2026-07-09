@@ -4,7 +4,7 @@
       <ion-back-button defaultHref="/admin/competitions"></ion-back-button>
       <ion-menu-button></ion-menu-button>
     </ion-buttons>
-    <ion-title>Neuen Wettkampf anlegen</ion-title>
+    <ion-title>{{ isEditMode ? 'Wettkampf bearbeiten' : 'Neuen Wettkampf anlegen' }}</ion-title>
   </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
@@ -18,6 +18,23 @@
     <ion-item>
       <ion-label position="stacked">Titel</ion-label>
       <ion-input [(ngModel)]="form.titel" placeholder="z.B. Gaumeisterschaft 2026"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Logo</ion-label>
+      @if (logoPreview) {
+        <div class="logo-preview">
+          <img [src]="logoPreview" alt="Logo Vorschau" />
+          <ion-button fill="clear" size="small" color="danger" (click)="removeLogo()">
+            <ion-icon name="close" slot="icon-only"></ion-icon>
+          </ion-button>
+        </div>
+      }
+      <input #fileInput type="file" accept="image/*" hidden (change)="onLogoSelected($event)" />
+      <ion-button fill="outline" size="small" (click)="fileInput.click()">
+        <ion-icon slot="start" name="image-outline"></ion-icon>
+        {{ logoPreview ? 'Ersetzen' : 'Auswählen' }}
+      </ion-button>
     </ion-item>
 
     <ion-item>
@@ -157,42 +174,44 @@
       </ion-button>
     </ion-item>
 
-    <ion-item-divider>
-      <ion-label>Ersteller-Informationen</ion-label>
-    </ion-item-divider>
+    @if (!isEditMode) {
+      <ion-item-divider>
+        <ion-label>Ersteller-Informationen</ion-label>
+      </ion-item-divider>
 
-    <ion-item>
-      <ion-label position="stacked">Name *</ion-label>
-      <ion-input [(ngModel)]="form.creatorName" placeholder="Vor- und Nachname"></ion-input>
-    </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Name *</ion-label>
+        <ion-input [(ngModel)]="form.creatorName" placeholder="Vor- und Nachname"></ion-input>
+      </ion-item>
 
-    <ion-item>
-      <ion-label position="stacked">Adresse *</ion-label>
-      <ion-textarea
-        [(ngModel)]="form.creatorAddress"
-        placeholder="Strasse, PLZ, Ort"
-        rows="2"
-      ></ion-textarea>
-    </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Adresse *</ion-label>
+        <ion-textarea
+          [(ngModel)]="form.creatorAddress"
+          placeholder="Strasse, PLZ, Ort"
+          rows="2"
+        ></ion-textarea>
+      </ion-item>
 
-    <ion-item>
-      <ion-label position="stacked">Telefon *</ion-label>
-      <ion-input
-        type="tel"
-        [(ngModel)]="form.creatorPhone"
-        placeholder="+49 123 456789"
-      ></ion-input>
-    </ion-item>
+      <ion-item>
+        <ion-label position="stacked">Telefon *</ion-label>
+        <ion-input
+          type="tel"
+          [(ngModel)]="form.creatorPhone"
+          placeholder="+49 123 456789"
+        ></ion-input>
+      </ion-item>
 
-    <ion-item>
-      <ion-label>
-        <p>Ich akzeptiere die <a href="#" (click)="showTerms($event)">Nutzungsbedingungen</a> *</p>
-      </ion-label>
-      <ion-checkbox
-        slot="end"
-        [(ngModel)]="form.termsAccepted"
-      ></ion-checkbox>
-    </ion-item>
+      <ion-item>
+        <ion-label>
+          <p>Ich akzeptiere die <a href="#" (click)="showTerms($event)">Nutzungsbedingungen</a> *</p>
+        </ion-label>
+        <ion-checkbox
+          slot="end"
+          [(ngModel)]="form.termsAccepted"
+        ></ion-checkbox>
+      </ion-item>
+    }
   </ion-list>
 
   <ion-button
@@ -201,11 +220,13 @@
     [disabled]="!isValid() || submitting"
     (click)="submit()"
   >
-    Wettkampf anlegen
+    {{ isEditMode ? 'Speichern' : 'Wettkampf anlegen' }}
   </ion-button>
 
-  <ion-note color="medium" class="ion-padding-top" style="display:block;">
-    Nach dem Anlegen wird eine Bestätigungs-Email an die angegebene Adresse gesendet.
-    Der Wettkampf wird erst nach Bestätigung aktiv (24h Timeout).
-  </ion-note>
+  @if (!isEditMode) {
+    <ion-note color="medium" class="ion-padding-top" style="display:block;">
+      Nach dem Anlegen wird eine Bestätigungs-Email an die angegebene Adresse gesendet.
+      Der Wettkampf wird erst nach Bestätigung aktiv (24h Timeout).
+    </ion-note>
+  }
 </ion-content>

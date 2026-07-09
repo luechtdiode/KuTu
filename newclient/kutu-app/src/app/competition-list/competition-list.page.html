@@ -13,28 +13,44 @@
     </ion-fab-button>
   </ion-fab>
 
-  @if (secrets.length > 0) {
+  @if (competitions.length > 0) {
     <ion-list>
-      @for (s of secrets; track s.uuid) {
+      @for (c of competitions; track c.uuid) {
         <ion-item-sliding>
           <ion-item>
+            @if (c.logoUrl) {
+              <ion-avatar slot="start">
+                <img [src]="c.logoUrl" alt="Logo" />
+              </ion-avatar>
+            }
             <ion-label>
-              <h2>{{ s.titel }}</h2>
-              <p>{{ s.datum }}</p>
-              <p class="ion-text-wrap" style="font-size: 0.7em; opacity: 0.6;">UUID: {{ s.uuid }}</p>
+              @if (c.loading) {
+                <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
+                <ion-skeleton-text animated style="width: 40%"></ion-skeleton-text>
+              } @else {
+                <h2>{{ c.titel }}</h2>
+                <p>{{ formatDate(c.datum) }}</p>
+                @if (c.error) {
+                  <p class="ion-text-wrap" style="font-size: 0.7em; color: var(--ion-color-danger);">Fehler beim Laden</p>
+                }
+              }
+              <p class="ion-text-wrap" style="font-size: 0.7em; opacity: 0.6;">UUID: {{ c.uuid }}</p>
             </ion-label>
-            <ion-button slot="end" fill="clear" (click)="openRegistrations(s)">
+            <ion-button slot="end" fill="clear" (click)="openEdit(c)">
+              <ion-icon slot="icon-only" name="create"></ion-icon>
+            </ion-button>
+            <ion-button slot="end" fill="clear" (click)="openRegistrations(c)">
               <ion-icon slot="icon-only" name="people"></ion-icon>
             </ion-button>
-            <ion-button slot="end" fill="clear" (click)="openRiegen(s)">
+            <ion-button slot="end" fill="clear" (click)="openRiegen(c)">
               <ion-icon slot="icon-only" name="git-network"></ion-icon>
             </ion-button>
-            <ion-button slot="end" fill="clear" (click)="downloadZip(s)">
+            <ion-button slot="end" fill="clear" (click)="downloadZip(c)">
               <ion-icon slot="icon-only" name="download"></ion-icon>
             </ion-button>
           </ion-item>
           <ion-item-options>
-            <ion-item-option color="danger" (click)="confirmDelete(s)">
+            <ion-item-option color="danger" (click)="confirmDelete(c)">
               <ion-icon slot="icon-only" name="trash"></ion-icon>
             </ion-item-option>
           </ion-item-options>
