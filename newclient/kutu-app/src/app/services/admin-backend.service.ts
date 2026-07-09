@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -100,6 +100,28 @@ export class AdminBackendService {
   getAthletRegistrations(uuid: string, regId: number, secret: string): Observable<AthletRegistration[]> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.get<AthletRegistration[]>(this.api + 'registrations/' + uuid + '/' + regId + '/athletes', { headers });
+  }
+
+  uploadLogo(uuid: string, secret: string, file: File): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    const formData = new FormData();
+    formData.append('logo', file, file.name);
+    return this.http.post(this.api + 'competition/' + uuid + '/logo', formData, { headers });
+  }
+
+  getCompetitionDetails(uuid: string, secret: string): Observable<AdminGetCompetitionResponse> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<AdminGetCompetitionResponse>(this.api + 'admin/competition/' + uuid, { headers });
+  }
+
+  getCompetitionLogo(uuid: string, secret: string): Observable<Blob> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get(this.api + 'competition/' + uuid + '/logo', { headers, responseType: 'blob' });
+  }
+
+  updateCompetition(uuid: string, secret: string, request: AdminUpdateCompetitionRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'admin/competition/' + uuid, request, { headers });
   }
 
 }

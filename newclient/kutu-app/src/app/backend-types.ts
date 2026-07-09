@@ -261,6 +261,37 @@ export interface AdminCreateCompetitionResponse {
   secret: string;
 }
 
+export interface AdminUpdateCompetitionRequest {
+  id: number;
+  datum: string;
+  titel: string;
+  programmId: number;
+  notificationEMail: string;
+  auszeichnung: number;
+  auszeichnungendnote: number;
+  altersklassen: string;
+  jahrgangsklassen: string;
+  punktegleichstandsregel: string;
+  rotation: string;
+  teamrule: string;
+}
+
+export interface AdminGetCompetitionResponse {
+  id: number;
+  uuid: string;
+  datum: string;
+  titel: string;
+  programmId: number;
+  auszeichnung: number;
+  auszeichnungendnote: number;
+  notificationEMail: string;
+  altersklassen: string;
+  jahrgangsklassen: string;
+  punktegleichstandsregel: string;
+  rotation: string;
+  teamrule: string;
+}
+
 export interface StoredSecret {
   uuid: string;
   titel: string;
