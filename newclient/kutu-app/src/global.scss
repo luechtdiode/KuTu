@@ -117,4 +117,27 @@ td.drag-over {
   border-radius: 4px;
   border: 1px solid var(--ion-color-step-200, #dedede);
 }
+.preset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.preset-row ion-select {
+  flex-shrink: 0;
+}
+.select-popover {
+  --width: max(90vw, 480px);
+  --max-width: 90vw;
+}
+.select-popover ion-radio {
+  width: 100%;
+}
+.preset-row ion-input {
+  flex: 1;
+  min-width: 0;
+}
+.preset-row ion-button {
+  flex-shrink: 0;
+}
 
