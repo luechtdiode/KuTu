@@ -14,8 +14,15 @@
 
   <ion-card>
     <ion-card-header>
-      <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
-      <ion-card-subtitle>UUID: {{ uuid }}</ion-card-subtitle>
+
+      <ion-item lines="none" class="ion-no-padding">
+        @if (logoUrl) {
+        <ion-avatar slot="start" class="toolbar-logo">
+          <img [src]="logoUrl" alt="Logo" />
+        </ion-avatar>
+        }
+        <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+      </ion-item>
     </ion-card-header>
   </ion-card>
 
@@ -69,7 +76,7 @@
                 </ion-button>
               }
               <ion-button slot="end" fill="clear" color="danger" (click)="deleteRegistration(reg)">
-                <ion-icon slot="icon-only" name="trash"></ion-icon>
+                <ion-icon slot="icon-only" size="large" name="trash"></ion-icon>
               </ion-button>
             </ion-item>
           }
