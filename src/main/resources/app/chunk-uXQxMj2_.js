@@ -1,5 +1,0 @@
-<<<<<<<< HEAD:src/main/resources/app/chunk-D8khy19G.js
-import {n}from'./chunk-CmGiLA9M.js';var t=(function(e){return e.Unimplemented="UNIMPLEMENTED",e.Unavailable="UNAVAILABLE",e})(t||{}),o=(function(e){return e.Body="body",e.Ionic="ionic",e.Native="native",e.None="none",e})(o||{}),a={getEngine(){let e=n();if(e?.isPluginAvailable("Keyboard"))return e.Plugins.Keyboard},getResizeMode(){let e=this.getEngine();return e?.getResizeMode?e.getResizeMode().catch(n=>{if(n.code!==t.Unimplemented)throw n}):Promise.resolve(void 0)}};export{a,o};
-========
-import {n}from'./chunk-D4AeR4LK.js';var t=(function(e){return e.Unimplemented="UNIMPLEMENTED",e.Unavailable="UNAVAILABLE",e})(t||{}),o=(function(e){return e.Body="body",e.Ionic="ionic",e.Native="native",e.None="none",e})(o||{}),a={getEngine(){let e=n();if(e?.isPluginAvailable("Keyboard"))return e.Plugins.Keyboard},getResizeMode(){let e=this.getEngine();return e?.getResizeMode?e.getResizeMode().catch(n=>{if(n.code!==t.Unimplemented)throw n}):Promise.resolve(void 0)}};export{a,o};
->>>>>>>> b4ac3259 (update with generated Client from Github Actions CI for build  with [skip ci]):src/main/resources/app/chunk-uXQxMj2_.js
