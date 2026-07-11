@@ -396,6 +396,7 @@ export interface RiegeSuggestionRequest {
   splitSexOption?: string;
   onDisziplinIds?: number[];
   separateRiegen2Durchgaenge?: boolean;
+  filterDurchgang?: string[];
 }
 
 export interface UpdateRiegeRequest {
@@ -403,6 +404,25 @@ export interface UpdateRiegeRequest {
   durchgang?: string;
   startId?: number;
   kind?: number;
+}
+
+export interface UpdateDurchgangRequest {
+  oldTitle: string;
+  newTitle: string;
+}
+
+export interface MergeDurchgangRequest {
+  durchgangNames: string[];
+  targetName: string;
+}
+
+export interface GroupDurchgangRequest {
+  durchgangNames: string[];
+  groupTitle: string;
+}
+
+export interface UngroupDurchgangRequest {
+  durchgangNames: string[];
 }
 
 export interface RiegeItem {

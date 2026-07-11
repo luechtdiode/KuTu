@@ -3,7 +3,7 @@ import { AlertController, ToastController, ModalController } from '@ionic/angula
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
-import { RiegeItem, RiegeSuggestionRequest, DurchgangDurationItem, UpdateRiegeRequest, Geraet, StoredSecret } from '../backend-types';
+import { RiegeItem, RiegeSuggestionRequest, DurchgangDurationItem, UpdateRiegeRequest, Geraet, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest } from '../backend-types';
 import { firstValueFrom } from 'rxjs';
 import { RiegeEditModalComponent } from '../editors/riege-edit-modal.component';
 
@@ -46,6 +46,9 @@ export class RiegeEinteilungPage implements OnDestroy {
     splitSexOption: '',
     separateRiegen2Durchgaenge: true
   };
+  selectedDisziplinIds = new Set<number>();
+  filterDurchgaenge: string[] = [];
+  selectedDgs = new Set<string>();
   showGeneratePanel = false;
   loading = false;
   draggedRiege: { name: string; durchgang: string; startId: number | null } | null = null;
@@ -81,6 +84,9 @@ export class RiegeEinteilungPage implements OnDestroy {
         firstValueFrom(this.backend.getRiegeDuration(this.uuid, this.secret)).catch(() => [] as DurchgangDurationItem[])
       ]);
       this.disziplinen = disziplinen;
+      if (this.selectedDisziplinIds.size === 0) {
+        this.selectedDisziplinIds = new Set(disziplinen.map(d => d.id));
+      }
       this.buildTable(riegen, durations);
     } catch {
       this.groups = [];
@@ -153,12 +159,15 @@ export class RiegeEinteilungPage implements OnDestroy {
   async generate() {
     this.loading = true;
     try {
+      const allSelected = this.selectedDisziplinIds.size === this.disziplinen.length;
       const request: RiegeSuggestionRequest = {
         ...this.generateParams,
         splitSexOption: this.generateParams.splitSexOption || undefined,
-        onDisziplinIds: this.generateParams.onDisziplinIds?.length ? this.generateParams.onDisziplinIds : undefined,
+        onDisziplinIds: !allSelected ? [...this.selectedDisziplinIds] : undefined,
+        filterDurchgang: this.filterDurchgaenge.length > 0 ? this.filterDurchgaenge : undefined,
       };
       await firstValueFrom(this.backend.suggestRiegen(this.uuid, request, this.secret));
+      this.filterDurchgaenge = [];
       await this.loadData();
       const toast = await this.toastCtrl.create({ message: 'Riegeneinteilung generiert', duration: 2000, color: 'success' });
       await toast.present();
@@ -259,6 +268,272 @@ export class RiegeEinteilungPage implements OnDestroy {
       }
     });
     await modal.present();
+  }
+
+  get allDgsSelected(): boolean {
+    return this.durchgangNames.length > 0 && this.durchgangNames.every(n => this.selectedDgs.has(n));
+  }
+
+  toggleDg(name: string) {
+    if (this.selectedDgs.has(name)) {
+      this.selectedDgs.delete(name);
+    } else {
+      this.selectedDgs.add(name);
+    }
+  }
+
+  toggleAllDgs() {
+    if (this.allDgsSelected) {
+      this.selectedDgs.clear();
+    } else {
+      this.selectedDgs = new Set(this.durchgangNames);
+    }
+  }
+
+  isGroupSelected(group: TableGroup): boolean {
+    return group.rows.length > 0 && group.rows.every(r => this.selectedDgs.has(r.durchgangName));
+  }
+
+  toggleGroupDgs(group: TableGroup) {
+    if (this.isGroupSelected(group)) {
+      for (const r of group.rows) this.selectedDgs.delete(r.durchgangName);
+    } else {
+      for (const r of group.rows) this.selectedDgs.add(r.durchgangName);
+    }
+  }
+
+  async renameSelected() {
+    if (this.selectedDgs.size !== 1) return;
+    const dgName = [...this.selectedDgs][0];
+    const alert = await this.alertCtrl.create({
+      header: 'Durchgang umbenennen',
+      inputs: [{ name: 'newName', type: 'text', value: dgName, placeholder: 'Neuer Name' }],
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Umbenennen',
+          handler: async (data) => {
+            const newName = data.newName?.trim();
+            if (!newName || newName === dgName) return;
+            this.loading = true;
+            try {
+              await firstValueFrom(this.backend.renameDurchgang(this.uuid, this.secret, dgName, newName));
+              this.selectedDgs.clear();
+              await this.loadData();
+              const toast = await this.toastCtrl.create({ message: `Durchgang umbenannt zu "${newName}"`, duration: 2000, color: 'success' });
+              await toast.present();
+            } catch {
+              const toast = await this.toastCtrl.create({ message: 'Fehler beim Umbenennen', duration: 3000, color: 'danger' });
+              await toast.present();
+            } finally {
+              this.loading = false;
+            }
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  async switchGroupSelected() {
+    if (this.selectedDgs.size === 0) return;
+    const allTitles = [...new Set(this.groups.map(g => g.title))];
+    const options = allTitles.map(t => ({ label: t, type: 'radio' as const, name: 'title', value: t }));
+    const alert = await this.alertCtrl.create({
+      header: 'Gruppe wechseln',
+      subHeader: `${this.selectedDgs.size} Durchgang/Durchgänge`,
+      inputs: options,
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Wechseln',
+          handler: async (data) => {
+            const selectedTitle = data;
+            if (!selectedTitle) return;
+            this.loading = true;
+            try {
+              const request: GroupDurchgangRequest = { durchgangNames: [...this.selectedDgs], groupTitle: selectedTitle };
+              await firstValueFrom(this.backend.moveDurchgangToGroup(this.uuid, this.secret, request));
+              this.selectedDgs.clear();
+              await this.loadData();
+              const toast = await this.toastCtrl.create({ message: `Gruppe geändert zu "${selectedTitle}"`, duration: 2000, color: 'success' });
+              await toast.present();
+            } catch {
+              const toast = await this.toastCtrl.create({ message: 'Fehler beim Ändern der Gruppe', duration: 3000, color: 'danger' });
+              await toast.present();
+            } finally {
+              this.loading = false;
+            }
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  async mergeSelected() {
+    if (this.selectedDgs.size < 2) return;
+    const defaultName = [...this.selectedDgs][0];
+    const alert = await this.alertCtrl.create({
+      header: 'Durchgänge zusammenführen',
+      subHeader: `${this.selectedDgs.size} Durchgänge werden umbenannt zu:`,
+      inputs: [{ name: 'newName', type: 'text', value: defaultName, placeholder: 'Neuer Durchgang-Name' }],
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Zusammenführen',
+          handler: async (data) => {
+            const targetName = data.newName?.trim();
+            if (!targetName) return;
+            this.loading = true;
+            try {
+              const request: MergeDurchgangRequest = { durchgangNames: [...this.selectedDgs], targetName };
+              await firstValueFrom(this.backend.mergeDurchgang(this.uuid, this.secret, request));
+              this.selectedDgs.clear();
+              await this.loadData();
+              const toast = await this.toastCtrl.create({ message: `Zusammengeführt zu "${targetName}"`, duration: 2000, color: 'success' });
+              await toast.present();
+            } catch {
+              const toast = await this.toastCtrl.create({ message: 'Fehler beim Zusammenführen', duration: 3000, color: 'danger' });
+              await toast.present();
+            } finally {
+              this.loading = false;
+            }
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  get hasGroupedSelection(): boolean {
+    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    return [...this.selectedDgs].some(dgName => {
+      const row = allRows.find(r => r.durchgangName === dgName);
+      return row && row.durchgangName !== row.durchgangTitle;
+    });
+  }
+
+  async ungroupSelected() {
+    if (this.selectedDgs.size === 0) return;
+    this.loading = true;
+    try {
+      const request: UngroupDurchgangRequest = { durchgangNames: [...this.selectedDgs] };
+      await firstValueFrom(this.backend.ungroupDurchgang(this.uuid, this.secret, request));
+      this.selectedDgs.clear();
+      await this.loadData();
+      const toast = await this.toastCtrl.create({ message: 'Gruppe aufgelöst', duration: 2000, color: 'success' });
+      await toast.present();
+    } catch {
+      const toast = await this.toastCtrl.create({ message: 'Fehler beim Auflösen der Gruppe', duration: 3000, color: 'danger' });
+      await toast.present();
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async aggregateSelected() {
+    if (this.selectedDgs.size < 2) return;
+    const defaultTitle = this.suggestGroupTitle();
+    const alert = await this.alertCtrl.create({
+      header: 'Gruppe bilden',
+      subHeader: `${this.selectedDgs.size} Durchgänge zusammenfassen`,
+      inputs: [{ name: 'groupTitle', type: 'text', value: defaultTitle, placeholder: 'Gruppen-Name' }],
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Bilden',
+          handler: async (data) => {
+            const groupTitle = data.groupTitle?.trim();
+            if (!groupTitle) return;
+            this.loading = true;
+            try {
+              const request: GroupDurchgangRequest = { durchgangNames: [...this.selectedDgs], groupTitle };
+              await firstValueFrom(this.backend.aggregateDurchgaenge(this.uuid, this.secret, request));
+              this.selectedDgs.clear();
+              await this.loadData();
+              const toast = await this.toastCtrl.create({ message: `Gruppe "${groupTitle}" erstellt`, duration: 2000, color: 'success' });
+              await toast.present();
+            } catch {
+              const toast = await this.toastCtrl.create({ message: 'Fehler beim Bilden der Gruppe', duration: 3000, color: 'danger' });
+              await toast.present();
+            } finally {
+              this.loading = false;
+            }
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  private splitDurchgangName(name: string): string {
+    const riege2Match = name.match(/^(.*)\((\.+)\)$/);
+    if (riege2Match) return `${riege2Match[1].trim()} ${riege2Match[2]}`;
+    const nameMatch = name.match(/^(.*)\((\d+)\)$/);
+    if (nameMatch) return nameMatch[1].trim();
+    return name.trim();
+  }
+
+  private categoriesOf(name: string): Set<string> {
+    const baseName = this.splitDurchgangName(name);
+    return baseName.replace(/-Tu/g, '').replace(/-Ti/g, '')
+      .split('&').map(s => s.trim()).filter(s => s.length > 0)
+      .reduce((set, s) => { set.add(s); return set; }, new Set<string>());
+  }
+
+  private suggestGroupTitle(): string {
+    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    const selectedRows = [...this.selectedDgs].map(dg => allRows.find(r => r.durchgangName === dg)).filter(Boolean) as TableRow[];
+
+    const categories = selectedRows.reduce<Set<string>>((set, r) => {
+      for (const c of this.categoriesOf(r.durchgangName)) set.add(c);
+      return set;
+    }, new Set<string>());
+
+    const categoryLabel = [...categories].sort().map(s => s.replace(/[()]/g, '')).join(', ');
+
+    const abteilungPattern = /^Abteilung (\d+)/;
+    const usedNumbers = this.groups
+      .map(g => g.title.match(abteilungPattern))
+      .filter(Boolean)
+      .map(m => parseInt(m![1], 10));
+    const nextNum = usedNumbers.length > 0 ? Math.max(...usedNumbers) + 1 : 1;
+
+    if (categoryLabel) return `Abteilung ${nextNum} (${categoryLabel})`;
+    return `Abteilung ${nextNum}`;
+  }
+
+  async regenerateSelected() {
+    if (this.selectedDgs.size === 0) return;
+    this.filterDurchgaenge = [...this.selectedDgs];
+    this.selectedDisziplinIds = new Set(
+      this.disziplinen.filter(d => {
+        for (const dgName of this.selectedDgs) {
+          const row = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []).find(r => r.durchgangName === dgName);
+          if (row && row.cells[d.id]?.length > 0) return true;
+        }
+        return false;
+      }).map(d => d.id)
+    );
+    this.showGeneratePanel = true;
+    this.cdr.detectChanges();
+  }
+
+  toggleDisziplin(id: number, event: any) {
+    if (event.detail.checked) {
+      this.selectedDisziplinIds.add(id);
+    } else {
+      this.selectedDisziplinIds.delete(id);
+    }
+  }
+
+  selectAllDisziplinen() {
+    this.selectedDisziplinIds = new Set(this.disziplinen.map(d => d.id));
+  }
+
+  selectNoneDisziplinen() {
+    this.selectedDisziplinIds = new Set();
   }
 
   formatMillis(ms: number): string {

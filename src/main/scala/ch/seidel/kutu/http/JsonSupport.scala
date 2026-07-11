@@ -156,8 +156,12 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given adminUpdateCompetitionRequestFormat: RootJsonFormat[AdminUpdateCompetitionRequest] = jsonFormat(AdminUpdateCompetitionRequest.apply, "id", "datum", "titel", "programmId", "notificationEMail", "auszeichnung", "auszeichnungendnote", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
   given adminGetCompetitionResponseFormat: RootJsonFormat[AdminGetCompetitionResponse] = jsonFormat(AdminGetCompetitionResponse.apply, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
 
-  given riegeSuggestionRequestFormat: RootJsonFormat[RiegeSuggestionRequest] = jsonFormat(RiegeSuggestionRequest.apply, "maxRiegenSize", "maxParallelDg", "splitPgm", "splitSexOption", "onDisziplinIds", "separateRiegen2Durchgaenge")
+  given riegeSuggestionRequestFormat: RootJsonFormat[RiegeSuggestionRequest] = jsonFormat(RiegeSuggestionRequest.apply, "maxRiegenSize", "maxParallelDg", "splitPgm", "splitSexOption", "onDisziplinIds", "separateRiegen2Durchgaenge", "filterDurchgang")
   given updateRiegeRequestFormat: RootJsonFormat[UpdateRiegeRequest] = jsonFormat4(UpdateRiegeRequest.apply)
+  given updateDurchgangRequestFormat: RootJsonFormat[UpdateDurchgangRequest] = jsonFormat2(UpdateDurchgangRequest.apply)
+  given mergeDurchgangRequestFormat: RootJsonFormat[MergeDurchgangRequest] = jsonFormat2(MergeDurchgangRequest.apply)
+  given groupDurchgangRequestFormat: RootJsonFormat[GroupDurchgangRequest] = jsonFormat2(GroupDurchgangRequest.apply)
+  given ungroupDurchgangRequestFormat: RootJsonFormat[UngroupDurchgangRequest] = jsonFormat1(UngroupDurchgangRequest.apply)
   given riegeItemFormat: RootJsonFormat[RiegeItem] = jsonFormat6(RiegeItem.apply)
   given durchgangDurationItemFormat: RootJsonFormat[DurchgangDurationItem] = jsonFormat7(DurchgangDurationItem.apply)
   given riegePreviewResponseFormat: RootJsonFormat[RiegePreviewResponse] = jsonFormat2(RiegePreviewResponse.apply)

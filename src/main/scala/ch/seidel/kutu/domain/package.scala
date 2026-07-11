@@ -1111,7 +1111,8 @@ package object domain {
     splitPgm: Boolean = true,
     splitSexOption: Option[String] = None,
     onDisziplinIds: Option[Set[Long]] = None,
-    separateRiegen2Durchgaenge: Boolean = true
+    separateRiegen2Durchgaenge: Boolean = true,
+    filterDurchgang: Option[Set[String]] = None
   ) extends DataObject
 
   case class UpdateRiegeRequest(
@@ -1119,6 +1120,25 @@ package object domain {
     durchgang: Option[String],
     startId: Option[Long],
     kind: Int = 0
+  ) extends DataObject
+
+  case class UpdateDurchgangRequest(
+    oldTitle: String,
+    newTitle: String
+  ) extends DataObject
+
+  case class MergeDurchgangRequest(
+    durchgangNames: Set[String],
+    targetName: String
+  ) extends DataObject
+
+  case class GroupDurchgangRequest(
+    durchgangNames: Set[String],
+    groupTitle: String
+  ) extends DataObject
+
+  case class UngroupDurchgangRequest(
+    durchgangNames: Set[String]
   ) extends DataObject
 
   case class RiegeItem(
