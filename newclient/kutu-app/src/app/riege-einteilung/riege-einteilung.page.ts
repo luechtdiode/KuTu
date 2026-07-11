@@ -147,6 +147,9 @@ export class RiegeEinteilungPage implements OnDestroy {
       }));
   }
 
+  get hasGroupedRiegen(): boolean {
+    return this.groups.map(tg => tg.rows.length).filter(l => l > 1).length > 0;
+  }
   async generate() {
     this.loading = true;
     try {
