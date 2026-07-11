@@ -67,13 +67,13 @@ object DurchgangGrouper {
     (baseName, round, name)
   }
 
-  private def splitName(name: String): (String, Int) = name match {
+  private[kutu] def splitName(name: String): (String, Int) = name match {
     case DurchgangNamePattern(base, round) => (base.trim, round.toIntOption.getOrElse(Int.MaxValue))
     case DurchgangRiege2Pattern(base, riege2name) => (s"${base.trim} ${riege2name}", Int.MaxValue)
     case _ => (name.trim, Int.MaxValue)
   }
 
-  private[squad] def categoriesOf(durchgangName: String): Set[String] = {
+  private[kutu] def categoriesOf(durchgangName: String): Set[String] = {
     val (baseName, _) = splitName(durchgangName)
     baseName.replace("-Tu", "").replace("-Ti", "").split("&").map(_.trim).filter(_.nonEmpty).toSet
   }

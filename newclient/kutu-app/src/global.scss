@@ -136,6 +136,22 @@ td.drag-over {
   --inner-padding-end: 8px;
   font-size: 0.9rem;
 }
+.dg-header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.dg-actions-btn {
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 4px;
+  opacity: 0.5;
+  user-select: none;
+}
+.dg-actions-btn:hover {
+  opacity: 1;
+}
 .preset-row {
   display: flex;
   align-items: center;
@@ -175,5 +191,29 @@ td.drag-over {
 }
 .riege-chip.unassigned {
   background: var(--ion-color-warning, #eb8d00);
+}
+.col-select {
+  width: 40px;
+  text-align: center;
+}
+.col-select ion-checkbox {
+  --size: 16px;
+}
+tr.selected {
+  background: var(--ion-color-primary-tint, #d7e3ff);
+}
+.selection-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--ion-color-step-200, #dedede);
+}
+.selection-count {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-right: 8px;
 }
 
