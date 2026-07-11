@@ -530,7 +530,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         val durchgangBuilder = DurchgangBuilder(this)
 
                         durchgangBuilder.generateRiegen(wk,
-                          durchgangfilter = Set.empty,
+                          durchgangfilter = request.filterDurchgang.getOrElse(Set.empty),
                           onDisziplinList = onDisziplin,
                           maxRiegenSize = request.maxRiegenSize,
                           maxParallelDg = request.maxParallelDg,
@@ -558,7 +558,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                           einturnenMillis = d.planEinturnen,
                           geraetMillis = d.planGeraet,
                           totalMillis = d.planTotal,
-                          athletCount = athleteCountsByDurchgang.get(Some(d.name)).getOrElse(0)
+                          athletCount = athleteCountsByDurchgang.getOrElse(Some(d.name), 0)
                         ))
                         RiegePreviewResponse(riegenItems, durchgangItems)
                       }) {
@@ -605,6 +605,91 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                       totalMillis = d.planTotal,
                       athletCount = athleteCountsByDurchgang.get(Some(d.name)).getOrElse(0)
                     )).toJson)
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathLabeled("renamedg", "renamedg") {
+            put {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[UpdateDurchgangRequest]) { request =>
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      val manager = new DurchgangManager(this)
+                      manager.renameDurchgang(wk.id, request.oldTitle, request.newTitle)
+                      complete(JsObject("status" -> JsString("ok")))
+                    }
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathLabeled("movegroup", "movegroup") {
+            put {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[GroupDurchgangRequest]) { request =>
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      val manager = new DurchgangManager(this)
+                      manager.moveDurchgangToGroup(wk.id, request.durchgangNames, request.groupTitle)
+                      complete(JsObject("status" -> JsString("ok")))
+                    }
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathLabeled("mergedg", "mergedg") {
+            put {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[MergeDurchgangRequest]) { request =>
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      val manager = new DurchgangManager(this)
+                      manager.mergeDurchgaenge(wk.id, request.durchgangNames, request.targetName)
+                      complete(JsObject("status" -> JsString("ok")))
+                    }
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathLabeled("ungroup", "ungroup") {
+            put {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[UngroupDurchgangRequest]) { request =>
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      val manager = new DurchgangManager(this)
+                      manager.ungroupDurchgaenge(wk.id, request.durchgangNames)
+                      complete(JsObject("status" -> JsString("ok")))
+                    }
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathLabeled("aggregate", "aggregate") {
+            put {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[GroupDurchgangRequest]) { request =>
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      val manager = new DurchgangManager(this)
+                      manager.aggregateDurchgaenge(wk.id, request.durchgangNames, request.groupTitle)
+                      complete(JsObject("status" -> JsString("ok")))
+                    }
                   }
                 } else {
                   complete(StatusCodes.Conflict)
