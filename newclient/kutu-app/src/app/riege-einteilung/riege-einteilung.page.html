@@ -109,7 +109,7 @@
           </thead>
           <tbody>
             @for (group of groups; track group.title) {
-              @if (group.rows.length > 1) {
+              @if (hasGroupedRiegen) {
                 <tr class="group-header-row">
                   <td class="col-durchgang" [attr.colspan]="disziplinen.length + 1">
                     <strong>{{ group.title }}</strong>
@@ -119,7 +119,7 @@
               @for (row of group.rows; track row.durchgangName) {
                 <tr>
                   <td class="col-durchgang">
-                    @if (group.rows.length > 1 || group.title === row.durchgangName) {
+                    @if (hasGroupedRiegen || group.title === row.durchgangName) {
                       <strong>{{ row.durchgangName }}</strong>
                     } @else {
                       <strong>{{ group.title }}</strong>
