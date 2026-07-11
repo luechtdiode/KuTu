@@ -37,8 +37,56 @@
         Zurücksetzen
       </ion-button>
 
+      @if (selectedDgs.size > 0) {
+        <div class="selection-bar">
+          <span class="selection-count">{{ selectedDgs.size }} Durchgang ausgewählt</span>
+          <ion-button size="small" fill="clear" (click)="regenerateSelected()">
+            <ion-icon slot="start" name="refresh-outline"></ion-icon>
+            Neu generieren
+          </ion-button>
+          <ion-button size="small" fill="clear" (click)="renameSelected()" [disabled]="selectedDgs.size !== 1">
+            <ion-icon slot="start" name="pencil-outline"></ion-icon>
+            Umbenennen
+          </ion-button>
+          <ion-button size="small" fill="clear" (click)="switchGroupSelected()">
+            <ion-icon slot="start" name="swap-horizontal-outline"></ion-icon>
+            Gruppe wechseln
+          </ion-button>
+          @if (selectedDgs.size >= 2) {
+            <ion-button size="small" fill="clear" (click)="mergeSelected()">
+              <ion-icon slot="start" name="git-merge-outline"></ion-icon>
+              Zusammenführen
+            </ion-button>
+            <ion-button size="small" fill="clear" (click)="aggregateSelected()">
+              <ion-icon slot="start" name="layers-outline"></ion-icon>
+              Gruppe bilden
+            </ion-button>
+          }
+          @if (hasGroupedSelection) {
+            <ion-button size="small" fill="clear" (click)="ungroupSelected()">
+              <ion-icon slot="start" name="ungroup-outline"></ion-icon>
+              Gruppe auflösen
+            </ion-button>
+          }
+          <ion-button size="small" fill="clear" color="medium" (click)="selectedDgs.clear()">
+            <ion-icon name="close-outline"></ion-icon>
+          </ion-button>
+        </div>
+      }
+
       @if (showGeneratePanel) {
         <ion-list class="ion-margin-top">
+          @if (filterDurchgaenge.length > 0) {
+            <ion-item color="warning">
+              <ion-icon name="refresh-outline" slot="start"></ion-icon>
+              <ion-label>
+                <h2>{{ filterDurchgaenge.length > 1 ? 'Durchgänge' : 'Durchgang' }}
+                  "{{ filterDurchgaenge.join('", "') }}" neu generieren</h2>
+                <p>Bestehende Riegeneinteilungen werden zurückgesetzt und neu generiert.</p>
+              </ion-label>
+              <ion-button slot="end" fill="clear" size="small" (click)="filterDurchgaenge = []">Auswahl aufheben</ion-button>
+            </ion-item>
+          }
           <ion-item>
             <ion-label position="stacked">Max. Riegengrösse</ion-label>
             <ion-input type="number" [(ngModel)]="generateParams.maxRiegenSize" placeholder="0 = automatisch, keine Aufteilung in mehrere Durchgänge"></ion-input>
@@ -64,6 +112,22 @@
             <ion-checkbox slot="start" [(ngModel)]="generateParams.separateRiegen2Durchgaenge"></ion-checkbox>
             <ion-label>2. Riegen separat in Durchgänge</ion-label>
           </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Verteilung auf folgende Disziplinen</ion-label>
+          </ion-item>
+          <ion-item lines="none">
+            <ion-button size="small" fill="clear" (click)="selectAllDisziplinen()">Alle</ion-button>
+            <ion-button size="small" fill="clear" (click)="selectNoneDisziplinen()">Keine</ion-button>
+          </ion-item>
+          @for (d of disziplinen; track d.id) {
+            <ion-item>
+              <ion-checkbox slot="start"
+                [checked]="selectedDisziplinIds.has(d.id)"
+                (ionChange)="toggleDisziplin(d.id, $event)">
+              </ion-checkbox>
+              <ion-label>{{ d.name }}</ion-label>
+            </ion-item>
+          }
         </ion-list>
       }
     </ion-card-content>
@@ -101,6 +165,9 @@
         <table class="riege-table">
           <thead>
             <tr>
+              <th class="col-select">
+                <ion-checkbox [checked]="allDgsSelected" (ionChange)="toggleAllDgs()"></ion-checkbox>
+              </th>
               <th class="col-durchgang">Durchgang</th>
               @for (d of disziplinen; track d.id) {
                 <th class="col-geraet">{{ d.name }}</th>
@@ -111,20 +178,28 @@
             @for (group of groups; track group.title) {
               @if (hasGroupedRiegen) {
                 <tr class="group-header-row">
+                  <td class="col-select">
+                    <ion-checkbox [checked]="isGroupSelected(group)" (ionChange)="toggleGroupDgs(group)"></ion-checkbox>
+                  </td>
                   <td class="col-durchgang" [attr.colspan]="disziplinen.length + 1">
                     <strong>{{ group.title }}</strong>
                   </td>
                 </tr>
               }
               @for (row of group.rows; track row.durchgangName) {
-                <tr>
+                <tr [class.selected]="selectedDgs.has(row.durchgangName)">
+                  <td class="col-select">
+                    <ion-checkbox [checked]="selectedDgs.has(row.durchgangName)" (ionChange)="toggleDg(row.durchgangName)"></ion-checkbox>
+                  </td>
                   <td class="col-durchgang">
-                    @if (hasGroupedRiegen || group.title === row.durchgangName) {
-                      <strong>{{ row.durchgangName }}</strong>
-                    } @else {
-                      <strong>{{ group.title }}</strong>
-                      <span class="dg-name">{{ row.durchgangName }}</span>
-                    }
+                    <div class="dg-header">
+                      @if (hasGroupedRiegen || group.title === row.durchgangName) {
+                        <strong>{{ row.durchgangName }}</strong>
+                      } @else {
+                        <strong>{{ group.title }}</strong>
+                        <span class="dg-name">{{ row.durchgangName }}</span>
+                      }
+                    </div>
                     @if (row.duration) {
                       <div class="duration-info">
                         <span>Einturnen {{ formatMillis(row.duration.einturnenMillis) }} + Gerät {{ formatMillis(row.duration.geraetMillis) }} = Total {{ formatMillis(row.duration.totalMillis) }}</span>

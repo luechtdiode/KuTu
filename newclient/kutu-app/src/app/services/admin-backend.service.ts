@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -122,6 +122,31 @@ export class AdminBackendService {
   updateCompetition(uuid: string, secret: string, request: AdminUpdateCompetitionRequest): Observable<any> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.put(this.api + 'admin/competition/' + uuid, request, { headers });
+  }
+
+  renameDurchgang(uuid: string, secret: string, oldTitle: string, newTitle: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/renamedg', { oldTitle, newTitle }, { headers });
+  }
+
+  moveDurchgangToGroup(uuid: string, secret: string, request: GroupDurchgangRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/movegroup', request, { headers });
+  }
+
+  mergeDurchgang(uuid: string, secret: string, request: MergeDurchgangRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/mergedg', request, { headers });
+  }
+
+  ungroupDurchgang(uuid: string, secret: string, request: UngroupDurchgangRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/ungroup', request, { headers });
+  }
+
+  aggregateDurchgaenge(uuid: string, secret: string, request: GroupDurchgangRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/aggregate', request, { headers });
   }
 
 }
