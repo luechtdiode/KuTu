@@ -127,12 +127,26 @@ trait RiegenService extends DBService with RiegenResultMapper {
                     zp.wettkampf_id = $wettkampfId
                     AND NOT EXISTS (SELECT 1 FROM durchgang dd WHERE dd.wettkampf_id = zp.wettkampf_id and dd.name = zp.durchgang)
         """>>
+        sqlu"""
+                DELETE FROM riege
+                WHERE wettkampf_id = $wettkampfId
+                  AND kind = 1
+                  AND durchgang IS NOT NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM riege r2
+                    INNER JOIN wertung w ON r2.wettkampf_id = w.wettkampf_id AND (r2.name = w.riege OR r2.name = w.riege2)
+                    WHERE r2.durchgang = riege.durchgang
+                      AND r2.wettkampf_id = riege.wettkampf_id
+                    AND r2.kind = 0
+                )
+          """ >>
       sqlu"""
                 delete from durchgang
                 where wettkampf_id = $wettkampfId
                 and durchgangType = 1
                 and not exists (
                   select 1 from riege r where r.durchgang = durchgang.name
+                     and r.wettkampf_id = durchgang.wettkampf_id
                 )
             """
 

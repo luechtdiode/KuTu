@@ -82,6 +82,8 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
     }
 
     service.updateDurchgaenge(wettkampfId)
+    service.cleanUnusedRiegen(wettkampfId)
+
     // Apply suggested titles after durchgaenge have been updated in persistence
     suggestedGroups.foreach { suggestedDg =>
       if suggestedDg.title != suggestedDg.name then {
