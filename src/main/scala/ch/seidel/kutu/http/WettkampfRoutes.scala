@@ -742,7 +742,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                             }
                           }
                           onComplete(processor) {
-                    case Success(_) => complete(StatusCodes.OK)
+                            case Success(_) => complete(StatusCodes.OK)
                             case Failure(e) =>
                               log.error(e.getMessage, e)
                               complete(StatusCodes.Conflict, s"Logo konnte nicht gespeichert werden: ${e.getMessage}")
