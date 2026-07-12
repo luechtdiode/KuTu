@@ -7,9 +7,10 @@ import org.scalatest.funsuite.AnyFunSuite
 import java.io.{ByteArrayInputStream, File, FileOutputStream}
 import java.sql.Date
 import java.nio.file.Files
+import scala.compiletime.uninitialized
 
 class LogoHandlerSpec extends AnyFunSuite with BeforeAndAfterEach {
-  var tempDir: File = _
+  var tempDir: File = uninitialized
 
   override def beforeEach(): Unit = {
     tempDir = Files.createTempDirectory("kutu-logo-test-").toFile

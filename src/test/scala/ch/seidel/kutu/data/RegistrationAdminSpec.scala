@@ -1223,7 +1223,7 @@ class RegistrationAdminSpec extends KuTuBaseSpec with PatienceConfiguration {
     // ===== Tests for processSyncActionsLocally =====
     "processSyncActionsLocally should handle empty sync actions" in {
       val result = processSyncActionsLocally(wkInfo, this, List.empty)
-      result shouldBe a[List[_]]
+      result shouldBe a[List[?]]
     }
 
     "processSyncActionsLocally should process AddVereinAction and create new clubs" in {
