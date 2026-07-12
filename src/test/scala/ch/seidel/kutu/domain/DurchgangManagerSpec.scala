@@ -3,6 +3,8 @@ package ch.seidel.kutu.domain
 import ch.seidel.kutu.base.KuTuBaseSpec
 import ch.seidel.kutu.squad.DurchgangGrouper
 
+import scala.compiletime.uninitialized
+
 /**
  * Test coverage for DurchgangManager
  *
@@ -11,7 +13,7 @@ import ch.seidel.kutu.squad.DurchgangGrouper
  */
 class DurchgangManagerSpec extends KuTuBaseSpec {
 
-  var testWettkampf: Wettkampf = _
+  var testWettkampf: Wettkampf = uninitialized
 
   override def beforeAll(): Unit = {
     super.beforeAll()
