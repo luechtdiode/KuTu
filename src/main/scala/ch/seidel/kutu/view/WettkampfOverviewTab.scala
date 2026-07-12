@@ -235,6 +235,35 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
           },
           reportMenu,
           new Button {
+            text = "Web-UI Admin öffnen"
+            visible <== when(Bindings.createBooleanBinding(() =>
+              wettkampf.toWettkampf.hasSecred(homedir, remoteHostOrigin),
+              selectedWettkampfSecret
+            )) choose true otherwise false
+            managed <== visible
+            onAction = _ => {
+              PageDisplayer.confirm(
+                "Web-UI Admin",
+                Seq(
+                  "Anpassungen über die Web Admin Funktionen sind jeweils sofort auf der Serverseite wirksam,",
+                  "werden aber nicht automatisch in die lokale Kopie synchronisiert.",
+                  "Dies muss jeweils mit der 'Download'-Funktion manuell gemacht werden.",
+                  "",
+                  "Möchten Sie fortfahren?"
+                ),
+                () => {
+                  val uuid = wettkampf.uuid.get
+                  val secret = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin).get
+                  val adminParams = s"admin&uuid=$uuid&secret=$secret" +
+                    s"&titel=${java.net.URLEncoder.encode(wettkampf.titel, "UTF-8")}" +
+                    s"&datum=${java.net.URLEncoder.encode(wettkampf.datum.toString, "UTF-8")}"
+                  val adminUrl = s"${Config.remoteBaseUrl}/?" + new String(KuTuApp.enc.encodeToString(adminParams.getBytes))
+                  KuTuApp.hostServices.showDocument(adminUrl)
+                }
+              )
+            }
+          },
+          new Button {
             text = "Übersicht drucken ..."
             minWidth = 75
             onAction = (event: ActionEvent) => {
