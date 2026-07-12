@@ -3,9 +3,9 @@ import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Platform, AlertController, NavController, ModalController } from '@ionic/angular';
 import { BackendService } from './services/backend.service';
 import { ThemeSwitcherService } from './services/theme-switcher.service';
+import { SecretService } from './services/secret.service';
 import { ActivatedRoute, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
-import { StatusBar } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { TermsModalComponent } from './create-competition/terms-modal.component';
 
@@ -22,6 +22,7 @@ export class AppComponent {
   private router = inject(Router);
   themeSwitcher = inject(ThemeSwitcherService);
   backendService = inject(BackendService);
+  private secretService = inject(SecretService);
   private alertCtrl = inject(AlertController);
   private modalCtrl = inject(ModalController);
 
@@ -245,16 +246,34 @@ export class AppComponent {
             // "registration&rid=$registrationId&c=$competitionUUID&rs=$token"
             console.log('initializing with ' + initializeWith);
             localStorage.setItem('external_load', initializeWith);
-            this.backendService.initWithQuery(initializeWith.substring(13)).subscribe(fin => {
+            this.backendService.initWithQuery(initializeWith.substring(13)).subscribe(() => {
               console.log('clubreg initialzed. navigate to clubreg-editor');
               this.navController.navigateRoot('/registration/' + this.backendService.competition + '/' +localStorage.getItem('auth_clubid'));
             });
+          } else if (initializeWith.startsWith('admin')) {
+            window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
+            this.clearPosParam();
+            const parts = initializeWith.split('&');
+            const params: Record<string, string> = {};
+            for (const part of parts) {
+              const idx = part.indexOf('=');
+              if (idx > 0) params[part.substring(0, idx)] = decodeURIComponent(part.substring(idx + 1));
+            }
+            if (params['uuid'] && params['secret'] && !this.secretService.getSecret(params['uuid'])) {
+              this.secretService.saveSecret({
+                uuid: params['uuid'],
+                secret: params['secret'],
+                titel: params['titel'] || '',
+                datum: params['datum'] || ''
+              });
+            }
+            this.navController.navigateRoot('/admin/competitions');
           } else {
             window.history.replaceState({}, document.title, window.location.href.split('?')[0]);
             this.clearPosParam();
             console.log('initializing with ' + initializeWith);
             localStorage.setItem('external_load', initializeWith);
-            this.backendService.initWithQuery(initializeWith).subscribe(fin => {
+            this.backendService.initWithQuery(initializeWith).subscribe(() => {
               if (initializeWith.startsWith('c=') && initializeWith.indexOf('&st=') > -1 && initializeWith.indexOf('&g=') > -1) {
                 this.appPages = [
                   { title: 'Home', url: '/home', icon: 'home' },
@@ -271,7 +290,7 @@ export class AppComponent {
       }
       if (!handled && localStorage.getItem('current_station')) {
         const cs = localStorage.getItem('current_station');
-        this.backendService.initWithQuery(cs).subscribe(fin => {
+        this.backendService.initWithQuery(cs).subscribe(() => {
           if (cs.startsWith('c=') && cs.indexOf('&st=') && cs.indexOf('&g=')) {
           this.appPages = [
             { title: 'Home', url: '/home', icon: 'home' },
