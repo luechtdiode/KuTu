@@ -190,7 +190,6 @@ object DBService {
         , "AddReserveToTeamAssignment-pg.sql"
         , "AddTeamToWettkampf-ddl.sql"
         , "tg-allgaeu-wk4ak0-15.sql"
-        , "tg-allgaeu-wk4ak0-15.sql"
         , "wettkampf-metadata-ddl.sql"
         , "AddWKProgrammBestOfCount-pg.sql"
         , "AddScoreTemplateTable-pg.sql"
