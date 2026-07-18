@@ -54,6 +54,11 @@ export class AdminBackendService {
     return this.http.put<number>(this.api + 'competition/' + uuid + '/riege', request, { headers });
   }
 
+  deleteRiege(uuid: string, request: UpdateRiegeRequest, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete(this.api + 'competition/' + uuid + '/riege', { headers, body: request });
+  }
+
   suggestRiegen(uuid: string, request: RiegeSuggestionRequest, secret: string): Observable<RiegePreviewResponse> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.post<RiegePreviewResponse>(this.api + 'competition/' + uuid + '/riege/generate', request, { headers });

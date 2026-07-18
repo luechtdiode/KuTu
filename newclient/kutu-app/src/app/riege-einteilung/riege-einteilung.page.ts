@@ -1,11 +1,11 @@
 import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { AlertController, ToastController, ModalController } from '@ionic/angular';
-import { ActivatedRoute } from '@angular/router';
-import { SecretService } from '../services/secret.service';
-import { AdminBackendService } from '../services/admin-backend.service';
+import {ActivatedRoute} from '@angular/router';
+import {SecretService} from '../services/secret.service';
+import {AdminBackendService} from '../services/admin-backend.service';
 import { RiegeItem, RiegeSuggestionRequest, DurchgangDurationItem, UpdateRiegeRequest, Geraet, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest } from '../backend-types';
-import { firstValueFrom } from 'rxjs';
-import { RiegeEditModalComponent } from '../editors/riege-edit-modal.component';
+import {firstValueFrom} from 'rxjs';
+import {RiegeEditModalComponent} from '../editors/riege-edit-modal.component';
 
 interface CellRiege {
   name: string;
@@ -256,15 +256,36 @@ export class RiegeEinteilungPage implements OnDestroy {
     });
     modal.onDidDismiss().then(async (result) => {
       if (!result.data) return;
-      const { name, durchgang: newDg, startId: newStartId, kind } = result.data;
-      if (name === item.name && newDg === durchgang && newStartId === startId) return;
-      try {
-        const request: UpdateRiegeRequest = { name, durchgang: newDg, startId: newStartId, kind };
-        await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
-        await this.loadData();
-      } catch {
-        const toast = await this.toastCtrl.create({ message: 'Fehler beim Speichern', duration: 3000, color: 'danger' });
-        await toast.present();
+      if (result.data.delete && result.data.kind === 1) {
+        const {name, durchgang: newDg, startId: newStartId, kind} = result.data;
+        if (name === item.name && newDg === durchgang && newStartId === startId) return;
+        try {
+          const request: UpdateRiegeRequest = {name, durchgang: newDg, startId: newStartId, kind};
+          await firstValueFrom(this.backend.deleteRiege(this.uuid, request, this.secret));
+          await this.loadData();
+        } catch {
+          const toast = await this.toastCtrl.create({
+            message: 'Fehler beim Speichern',
+            duration: 3000,
+            color: 'danger'
+          });
+          await toast.present();
+        }
+      } else {
+        const {name, durchgang: newDg, startId: newStartId, kind} = result.data;
+        if (name === item.name && newDg === durchgang && newStartId === startId) return;
+        try {
+          const request: UpdateRiegeRequest = {name, durchgang: newDg, startId: newStartId, kind};
+          await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
+          await this.loadData();
+        } catch {
+          const toast = await this.toastCtrl.create({
+            message: 'Fehler beim Speichern',
+            duration: 3000,
+            color: 'danger'
+          });
+          await toast.present();
+        }
       }
     });
     await modal.present();

@@ -498,6 +498,14 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                       complete(item.toJson)
                     }
                   }
+                } ~
+                delete {
+                  entity(as[UpdateRiegeRequest]) { request =>
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      manager.deleteRiegen(wk.id, List(request.name))
+                      complete(StatusCodes.OK, JsObject("deleted" -> JsArray(List(request.name).map(JsString(_)).toVector)))
+                    }
+                  }
                 }
               } else {
                 complete(StatusCodes.Conflict)

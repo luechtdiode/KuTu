@@ -8,6 +8,7 @@
 </ion-header>
 <ion-content class="ion-padding">
   <ion-list>
+    @if (kind === 0) {
     <ion-item>
       <ion-label position="stacked">Durchgang</ion-label>
       <ion-input [(ngModel)]="editDurchgang" placeholder="Durchgang"></ion-input>
@@ -23,11 +24,33 @@
         </ion-item>
       }
     </ion-radio-group>
+    } @else {
+    <ion-item>
+      <ion-label position="stacked">Durchgang</ion-label>
+      <ion-text>{{ editDurchgang }}</ion-text>
+    </ion-item>
+    <ion-item>
+      <ion-label position="stacked">Startgerät</ion-label>
+      <ion-text>{{ startGeraet }}</ion-text>
+    </ion-item>
+    <ion-item-divider></ion-item-divider>
+    <ion-item lines="none">
+      <ion-text><br>
+        Die leere Riege '{{ editName }}' ist dafür da, dass das Startgerät belegt ist, auch wenn es gerade keine Riege gibt, die dort startet.
+        Wenn die leere Riege entfernt wird, wird das Gerät im ganzen Turnus nicht mehr verwendet.</ion-text>
+    </ion-item>
+    }
   </ion-list>
 
   <div class="ion-padding">
-    <ion-button expand="block" [disabled]="!editName.trim() || !editDurchgang.trim()" (click)="confirm()">
-      Speichern
-    </ion-button>
+    @if (kind === 0) {
+      <ion-button expand="block" [disabled]="!editName.trim() || !editDurchgang.trim()" (click)="confirm()">
+        Speichern
+      </ion-button>
+    } @else {
+      <ion-button expand="block" color="danger" (click)="delete()">
+        leere Riege löschen ({{ startGeraet }} wird nicht mehr verwendet)
+      </ion-button>
+    }
   </div>
 </ion-content>
