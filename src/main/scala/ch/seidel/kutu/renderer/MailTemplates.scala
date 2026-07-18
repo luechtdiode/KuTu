@@ -55,12 +55,11 @@ object MailTemplates {
        |      </style>
        |    </head>""".stripMargin
 
-  def createMailApprovement(wettkampf: Wettkampf, link: String, zipBytes: Option[Array[Byte]] = None): Mail = {
+  def createMailApprovement(wettkampf: Wettkampf, link: String): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = ServerPrintUtil.locateLogoFile(logodir)
     val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val imageData = toQRCodeImage(link)
-    val attachments = zipBytes.map(bytes => List((s"${wettkampf.easyprint}.zip", bytes, "application/zip"))).getOrElse(List.empty)
     MultipartMail(s"Kutuapp EMail Verifikation nach Wettkampf-Upload (${wettkampf.easyprint})",
       s"""Hallo ${wettkampf.notificationEMail}
          |
@@ -71,7 +70,6 @@ object MailTemplates {
          |$link
          |
          |Wenn die Bestätigung nicht innert 1h erfolgt, wird der Wettkampf auf der Plattform wieder gelöscht.
-         |${zipBytes.map(_ => "\nAnbei findest du eine Backup-Datei deines Wettkampfs mit allen Berechtigungsschlüsseln.").getOrElse("")}
          |
          |LG, die Kutuapp
          |
@@ -98,9 +96,47 @@ object MailTemplates {
          |          <a href='$link'> $link</a>
          |        </div><p>
          |          Wenn die Bestätigung nicht innert 1h erfolgt, wird der Wettkampf auf der Plattform wieder gelöscht.
-         |        </p>${zipBytes.map(_ => """<p>
-         |          Anbei findest du eine Backup-Datei deines Wettkampfs mit allen Berechtigungsschlüsseln.
-         |        </p>""").getOrElse("")}<p>
+         |        </p><p>
+         |          LG, die KuTu-App
+         |        </p>
+         |        <hr>
+         |        <p>
+         |           <b>PS:</b> <em>Dies ist eine automatisch versendete EMail. Bitte nicht auf diese Mail antworten.</em>
+         |        </p>
+         |      </div>
+         |    </div>
+         |</body></html>""".stripMargin,
+      wettkampf.notificationEMail)
+  }
+
+  def createBackupMail(wettkampf: Wettkampf, zipBytes: Array[Byte]): Mail = {
+    val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
+    val logofile = ServerPrintUtil.locateLogoFile(logodir)
+    val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val attachments = List((s"${wettkampf.easyprint}.zip", zipBytes, "application/zip"))
+    MultipartMail(s"Kutuapp Wettkampf-Backup (${wettkampf.easyprint})",
+      s"""Hallo ${wettkampf.notificationEMail}
+         |
+         |Dein Wettkampf '${wettkampf.easyprint}' wurde erfolgreich verifiziert.
+         |Anbei findest du ein Backup mit allen Berechtigungsschlüsseln.
+         |
+         |LG, die Kutuapp
+         |
+         |PS: Dies ist eine automatisch versendete EMail. Bitte nicht auf diese Mail antworten.""".stripMargin,
+      s"""<html>$htmlhead<body>
+         |    <div class=textbody>
+         |      <div class=headline>
+         |        $logoHtml
+         |        <div class=title><h4>${escaped(wettkampf.easyprint)}</h4></div>
+         |        <div class=subtitle>Wettkampf-Backup</br></div>
+         |      </div>
+         |      <div class="textblock">
+         |        <h4>Hallo ${escaped(wettkampf.notificationEMail)}</h4>
+         |        <p>
+         |          Dein Wettkampf '${escaped(wettkampf.easyprint)}' wurde erfolgreich verifiziert.
+         |        </p><p>
+         |          Anbei findest du ein Backup mit allen Berechtigungsschlüsseln.
+         |        </p><p>
          |          LG, die KuTu-App
          |        </p>
          |        <hr>

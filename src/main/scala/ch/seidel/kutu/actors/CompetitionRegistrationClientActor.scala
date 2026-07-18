@@ -124,17 +124,8 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       syncState = syncState.unapproved
       val wk = readWettkampf(wettkampfUUID)
       if wk.notificationEMail.nonEmpty then {
-        val zipBytes = try {
-          val bos = new java.io.ByteArrayOutputStream()
-          ResourceExchanger.exportWettkampfToStream(wk, bos, withSecret = true)
-          Some(bos.toByteArray)
-        } catch {
-          case e: Exception =>
-            log.warning(s"Could not generate competition zip for email attachment: ${e.getMessage}")
-            None
-        }
         KuTuMailerActor.send(
-          MailTemplates.createMailApprovement(wk, link, zipBytes)
+          MailTemplates.createMailApprovement(wk, link)
         )
         approvementEMailSent = true
         log.info("Competition created / updated: Approver EMail sent")
@@ -148,8 +139,19 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       if notificationEMail.equals(mail) then {
         if !syncState.emailApproved then {
           syncState = syncState.approved
+          val wk = readWettkampf(wettkampfUUID)
+          try {
+            val bos = new java.io.ByteArrayOutputStream()
+            ResourceExchanger.exportWettkampfToStream(wk, bos, withSecret = true)
+            KuTuMailerActor.send(
+              MailTemplates.createBackupMail(wk, bos.toByteArray)
+            )
+            log.info(s"EMail approved $mail: Backup EMail sent")
+          } catch {
+            case e: Exception =>
+              log.warning(s"EMail approved $mail but could not send backup: ${e.getMessage}")
+          }
           sender() ! EMailApproved(s"EMail $mail erfolgreich verifiziert", success = true)
-          log.info(s"EMail approved $mail")
         } else {
           sender() ! EMailApproved(s"EMail $mail wurde bereits verifiziert", success = true)
           log.info(s"EMail $mail was already approved")
