@@ -1,0 +1,23 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Startzeit '{{ title }}'</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">Abbrechen</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-list>
+    <ion-item>
+      <ion-label position="stacked">Datum</ion-label>
+      <ion-input label="Datum" required placeholder="Wettkampf-Datum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='editDate' name="datum" required />
+    </ion-item>
+    <ion-item>
+      <ion-label position="stacked">Zeit</ion-label>
+      <input type="time" [value]="editTime" (change)="editTime = $any($event.target).value" />
+    </ion-item>
+  </ion-list>
+  <div class="ion-padding">
+    <ion-button expand="block" [disabled]="!editDate" (click)="confirm()">Speichern</ion-button>
+  </div>
+</ion-content>
