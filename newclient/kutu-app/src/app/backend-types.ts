@@ -425,6 +425,11 @@ export interface UngroupDurchgangRequest {
   durchgangNames: string[];
 }
 
+export interface UpdateStartOffsetRequest {
+  title: string;
+  offsetMillis: number;
+}
+
 export interface RiegeItem {
   name: string;
   durchgang?: string;

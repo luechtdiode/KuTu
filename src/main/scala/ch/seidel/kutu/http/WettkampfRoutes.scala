@@ -696,6 +696,22 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 }
               }
             }
+          } ~
+          pathLabeled("startoffset", "startoffset") {
+            put {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[UpdateStartOffsetRequest]) { request =>
+                    onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                      manager.updateStartOffset(wk.id, request.title, request.offsetMillis)
+                      complete(JsObject("status" -> JsString("ok")))
+                    }
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
           }
         } ~
         pathLabeled("logo", "logo") {
