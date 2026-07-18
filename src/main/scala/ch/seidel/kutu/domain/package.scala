@@ -1141,6 +1141,11 @@ package object domain {
     durchgangNames: Set[String]
   ) extends DataObject
 
+  case class UpdateStartOffsetRequest(
+    title: String,
+    offsetMillis: Long
+  ) extends DataObject
+
   case class RiegeItem(
     name: String,
     durchgang: Option[String],

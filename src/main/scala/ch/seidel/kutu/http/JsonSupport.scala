@@ -162,6 +162,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given mergeDurchgangRequestFormat: RootJsonFormat[MergeDurchgangRequest] = jsonFormat2(MergeDurchgangRequest.apply)
   given groupDurchgangRequestFormat: RootJsonFormat[GroupDurchgangRequest] = jsonFormat2(GroupDurchgangRequest.apply)
   given ungroupDurchgangRequestFormat: RootJsonFormat[UngroupDurchgangRequest] = jsonFormat1(UngroupDurchgangRequest.apply)
+  given updateStartOffsetRequestFormat: RootJsonFormat[UpdateStartOffsetRequest] = jsonFormat2(UpdateStartOffsetRequest.apply)
   given riegeItemFormat: RootJsonFormat[RiegeItem] = jsonFormat6(RiegeItem.apply)
   given durchgangDurationItemFormat: RootJsonFormat[DurchgangDurationItem] = jsonFormat7(DurchgangDurationItem.apply)
   given riegePreviewResponseFormat: RootJsonFormat[RiegePreviewResponse] = jsonFormat2(RiegePreviewResponse.apply)

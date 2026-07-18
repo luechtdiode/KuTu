@@ -30,4 +30,9 @@ export class SecretService {
     const secrets = this.getSecrets().filter(s => s.uuid !== uuid);
     localStorage.setItem(SECRETS_KEY, JSON.stringify(secrets));
   }
+
+  updateStoredSecretTitelDatum(uuid: string, titel: string, datum: string): void {
+    const secrets = this.getSecrets().map(s => s.uuid === uuid ? { ...s, titel, datum } : s);
+    localStorage.setItem(SECRETS_KEY, JSON.stringify(secrets));
+  }
 }

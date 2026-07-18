@@ -3,9 +3,10 @@ import { AlertController, ToastController, ModalController } from '@ionic/angula
 import {ActivatedRoute} from '@angular/router';
 import {SecretService} from '../services/secret.service';
 import {AdminBackendService} from '../services/admin-backend.service';
-import { RiegeItem, RiegeSuggestionRequest, DurchgangDurationItem, UpdateRiegeRequest, Geraet, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest } from '../backend-types';
+import { RiegeItem, RiegeSuggestionRequest, DurchgangDurationItem, UpdateRiegeRequest, Geraet, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest } from '../backend-types';
 import {firstValueFrom} from 'rxjs';
 import {RiegeEditModalComponent} from '../editors/riege-edit-modal.component';
+import {StartOffsetModalComponent} from '../editors/start-offset-modal.component';
 
 interface CellRiege {
   name: string;
@@ -23,6 +24,7 @@ interface TableRow {
 interface TableGroup {
   title: string;
   rows: TableRow[];
+  duration: DurchgangDurationItem | null;
 }
 
 @Component({
@@ -33,6 +35,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   uuid = '';
   secret = '';
   wettkampfTitle = '';
+  wettkampfDatum = '';
   logoUrl = '';
 
   disziplinen: Geraet[] = [];
@@ -67,7 +70,13 @@ export class RiegeEinteilungPage implements OnDestroy {
     if (stored) {
       this.secret = stored.secret;
       this.wettkampfTitle = stored.titel;
+      this.wettkampfDatum = stored.datum.substring(0, 10);
     }
+    this.backend.getCompetitionDetails(this.uuid, this.secret).subscribe(details => {
+      this.wettkampfTitle = details.titel;
+      this.wettkampfDatum = details.datum.substring(0, 10);
+      this.secretService.updateStoredSecretTitelDatum(this.uuid, details.titel, details.datum);
+    });
     await this.loadData();
   }
 
@@ -147,10 +156,11 @@ export class RiegeEinteilungPage implements OnDestroy {
 
     this.groups = [...groupMap.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([title, groupRows]) => ({
-        title,
-        rows: groupRows.sort((a, b) => a.durchgangName.localeCompare(b.durchgangName))
-      }));
+      .map(([title, groupRows]) => {
+        const sorted = groupRows.sort((a, b) => a.durchgangName.localeCompare(b.durchgangName));
+        const duration = this.aggregateGroupDuration(sorted, title);
+        return { title, rows: sorted, duration };
+      });
   }
 
   get hasGroupedRiegen(): boolean {
@@ -435,6 +445,18 @@ export class RiegeEinteilungPage implements OnDestroy {
     });
   }
 
+  get canSetStartOffset(): boolean {
+    if (this.selectedDgs.size === 0) return false;
+    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    const selectedRows = [...this.selectedDgs]
+      .map(dg => allRows.find(r => r.durchgangName === dg))
+      .filter(Boolean) as TableRow[];
+    const hasGrouped = selectedRows.some(r => r.durchgangName !== r.durchgangTitle);
+    if (!hasGrouped) return this.selectedDgs.size === 1;
+    const distinctGroups = new Set(selectedRows.map(r => r.durchgangTitle));
+    return distinctGroups.size === 1 && selectedRows.length > 1;
+  }
+
   async ungroupSelected() {
     if (this.selectedDgs.size === 0) return;
     this.loading = true;
@@ -486,6 +508,83 @@ export class RiegeEinteilungPage implements OnDestroy {
       ]
     });
     await alert.present();
+  }
+
+  private resolveSelectedTitle(): string | null {
+    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    if (this.selectedDgs.size === 1) {
+      const dgName = [...this.selectedDgs][0];
+      const row = allRows.find(r => r.durchgangName === dgName);
+      return row ? row.durchgangTitle : null;
+    }
+    const grouped = [...this.selectedDgs].filter(dgName => {
+      const row = allRows.find(r => r.durchgangName === dgName);
+      return row && row.durchgangName !== row.durchgangTitle;
+    });
+    if (grouped.length === 0) {
+      const title = allRows.find(r => r.durchgangName === grouped[0])?.durchgangTitle;
+      if (title && grouped.every(dg => allRows.find(r => r.durchgangName === dg)?.durchgangTitle === title)) {
+        return title;
+      }
+    }
+    return null;
+  }
+
+  private resolveCurrentOffsetMillis(): number {
+    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    const title = this.resolveSelectedTitle();
+    if (!title) return 0;
+    const group = this.groups.find(g => g.title === title);
+    if (group?.duration) return group.duration.offsetMillis;
+    const dgName = [...this.selectedDgs][0];
+    const row = allRows.find(r => r.durchgangName === dgName);
+    return row?.duration?.offsetMillis ?? 0;
+  }
+
+  async setStartOffsetSelected() {
+    const title = this.resolveSelectedTitle();
+    if (!title) return;
+    const currentOffset = this.resolveCurrentOffsetMillis();
+
+    let defaultDate = this.wettkampfDatum;
+    let defaultTime = '';
+    if (currentOffset > 0 && this.wettkampfDatum) {
+      const wkDate = new Date(this.wettkampfDatum + 'T00:00:00');
+      const ts = new Date(wkDate.getTime() + currentOffset);
+      const y = ts.getFullYear();
+      const mo = (ts.getMonth() + 1).toString().padStart(2, '0');
+      const d = ts.getDate().toString().padStart(2, '0');
+      defaultDate = `${y}-${mo}-${d}`;
+      defaultTime = ts.getHours().toString().padStart(2, '0') + ':' + ts.getMinutes().toString().padStart(2, '0');
+    }
+
+    const modal = await this.modalCtrl.create({
+      component: StartOffsetModalComponent,
+      componentProps: { title, defaultDate, defaultTime }
+    });
+    modal.onDidDismiss().then(async (result) => {
+      if (!result.data) return;
+      const { date: dateStr, time: timeStr } = result.data;
+      const [h, m] = timeStr.split(':').map(Number);
+      const wkMidnight = new Date(this.wettkampfDatum + 'T00:00:00').getTime();
+      const entered = new Date(dateStr + 'T00:00:00').getTime() + (h * 3600 + m * 60) * 1000;
+      const offsetMillis = entered - wkMidnight;
+      this.loading = true;
+      try {
+        const request: UpdateStartOffsetRequest = { title, offsetMillis };
+        await firstValueFrom(this.backend.updateStartOffset(this.uuid, this.secret, request));
+        this.selectedDgs.clear();
+        await this.loadData();
+        const toast = await this.toastCtrl.create({ message: `Startzeit für "${title}" gesetzt`, duration: 2000, color: 'success' });
+        await toast.present();
+      } catch {
+        const toast = await this.toastCtrl.create({ message: 'Fehler beim Setzen der Startzeit', duration: 3000, color: 'danger' });
+        await toast.present();
+      } finally {
+        this.loading = false;
+      }
+    });
+    await modal.present();
   }
 
   private splitDurchgangName(name: string): string {
@@ -557,12 +656,51 @@ export class RiegeEinteilungPage implements OnDestroy {
     this.selectedDisziplinIds = new Set();
   }
 
+  private aggregateGroupDuration(rows: TableRow[], title: string): DurchgangDurationItem | null {
+    const durations = rows.map(r => r.duration).filter((d): d is DurchgangDurationItem => d !== null);
+    if (durations.length === 0) return null;
+    return {
+      name: title,
+      title,
+      offsetMillis: Math.min(...durations.map(d => d.offsetMillis)),
+      einturnenMillis: Math.max(...durations.map(d => d.einturnenMillis)),
+      geraetMillis: Math.max(...durations.map(d => d.geraetMillis)),
+      totalMillis: Math.max(...durations.map(d => d.totalMillis)),
+      athletCount: durations.reduce((sum, d) => sum + d.athletCount, 0),
+    };
+  }
+
+  formatTimeOfDay(offsetMillis: number): string {
+    if (offsetMillis <= 0) return '--:--';
+    const totalSec = Math.floor(offsetMillis / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }
+
+  formatTimestampFromOffset(offsetMillis: number): string {
+    if (offsetMillis <= 0 || !this.wettkampfDatum) return '—';
+    const wkDate = new Date(this.wettkampfDatum + 'T00:00:00');
+    const ts = new Date(wkDate.getTime() + offsetMillis);
+    const weekdays = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    const wd = weekdays[ts.getDay()];
+    const dd = ts.getDate().toString().padStart(2, '0');
+    const mm = (ts.getMonth() + 1).toString().padStart(2, '0');
+    const hh = ts.getHours().toString().padStart(2, '0');
+    const min = ts.getMinutes().toString().padStart(2, '0');
+    return `${wd}, ${dd}.${mm}. ${hh}:${min}`;
+  }
+
   formatMillis(ms: number): string {
     if (ms <= 0) return '-';
     const totalSec = Math.floor(ms / 1000);
-    const min = Math.floor(totalSec / 60);
+    const hrs = Math.floor(totalSec / 3600);
+    const min = Math.floor((totalSec % 3600) / 60);
     const sec = totalSec % 60;
-    return `${min}:${sec.toString().padStart(2, '0')}`;
+    const hp = hrs > 0 ? `${hrs}h, ` : '';
+    const mp = min > 0 ? `${min}m, ` : '';
+    const sp = sec > 0 ? `${sec.toString().padStart(2, '0')}s` : '00s';
+    return hp + mp + sp;
   }
 
   totalAthleten(): number {
