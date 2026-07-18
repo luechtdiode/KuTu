@@ -427,6 +427,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
         }
       } ~
       pathPrefixLabeled("competition" / JavaUUID, "competition/:competition-id") { wkuuid =>
+        val manager = new DurchgangStartriegenManager(this, () => CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId))
         pathLabeled("start", "start") {
           post {
             authenticatedAdmin() { userId =>
@@ -487,23 +488,14 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
               if userId.equals(wkuuid.toString) then {
                 get {
                   onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                    val riegen = selectRiegen(wk.id)
-                    val counts = listRiegenZuWettkampf(wk.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
-                    complete(riegen.map(r => RiegeItem(
-                      name = r.r,
-                      durchgang = r.durchgang,
-                      startId = r.start.map(_.id),
-                      startName = r.start.map(_.name),
-                      kind = r.kind,
-                      athletCount = counts.getOrElse(r.r, 0)
-                    )).toJson)
+                    complete(manager.getAllStartRiegen(wk.id).toJson)
                   }
                 } ~
                 put {
                   entity(as[UpdateRiegeRequest]) { request =>
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                      val updated = updateOrinsertRiege(RiegeRaw(wk.id, request.name, request.durchgang, request.startId, request.kind))
-                      complete(RiegeItem(updated.r, updated.durchgang, updated.start.map(_.id), updated.start.map(_.name), updated.kind, 0).toJson)
+                      val item = manager.updateStartRiege(RiegeRaw(wk.id, request.name, request.durchgang, request.startId, request.kind))
+                      complete(item.toJson)
                     }
                   }
                 }
@@ -538,6 +530,9 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                           splitPgm = request.splitPgm,
                           separateRiegen2Durchgaenge = request.separateRiegen2Durchgaenge
                         )
+                        CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
+                        CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
+
                         // prepare response
                         val riegen = selectRiegen(wk.id)
                         val counts = listRiegenZuWettkampf(wk.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
@@ -581,6 +576,8 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 if userId.equals(wkuuid.toString) then {
                   onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
                     cleanAllRiegenDurchgaenge(wk.id)
+                    CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
+                    CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
                     complete(StatusCodes.OK, JsObject.empty)
                   }
                 } else {
@@ -603,7 +600,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                       einturnenMillis = d.planEinturnen,
                       geraetMillis = d.planGeraet,
                       totalMillis = d.planTotal,
-                      athletCount = athleteCountsByDurchgang.get(Some(d.name)).getOrElse(0)
+                      athletCount = athleteCountsByDurchgang.getOrElse(Some(d.name), 0)
                     )).toJson)
                   }
                 } else {
@@ -618,7 +615,6 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 if userId.equals(wkuuid.toString) then {
                   entity(as[UpdateDurchgangRequest]) { request =>
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                      val manager = new DurchgangManager(this)
                       manager.renameDurchgang(wk.id, request.oldTitle, request.newTitle)
                       complete(JsObject("status" -> JsString("ok")))
                     }
@@ -635,7 +631,6 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 if userId.equals(wkuuid.toString) then {
                   entity(as[GroupDurchgangRequest]) { request =>
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                      val manager = new DurchgangManager(this)
                       manager.moveDurchgangToGroup(wk.id, request.durchgangNames, request.groupTitle)
                       complete(JsObject("status" -> JsString("ok")))
                     }
@@ -652,7 +647,6 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 if userId.equals(wkuuid.toString) then {
                   entity(as[MergeDurchgangRequest]) { request =>
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                      val manager = new DurchgangManager(this)
                       manager.mergeDurchgaenge(wk.id, request.durchgangNames, request.targetName)
                       complete(JsObject("status" -> JsString("ok")))
                     }
@@ -669,7 +663,6 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 if userId.equals(wkuuid.toString) then {
                   entity(as[UngroupDurchgangRequest]) { request =>
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                      val manager = new DurchgangManager(this)
                       manager.ungroupDurchgaenge(wk.id, request.durchgangNames)
                       complete(JsObject("status" -> JsString("ok")))
                     }
@@ -686,7 +679,6 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 if userId.equals(wkuuid.toString) then {
                   entity(as[GroupDurchgangRequest]) { request =>
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                      val manager = new DurchgangManager(this)
                       manager.aggregateDurchgaenge(wk.id, request.durchgangNames, request.groupTitle)
                       complete(JsObject("status" -> JsString("ok")))
                     }
@@ -888,7 +880,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
               authenticatedId { authUserId =>
                 log.info("serving wettkampf: " + wkuuid)
                 val wettkampf = readWettkampf(wkuuid.toString)
-                val isAdmin = authUserId.exists(_ == wkuuid.toString)
+                val isAdmin = authUserId.contains(wkuuid.toString)
                 val adminJwt = if isAdmin then Some(JsonWebToken(jwtHeader, setClaims(wkuuid.toString, Int.MaxValue, isAdmin = true), jwtSecretKey)) else None
                 val adminOrigin = if isAdmin then Some(uri.authority.host.toString) else None
                 onComplete(Future {
