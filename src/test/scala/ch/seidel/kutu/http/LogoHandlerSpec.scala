@@ -89,23 +89,24 @@ class LogoHandlerSpec extends AnyFunSuite with BeforeAndAfterEach {
   }
 
   test("handleLogoUpload rejects path traversal via homedir") {
-    // Use a homedir that is a symlink pointing outside the intended area.
-    // When the competition dir is created inside the symlink, its normalized
-    // path will resolve to the target, not the symlink path.
-    val realTarget = new File(tempDir, "real-storage")
-    realTarget.mkdirs()
-    val symlinkHome = new File(tempDir, "link-home")
-    Files.createSymbolicLink(symlinkHome.toPath, realTarget.toPath)
-
-    val wettkampf = createWettkampf("SymlinkTest")
-    val is = new ByteArrayInputStream("traversal-test".getBytes("UTF-8"))
-
-    // This should succeed because the normalized path resolves inside realTarget
-    LogoHandler.handleLogoUpload(wettkampf, "svg", is, symlinkHome.getAbsolutePath)
-
-    val encodedName = encodeFileName(wettkampf.easyprint)
-    val logoFile = new File(realTarget, s"$encodedName/logo.svg")
-    assert(logoFile.exists(), "logo should be written to the real target via symlink")
+    if !System.getProperty("os.name").toLowerCase().contains("win") then
+      // Use a homedir that is a symlink pointing outside the intended area.
+      // When the competition dir is created inside the symlink, its normalized
+      // path will resolve to the target, not the symlink path.
+      val realTarget = new File(tempDir, "real-storage")
+      realTarget.mkdirs()
+      val symlinkHome = new File(tempDir, "link-home")
+      Files.createSymbolicLink(symlinkHome.toPath, realTarget.toPath)
+  
+      val wettkampf = createWettkampf("SymlinkTest")
+      val is = new ByteArrayInputStream("traversal-test".getBytes("UTF-8"))
+  
+      // This should succeed because the normalized path resolves inside realTarget
+      LogoHandler.handleLogoUpload(wettkampf, "svg", is, symlinkHome.getAbsolutePath)
+  
+      val encodedName = encodeFileName(wettkampf.easyprint)
+      val logoFile = new File(realTarget, s"$encodedName/logo.svg")
+      assert(logoFile.exists(), "logo should be written to the real target via symlink")
   }
 
   test("handleLogoUpload preserves content type accuracy for svg") {
