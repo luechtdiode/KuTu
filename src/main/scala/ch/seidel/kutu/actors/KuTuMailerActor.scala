@@ -13,6 +13,8 @@ import org.simplejavamail.api.mailer.{CustomMailer, Mailer}
 import org.simplejavamail.email.EmailBuilder
 import org.simplejavamail.mailer.MailerBuilder
 
+import jakarta.activation.DataSource
+import java.io.ByteArrayInputStream
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -29,7 +31,7 @@ sealed trait Mail extends SendMailAction {
 
 case class SimpleMail(override val subject: String, messageText: String, override val to: String) extends Mail
 
-case class MultipartMail(override val subject: String, messageText: String, messageHTML: String, override val to: String) extends Mail
+case class MultipartMail(override val subject: String, messageText: String, messageHTML: String, override val to: String, attachments: List[(String, Array[Byte], String)] = List.empty) extends Mail
 
 case class SendRetry(mail: Mail, retries: Int, sender: ActorRef) extends SendMailAction
 
@@ -146,14 +148,24 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
           .withSubject(subject)
           .withPlainText(messageText)
           .buildEmail(), customMailer.isEmpty)
-      case MultipartMail(subject, messageText, messageHTML, to) =>
-        mailer.sendMail(EmailBuilder.startingBlank()
+      case MultipartMail(subject, messageText, messageHTML, to, attachments) =>
+        val builder = EmailBuilder.startingBlank()
           .from(appname, smtpMailerUser)
           .to(to)
           .withSubject(subject)
           .withPlainText(messageText)
           .withHTMLText(messageHTML)
-          .buildEmail(), customMailer.isEmpty)
+        if attachments.nonEmpty then
+          attachments.foreach { case (filename, data, contentType) =>
+            val ds = new DataSource {
+              override def getInputStream = new ByteArrayInputStream(data)
+              override def getOutputStream = throw new UnsupportedOperationException
+              override def getContentType = contentType
+              override def getName = filename
+            }
+            builder.withAttachment(filename, ds)
+          }
+        mailer.sendMail(builder.buildEmail(), customMailer.isEmpty)
     }
   }
 }

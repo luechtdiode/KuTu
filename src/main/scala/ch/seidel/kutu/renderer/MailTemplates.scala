@@ -55,11 +55,12 @@ object MailTemplates {
        |      </style>
        |    </head>""".stripMargin
 
-  def createMailApprovement(wettkampf: Wettkampf, link: String): Mail = {
+  def createMailApprovement(wettkampf: Wettkampf, link: String, zipBytes: Option[Array[Byte]] = None): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = ServerPrintUtil.locateLogoFile(logodir)
     val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val imageData = toQRCodeImage(link)
+    val attachments = zipBytes.map(bytes => List((s"${wettkampf.easyprint}.zip", bytes, "application/zip"))).getOrElse(List.empty)
     MultipartMail(s"Kutuapp EMail Verifikation nach Wettkampf-Upload (${wettkampf.easyprint})",
       s"""Hallo ${wettkampf.notificationEMail}
          |
@@ -70,6 +71,7 @@ object MailTemplates {
          |$link
          |
          |Wenn die Bestätigung nicht innert 1h erfolgt, wird der Wettkampf auf der Plattform wieder gelöscht.
+         |${zipBytes.map(_ => "\nAnbei findest du eine Backup-Datei deines Wettkampfs mit allen Berechtigungsschlüsseln.").getOrElse("")}
          |
          |LG, die Kutuapp
          |
@@ -96,7 +98,9 @@ object MailTemplates {
          |          <a href='$link'> $link</a>
          |        </div><p>
          |          Wenn die Bestätigung nicht innert 1h erfolgt, wird der Wettkampf auf der Plattform wieder gelöscht.
-         |        </p><p>
+         |        </p>${zipBytes.map(_ => """<p>
+         |          Anbei findest du eine Backup-Datei deines Wettkampfs mit allen Berechtigungsschlüsseln.
+         |        </p>""").getOrElse("")}<p>
          |          LG, die KuTu-App
          |        </p>
          |        <hr>
@@ -106,7 +110,8 @@ object MailTemplates {
          |      </div>
          |    </div>
          |</body></html>""".stripMargin,
-      wettkampf.notificationEMail)
+      wettkampf.notificationEMail,
+      attachments)
   }
 
   def createDonateMail(wettkampf: Wettkampf, link: String, wkStats: WettkampfStats, preisPerTn: BigDecimal, betrag: BigDecimal, clubs: Int, teilnehmer: Int): Mail = {

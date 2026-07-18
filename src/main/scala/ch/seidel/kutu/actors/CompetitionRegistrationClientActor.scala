@@ -1,7 +1,7 @@
 package ch.seidel.kutu.actors
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.data.RegistrationAdmin
+import ch.seidel.kutu.data.{RegistrationAdmin, ResourceExchanger}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.JsonSupport
@@ -124,8 +124,17 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       syncState = syncState.unapproved
       val wk = readWettkampf(wettkampfUUID)
       if wk.notificationEMail.nonEmpty then {
+        val zipBytes = try {
+          val bos = new java.io.ByteArrayOutputStream()
+          ResourceExchanger.exportWettkampfToStream(wk, bos, withSecret = true)
+          Some(bos.toByteArray)
+        } catch {
+          case e: Exception =>
+            log.warning(s"Could not generate competition zip for email attachment: ${e.getMessage}")
+            None
+        }
         KuTuMailerActor.send(
-          MailTemplates.createMailApprovement(wk, link)
+          MailTemplates.createMailApprovement(wk, link, zipBytes)
         )
         approvementEMailSent = true
         log.info("Competition created / updated: Approver EMail sent")
