@@ -512,20 +512,20 @@ export class RiegeEinteilungPage implements OnDestroy {
 
   private resolveSelectedTitle(): string | null {
     const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
-    if (this.selectedDgs.size === 1) {
+    const selectedRows = [...this.selectedDgs]
+      .map(dg => allRows.find(r => r.durchgangName === dg))
+      .filter(Boolean) as TableRow[];
+    const hasGrouped = selectedRows.some(r => r.durchgangName !== r.durchgangTitle);
+
+    if (!hasGrouped && this.selectedDgs.size === 1) {
       const dgName = [...this.selectedDgs][0];
       const row = allRows.find(r => r.durchgangName === dgName);
       return row ? row.durchgangTitle : null;
     }
-    const grouped = [...this.selectedDgs].filter(dgName => {
-      const row = allRows.find(r => r.durchgangName === dgName);
-      return row && row.durchgangName !== row.durchgangTitle;
-    });
-    if (grouped.length === 0) {
-      const title = allRows.find(r => r.durchgangName === grouped[0])?.durchgangTitle;
-      if (title && grouped.every(dg => allRows.find(r => r.durchgangName === dg)?.durchgangTitle === title)) {
-        return title;
-      }
+
+    const distinctGroups = new Set(selectedRows.map(r => r.durchgangTitle));
+    if (distinctGroups.size === 1) {
+      return selectedRows.find(r => distinctGroups.has(r.durchgangTitle))?.durchgangTitle ?? null;
     }
     return null;
   }
