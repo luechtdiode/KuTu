@@ -64,8 +64,14 @@
           }
           @if (hasGroupedSelection) {
             <ion-button size="small" fill="clear" (click)="ungroupSelected()">
-              <ion-icon slot="start" name="ungroup-outline"></ion-icon>
+              <ion-icon slot="start" name="expand-outline"></ion-icon>
               Gruppe auflösen
+            </ion-button>
+          }
+          @if (canSetStartOffset) {
+            <ion-button size="small" fill="clear" (click)="setStartOffsetSelected()">
+              <ion-icon slot="start" name="time-outline"></ion-icon>
+              Startzeit
             </ion-button>
           }
           <ion-button size="small" fill="clear" color="medium" (click)="selectedDgs.clear()">
@@ -170,6 +176,7 @@
                 <ion-checkbox [checked]="allDgsSelected" (ionChange)="toggleAllDgs()"></ion-checkbox>
               </th>
               <th class="col-durchgang">Durchgang</th>
+              <th class="col-zeiten">Start / Ende</th>
               @for (d of disziplinen; track d.id) {
                 <th class="col-geraet">{{ d.name }}</th>
               }
@@ -182,9 +189,25 @@
                   <td class="col-select">
                     <ion-checkbox [checked]="isGroupSelected(group)" (ionChange)="toggleGroupDgs(group)"></ion-checkbox>
                   </td>
-                  <td class="col-durchgang" [attr.colspan]="disziplinen.length + 1">
+                  <td class="col-durchgang">
                     <strong>{{ group.title }}</strong>
+                    @if (group.duration) {
+                      <div class="duration-info group-duration">
+                        <span>Einturnen {{ formatMillis(group.duration.einturnenMillis) }} + Gerät {{ formatMillis(group.duration.geraetMillis) }} = Total {{ formatMillis(group.duration.totalMillis) }}</span>
+                        <br><small>{{ group.duration.athletCount }} Athleten</small>
+                      </div>
+                    }
                   </td>
+                  <td class="col-zeiten">
+                    @if (group.duration && group.duration.offsetMillis > 0) {
+                      <div class="zeiten-info group-duration">
+                        <span>{{ formatTimestampFromOffset(group.duration.offsetMillis) }}</span>
+                        <br>
+                        <span>{{ formatTimestampFromOffset(group.duration.offsetMillis + group.duration.totalMillis) }}</span>
+                      </div>
+                    }
+                  </td>
+                  <td [attr.colspan]="disziplinen.length"></td>
                 </tr>
               }
               @for (row of group.rows; track row.durchgangName) {
@@ -205,6 +228,15 @@
                       <div class="duration-info">
                         <span>Einturnen {{ formatMillis(row.duration.einturnenMillis) }} + Gerät {{ formatMillis(row.duration.geraetMillis) }} = Total {{ formatMillis(row.duration.totalMillis) }}</span>
                         <br><small>{{ row.duration.athletCount }} Athleten</small>
+                      </div>
+                    }
+                  </td>
+                  <td class="col-zeiten">
+                    @if (row.duration && row.duration.offsetMillis > 0) {
+                      <div class="zeiten-info">
+                        <span>{{ formatTimestampFromOffset(row.duration.offsetMillis) }}</span>
+                        <br>
+                        <span>{{ formatTimestampFromOffset(row.duration.offsetMillis + row.duration.totalMillis) }}</span>
                       </div>
                     }
                   </td>
