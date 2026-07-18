@@ -1,0 +1,1 @@
+import {k,C}from'./main-3UOLBBGD.js';var o=class extends k{show(i){return C(this,null,function*(){})}hide(i){return C(this,null,function*(){})}};export{o as SplashScreenWeb};
