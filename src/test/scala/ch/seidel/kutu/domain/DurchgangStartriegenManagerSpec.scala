@@ -11,7 +11,7 @@ import scala.compiletime.uninitialized
  * Tests all operations: rename, merge, move-to-group, ungroup, aggregate,
  * and the recalculateAbteilungTitles logic triggered by moveDurchgangToGroup.
  */
-class DurchgangManagerSpec extends KuTuBaseSpec {
+class DurchgangStartriegenManagerSpec extends KuTuBaseSpec {
 
   var testWettkampf: Wettkampf = uninitialized
 
@@ -33,7 +33,10 @@ class DurchgangManagerSpec extends KuTuBaseSpec {
   private def getDurchgangByName(name: String): Option[SimpleDurchgang] =
     getDurchgaenge().find(_.name == name)
 
-  private val manager = new DurchgangManager(this)
+  private var callbackCount = 0
+  private val manager = new DurchgangStartriegenManager(this, () => callbackCount += 1)
+
+  private def resetCallbackCount(): Unit = callbackCount = 0
 
   "DurchgangManager" should {
 
@@ -223,6 +226,185 @@ class DurchgangManagerSpec extends KuTuBaseSpec {
       val movedDg = getDurchgangByName(dg)
       movedDg shouldBe defined
       movedDg.get.title shouldBe "NewGroup"
+    }
+
+    "getAllStartRiegen return non-empty list with correct fields after einteilung" in {
+      makeEinteilung(testWettkampf)
+
+      val riegen = manager.getAllStartRiegen(testWettkampf.id)
+
+      riegen should not be empty
+      riegen.foreach { item =>
+        item.name should not be empty
+        item.durchgang shouldBe defined
+        item.startId shouldBe defined
+        item.startName shouldBe defined
+        item.athletCount should be >= 0
+      }
+
+      // At least some riegen should have athletes assigned
+      riegen.exists(_.athletCount > 0) shouldBe true
+    }
+
+    "getAllStartRiegen return empty list for nonexistent wettkampf" in {
+      val riegen = manager.getAllStartRiegen(-999L)
+      riegen shouldBe empty
+    }
+
+    "setEmptyRiege create an empty riege entry and invoke callback" in {
+      makeEinteilung(testWettkampf)
+
+      val disziplinen = listDisziplinesZuWettkampf(testWettkampf.id)
+      disziplinen should not be empty
+      val startGeraet = disziplinen.head
+
+      val names = getDurchgangNames()
+      names should not be empty
+      val durchgang = names.head
+
+      resetCallbackCount()
+      manager.setEmptyRiege(testWettkampf.id, durchgang, startGeraet)
+      callbackCount shouldBe 1
+
+      val riegen = manager.getAllStartRiegen(testWettkampf.id)
+      val emptyRiege = riegen.find(r =>
+        r.name == s"Leere Riege $durchgang/${startGeraet.name}" &&
+        r.kind == RiegeRaw.KIND_EMPTY_RIEGE
+      )
+      emptyRiege shouldBe defined
+      emptyRiege.get.durchgang shouldBe Some(durchgang)
+      emptyRiege.get.startId shouldBe Some(startGeraet.id)
+    }
+
+    "setEmptyRiege not invoke callback when notify is false" in {
+      makeEinteilung(testWettkampf)
+
+      val disziplinen = listDisziplinesZuWettkampf(testWettkampf.id)
+      val startGeraet = disziplinen.head
+      val durchgang = getDurchgangNames().head
+
+      resetCallbackCount()
+      manager.setEmptyRiege(testWettkampf.id, durchgang, startGeraet, notify = false)
+      callbackCount shouldBe 0
+    }
+
+    "deleteRiegen remove riegen and invoke callback" in {
+      makeEinteilung(testWettkampf)
+
+      val disziplinen = listDisziplinesZuWettkampf(testWettkampf.id)
+      val startGeraet = disziplinen.head
+      val durchgang = getDurchgangNames().head
+
+      // Create an empty riege to delete
+      manager.setEmptyRiege(testWettkampf.id, durchgang, startGeraet)
+      val emptyName = s"Leere Riege $durchgang/${startGeraet.name}"
+
+      val riegenBefore = manager.getAllStartRiegen(testWettkampf.id)
+      riegenBefore.exists(_.name == emptyName) shouldBe true
+
+      resetCallbackCount()
+      manager.deleteRiegen(testWettkampf.id, List(emptyName))
+      callbackCount shouldBe 1
+
+      val riegenAfter = manager.getAllStartRiegen(testWettkampf.id)
+      riegenAfter.exists(_.name == emptyName) shouldBe false
+    }
+
+    "deleteRiegen handle empty list gracefully" in {
+      makeEinteilung(testWettkampf)
+
+      resetCallbackCount()
+      val before = manager.getAllStartRiegen(testWettkampf.id).size
+      manager.deleteRiegen(testWettkampf.id, List.empty)
+      callbackCount shouldBe 1
+
+      manager.getAllStartRiegen(testWettkampf.id).size shouldBe before
+    }
+
+    "updateStartRiege update durchgang of existing riege" in {
+      makeEinteilung(testWettkampf)
+
+      val riegen = selectRiegenRaw(testWettkampf.id)
+      riegen should not be empty
+
+      val names = getDurchgangNames()
+      names.length should be >= 2
+
+      // Pick a riege from the first durchgang
+      val riegeToUpdate = riegen.find(r => r.durchgang.contains(names.head)).get
+      val newDurchgang = names(1)
+
+      resetCallbackCount()
+      val result = manager.updateStartRiege(riegeToUpdate.copy(durchgang = Some(newDurchgang)))
+      callbackCount shouldBe 1
+
+      result.name shouldBe riegeToUpdate.r
+      result.durchgang shouldBe Some(newDurchgang)
+    }
+
+    "updateStartRiege update start geraet of existing riege" in {
+      makeEinteilung(testWettkampf)
+
+      val riegen = selectRiegenRaw(testWettkampf.id)
+      val disziplinen = listDisziplinesZuWettkampf(testWettkampf.id)
+      disziplinen.length should be >= 2
+
+      // Find a riege and change its start geraet
+      val riegeToUpdate = riegen.find(r => r.start.contains(disziplinen.head.id)).get
+      val newStart = disziplinen(1)
+
+      val result = manager.updateStartRiege(riegeToUpdate.copy(start = Some(newStart.id)))
+
+      result.name shouldBe riegeToUpdate.r
+      result.startId shouldBe Some(newStart.id)
+      result.startName shouldBe Some(newStart.name)
+    }
+
+    "updateStartRiege create empty riege when last riege leaves a durchgang/start slot" in {
+      makeEinteilung(testWettkampf)
+
+      val riegen = selectRiegenRaw(testWettkampf.id).filter(_.kind == RiegeRaw.KIND_STANDARD)
+      val names = getDurchgangNames()
+      names.length should be >= 2
+
+      // Find a durchgang/start combination with exactly one riege
+      val grouped = riegen.groupBy(r => (r.durchgang, r.start))
+      val singleSlot = grouped.find { case (_, members) => members.size == 1 }
+
+      singleSlot match {
+        case Some(((Some(durchgang), Some(startId)), singleRiege)) =>
+          val newDurchgang = names.find(_ != durchgang).get
+          val riegeToMove = singleRiege.head
+
+          manager.updateStartRiege(riegeToMove.copy(durchgang = Some(newDurchgang)))
+
+          // An empty riege should have been created for the vacated slot
+          val allRiegen = manager.getAllStartRiegen(testWettkampf.id)
+          val emptyRiegen = allRiegen.filter(r =>
+            r.kind == RiegeRaw.KIND_EMPTY_RIEGE &&
+            r.durchgang.contains(durchgang) &&
+            r.startId.contains(startId)
+          )
+          emptyRiegen should not be empty
+
+        case _ =>
+          // If no single-riege slot exists, just verify updateStartRiege works without error
+          val riegeToUpdate = riegen.head
+          val newDurchgang = names.find(n => !riegeToUpdate.durchgang.contains(n)).get
+          manager.updateStartRiege(riegeToUpdate.copy(durchgang = Some(newDurchgang)))
+          succeed
+      }
+    }
+
+    "callback is invoked for renameDurchgang" in {
+      makeEinteilung(testWettkampf)
+
+      val names = getDurchgangNames()
+      names should not be empty
+
+      resetCallbackCount()
+      manager.renameDurchgang(testWettkampf.id, names.head, "CallbackTestDG")
+      callbackCount shouldBe 1
     }
   }
 }
