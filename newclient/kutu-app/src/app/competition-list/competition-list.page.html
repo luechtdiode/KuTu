@@ -3,7 +3,7 @@
     <ion-buttons slot="start">
       <ion-menu-button></ion-menu-button>
     </ion-buttons>
-    <ion-title>Wettkämpfe</ion-title>
+    <ion-title>Meine Wettkämpfe (admin)</ion-title>
   </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
@@ -21,6 +21,10 @@
             @if (c.logoUrl) {
               <ion-avatar slot="start">
                 <img [src]="c.logoUrl" alt="Logo" />
+              </ion-avatar>
+            } @else {
+              <ion-avatar slot="start">
+                <img src="assets/imgs/wettkampf.png">
               </ion-avatar>
             }
             <ion-label>
