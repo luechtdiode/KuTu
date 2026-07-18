@@ -580,6 +580,11 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
       }
     }
 
+    val durchgangStartriegenManager = new DurchgangStartriegenManager(service, () => {
+      reloadData()
+      riegenFilterView.sort()
+      durchgangView.sort()
+    })
 
     val durchgangTab = new Tab {
       text = "Durchgänge"
@@ -786,10 +791,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             if txtNeuerDurchgangName.text.value.nonEmpty then {
               KuTuApp.invokeWithBusyIndicator {
                 durchgang.foreach { selectedDurchgang =>
-                  service.renameDurchgang(wettkampf.id, selectedDurchgang, txtNeuerDurchgangName.text.value)
-                  reloadData()
-                  riegenFilterView.sort()
-                  durchgangView.sort()
+                  durchgangStartriegenManager.renameDurchgang(wettkampf.id, selectedDurchgang, txtNeuerDurchgangName.text.value)
                 }
               }
             }
@@ -866,12 +868,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
           onAction = (event: ActionEvent) => {
             if txtNeuerDurchgangName.text.value.nonEmpty then {
               KuTuApp.invokeWithBusyIndicator {
-                val toStore = allDurchgaenge.map(_.getValue.durchgang)
-                  .map { (d: Durchgang) => if durchgang.contains(d.name) then d.copy(title = txtNeuerDurchgangName.text.value) else d }
-                service.updateOrInsertDurchgaenge(toStore)
-                reloadData()
-                riegenFilterView.sort()
-                durchgangView.sort()
+                durchgangStartriegenManager.aggregateDurchgaenge(wettkampf.id, durchgang, txtNeuerDurchgangName.text.value)
               }
             }
           }
@@ -935,13 +932,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
             if selectedTargetDurchgang != null then {
               val targetGroupTitle = selectedTargetDurchgang.title
               KuTuApp.invokeWithBusyIndicator {
-                val toStore = allDurchgaenge.map { d =>
-                  if selectedDurchgangNames.contains(d.name) then d.copy(title = targetGroupTitle) else d
-                }
-                service.updateOrInsertDurchgaenge(toStore)
-                reloadData()
-                riegenFilterView.sort()
-                durchgangView.sort()
+                durchgangStartriegenManager.aggregateDurchgaenge(wettkampf.id, durchgang, targetGroupTitle)
               }
             }
           }
@@ -955,31 +946,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
     def makeUngroupDurchgangMenu(durchgang: Set[String], selectedEditor: DurchgangEditor): MenuItem = {
       val ret = KuTuApp.makeMenuAction("Gruppierung auflösen") { (caption, action) =>
         KuTuApp.invokeWithBusyIndicator {
-          val allDurchgaenge = durchgangModel.flatMap(group => {
-            if group.children.isEmpty then {
-              ObservableBuffer[jfxsc.TreeItem[DurchgangEditor]](group)
-            } else {
-              group.children
-            }
-          }).map(_.getValue.durchgang)
-
-          val groupedDurchgangByName = allDurchgaenge
-            .filter(d => d.title != d.name)
-            .map(d => d.name -> d)
-            .toMap
-
-          val groupedToUngroup: Set[String] = selectedEditor match {
-            case gd: GroupDurchgangEditor => gd.aggregates.map(_.durchgang.name).toSet
-            case _ => durchgang.filter(groupedDurchgangByName.contains)
-          }
-
-          if groupedToUngroup.nonEmpty then {
-            val toStore = allDurchgaenge.map(d => if groupedToUngroup.contains(d.name) then d.copy(title = d.name) else d)
-            service.updateOrInsertDurchgaenge(toStore)
-            reloadData()
-            riegenFilterView.sort()
-            durchgangView.sort()
-          }
+          durchgangStartriegenManager.ungroupDurchgaenge(wettkampf.id, durchgang)
         }
       }
 
@@ -1074,16 +1041,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                   items += KuTuApp.makeMenuAction(durchgang.durchgang.name) { (caption, action) =>
                     val toSave = riege.copy(initdurchgang = Some(durchgang.durchgang.name))
                     KuTuApp.invokeWithBusyIndicator {
-                      if riegenAmStart.size == 1 then {
-                        service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
-                          s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(riege.start.value.id)}",
-                          Some(durchgang.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
-                        ))
-                      }
-                      service.updateOrinsertRiege(toSave.commit)
-                      reloadData()
-                      riegenFilterView.sort()
-                      durchgangView.sort()
+                      durchgangStartriegenManager.updateStartRiege(toSave.commit)
                     }
                   }
                 }
@@ -1115,16 +1073,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                   items += KuTuApp.makeMenuAction(von + start.name + " (" + durchgang.initstartriegen.get(start).map(r => r.map(re => re.initanz).sum).getOrElse(0) + ")") { (caption, action) =>
                     val toSave = riege.copy(initstart = Some(start))
                     KuTuApp.invokeWithBusyIndicator {
-                      if riegenAmStart.size == 1 then {
-                        service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
-                          s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(riege.start.value.id)}",
-                          Some(durchgang.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
-                        ))
-                      }
-                      service.updateOrinsertRiege(toSave.commit)
-                      reloadData()
-                      riegenFilterView.sort()
-                      durchgangView.sort()
+                      durchgangStartriegenManager.updateStartRiege(toSave.commit)
                     }
                   }
                 }
@@ -1151,15 +1100,10 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         .map(r => r.initname)
       val menu = KuTuApp.makeMenuAction(if selectedGerate.size == 1 then "Mit leerer Riege besetzen" else "Mit leeren Riegen besetzen") { (caption, action) =>
         KuTuApp.invokeWithBusyIndicator {
-          selectedGerate.foreach(selectedGeraet => {
-            service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
-              s"Leere Riege ${durchgang.durchgang.name}/${toGeraetName(selectedGeraet)}",
-              Some(durchgang.durchgang.name), Some(selectedGeraet), RiegeRaw.KIND_EMPTY_RIEGE
-            ))
-          })
-          reloadData()
-          riegenFilterView.sort()
-          durchgangView.sort()
+          disziplinlist.find(p => selectedGerate.contains(p.id)) match {
+            case Some(disziplin) => durchgangStartriegenManager.setEmptyRiege(wettkampf.id, durchgang.durchgang.name, disziplin)
+            case _ =>
+          }
         }
       }
       menu.disable.value = emptyRiegen.nonEmpty || selectedGerate.isEmpty
@@ -1175,10 +1119,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         .map(r => r.initname)
       val menu = KuTuApp.makeMenuAction(if emptyRiegen.size == 1 then "Leere Riege entfernen" else "Leere Riegen entfernen") { (caption, action) =>
         KuTuApp.invokeWithBusyIndicator {
-          emptyRiegen.foreach(service.deleteRiege(wettkampf.id, _))
-          reloadData()
-          riegenFilterView.sort()
-          durchgangView.sort()
+          if emptyRiegen.nonEmpty then durchgangStartriegenManager.deleteRiegen(wettkampf.id, emptyRiegen)
         }
       }
       menu.disable.value = emptyRiegen.isEmpty
@@ -1205,10 +1146,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
         }, new Button("OK") {
           onAction = (event: ActionEvent) => {
             KuTuApp.invokeWithBusyIndicator {
-              service.renameDurchgang(wettkampf.id, selectedDurchgang, txtDurchgangName.text.value)
-              reloadData()
-              riegenFilterView.sort()
-              durchgangView.sort()
+              durchgangStartriegenManager.renameDurchgang(wettkampf.id, selectedDurchgang, txtDurchgangName.text.value)
             }
           }
         }
@@ -1335,16 +1273,7 @@ class RiegenTab(override val wettkampfInfo: WettkampfInfo, override val service:
                         val targetDurchgang = durchgang.getItem.durchgang.name
                         val toSave = riege.copy(initstart = Some(targetStartgeraet), initdurchgang = Some(targetDurchgang))
                         KuTuApp.invokeWithBusyIndicator {
-                          if riegenAmStart.size == 1 then {
-                            service.updateOrinsertRiege(RiegeRaw(wettkampf.id,
-                              s"Leere Riege ${dgOpt.map(_.durchgang.name).getOrElse("")}/${toGeraetName(riege.start.value.id)}",
-                              dgOpt.map(_.durchgang.name), Some(riege.start.value.id), RiegeRaw.KIND_EMPTY_RIEGE
-                            ))
-                          }
-                          service.updateOrinsertRiege(toSave.commit)
-                          reloadData()
-                          riegenFilterView.sort()
-                          durchgangView.sort()
+                          durchgangStartriegenManager.updateStartRiege(toSave.commit)
                         }
                       }
                     case _ =>

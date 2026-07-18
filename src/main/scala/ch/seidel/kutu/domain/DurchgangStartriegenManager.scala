@@ -8,13 +8,59 @@ import ch.seidel.kutu.squad.DurchgangGrouper
  *
  * Used by both the JavaFX client and REST endpoints.
  */
-class DurchgangManager(service: DurchgangService) {
+class DurchgangStartriegenManager(service: KutuService, onCompleteFn: () => Any = () => {}) {
+
+  def getAllStartRiegen(wettkampfId: Long): List[RiegeItem] = {
+    val riegen = service.selectRiegen(wettkampfId)
+    val counts = service.listRiegenZuWettkampf(wettkampfId).groupMap(_._1)(_._2).view.mapValues(_.sum)
+    riegen.map(r => RiegeItem(
+      name = r.r,
+      durchgang = r.durchgang,
+      startId = r.start.map(_.id),
+      startName = r.start.map(_.name),
+      kind = r.kind,
+      athletCount = counts.getOrElse(r.r, 0)
+    ))
+  }
+
+  def updateStartRiege(riege: RiegeRaw): RiegeItem = {
+    service.listRiegenZuWettkampf(riege.wettkampfId)
+      .groupBy(assignment => (assignment._3, assignment._4))
+      .filter(ag => ag._2.exists(_._1.equalsIgnoreCase(riege.r)))
+      .map(r => (
+        r._2.size,
+        r._2.head._3, r._2.head._4)).headOption match {
+      case Some(1, Some(durchgang), Some(start)) => setEmptyRiege(riege.wettkampfId, durchgang, start, false)
+      case _ =>
+    }
+
+    val updated = service.updateOrinsertRiege(riege)
+
+    onCompleteFn()
+
+    val counts = service.listRiegenZuWettkampf(riege.wettkampfId).groupMap(_._1)(_._2).view.mapValues(_.sum)
+    RiegeItem(updated.r, updated.durchgang, updated.start.map(_.id), updated.start.map(_.name), updated.kind,  counts.getOrElse(updated.r, 0))
+  }
+
+  def setEmptyRiege(wettkampfId: Long, durchgang: String, startGeraet: Disziplin, notify:Boolean = true): Unit = {
+    service.updateOrinsertRiege(RiegeRaw(wettkampfId,
+      s"Leere Riege ${durchgang}/${startGeraet.name}",
+      Some(durchgang), Some(startGeraet.id), RiegeRaw.KIND_EMPTY_RIEGE
+    ))
+    if notify then onCompleteFn()
+  }
+
+  def deleteRiegen(wettkampfId: Long, emptyRiegen: List[String]): Unit = {
+    emptyRiegen.foreach(service.deleteRiege(wettkampfId, _))
+    onCompleteFn()
+  }
 
   /**
    * Rename a single durchgang. Updates riege, durchgang, and durchgangstation tables.
    */
   def renameDurchgang(wettkampfId: Long, oldName: String, newName: String): Unit = {
     service.renameDurchgang(wettkampfId, oldName, newName)
+    onCompleteFn()
   }
 
   /**
@@ -27,6 +73,7 @@ class DurchgangManager(service: DurchgangService) {
         service.renameDurchgang(wettkampfId, sourceName, targetName)
       }
     }
+    onCompleteFn()
   }
 
   /**
@@ -99,5 +146,6 @@ class DurchgangManager(service: DurchgangService) {
     ))
     val transformed = transform(all)
     service.updateOrInsertDurchgaenge(transformed)
+    onCompleteFn()
   }
 }
