@@ -81,6 +81,27 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf)
   }
 
+  def cleanAllRiegenDurchgaenge(wettkampfid: Long, durchgaenge: Set[String]): Unit = {
+    Await.result(database.run{(
+      sqlu"""
+                delete from durchgang where
+                name in (#${durchgaenge.map(d => s"'$d'").mkString(",")})
+                and wettkampf_id=$wettkampfid
+        """ >>
+      sqlu"""
+                delete from durchgangstation where
+                durchgang in (#${durchgaenge.map(d => s"'$d'").mkString(",")})
+                and wettkampf_id=$wettkampfid
+        """ >>
+      sqlu"""
+                delete from riege where
+                durchgang in (#${durchgaenge.map(d => s"'$d'").mkString(",")})
+                and kind = 1 -- empty riege
+                and wettkampf_id=$wettkampfid
+        """).transactionally
+    }, Duration.Inf)
+  }
+
   def updateOrinsertRiegen(riegen: Iterable[RiegeRaw]): Unit = {
     val riegenList: List[(Long, Iterable[RiegeRaw])] = riegen.groupBy(_.wettkampfId).toList
     def insertRiegen(rs: Iterable[RiegeRaw]): DBIOAction[Iterable[Int], NoStream, Effect] = DBIO.sequence(for
