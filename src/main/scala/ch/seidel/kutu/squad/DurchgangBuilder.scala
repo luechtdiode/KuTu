@@ -66,6 +66,8 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
 
     if durchgangfilter.isEmpty then {
       service.cleanAllRiegenDurchgaenge(wettkampfId)
+    } else {
+      service.cleanAllRiegenDurchgaenge(wettkampfId, durchgangfilter)
     }
     for
       durchgang <- riegenzuteilungen.keys
@@ -124,7 +126,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
           .toMap
         val riege2Assignments = extractRiege2ToDurchgangMapping(suggested, wettkampfdisziplinIdToKategorieUndStart)
         suggested ++ separateRiegen2DurchgaengeFromSuggested(suggested, riege2Assignments)
-      else suggested
+      else if durchgangfilter.isEmpty then suggested else suggested.filter(r => durchgangfilter.contains(r._1))
     }
   }
 
