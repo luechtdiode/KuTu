@@ -10,11 +10,11 @@
   <ion-list>
     <ion-item>
       <ion-label position="stacked">Datum</ion-label>
-      <ion-input label="Datum" required placeholder="Wettkampf-Datum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='editDate' name="datum" required />
+      <ion-input placeholder="Wettkampf-Datum" type="date" display-timezone="utc" [disabled]="false" [(ngModel)]='editDate' name="datum" required />
     </ion-item>
     <ion-item>
-      <ion-label position="stacked">Zeit</ion-label>
-      <input type="time" [value]="editTime" (change)="editTime = $any($event.target).value" />
+      <ion-label position="stacked">Startzeit</ion-label>
+      <ion-input placeholder="Startzeit" type="time" display-timezone="utc" [disabled]="false" [(ngModel)]='editTime' name="zeit" required />
     </ion-item>
   </ion-list>
   <div class="ion-padding">
