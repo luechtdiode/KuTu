@@ -19,6 +19,10 @@ export class RiegeEditModalComponent {
 
   private modalCtrl = inject(ModalController);
 
+  get startGeraet(): string {
+    return this.disziplinen.find(d => d.id === this.selectedStartId)?.name;
+  }
+
   ngOnInit() {
     this.editName = this.name;
     this.editDurchgang = this.durchgang;
@@ -33,6 +37,10 @@ export class RiegeEditModalComponent {
     const name = this.editName.trim();
     const durchgang = this.editDurchgang.trim();
     if (!name || !durchgang) return;
-    this.modalCtrl.dismiss({ name, durchgang, startId: this.selectedStartId, kind: this.kind });
+    this.modalCtrl.dismiss({ name: name, durchgang: durchgang, delete: false, startId: this.selectedStartId, kind: this.kind });
+  }
+
+  delete() {
+    this.modalCtrl.dismiss({ name: this.editName, durchgang: this.editDurchgang, delete: true, kind: this.kind });
   }
 }

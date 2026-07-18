@@ -150,7 +150,8 @@
         @for (riege of unassignedRiegen; track riege.name) {
           <div class="riege-chip unassigned"
             draggable="true"
-            (dragstart)="onDragStart($event, riege.name, '', null)">
+            (dragstart)="onDragStart($event, riege.name, '', null)"
+               [title]="riege.name + ' (' + riege.athletCount + ' Athleten)'">
             <span class="riege-name">{{ riege.name }}</span>
             <span class="riege-count">{{ riege.athletCount }}</span>
           </div>
@@ -216,6 +217,7 @@
                         <div class="riege-chip"
                           draggable="true"
                           (dragstart)="onDragStart($event, riege.name, row.durchgangName, d.id)"
+                          [title]="riege.name + ' (' + riege.athletCount + ' Athleten)'"
                           (click)="editRiege(riege, row.durchgangName, d.id)"
                           [class.empty-riege]="riege.kind === 1">
                           <span class="riege-name">{{ riege.name }}</span>
