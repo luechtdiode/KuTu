@@ -1,0 +1,1 @@
+import {ch as n$1}from'./main-QSJG5DZY.js';var n=()=>{if(n$1!==void 0)return n$1.Capacitor};export{n};
