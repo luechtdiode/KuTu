@@ -111,6 +111,16 @@ class DurchgangStartriegenManager(service: KutuService, onCompleteFn: () => Any 
     }
   }
 
+  /**
+   * Update the planned start offset for all durchgänge matching the given title.
+   * For ungrouped durchgänge (title == name), updates a single row.
+   * For groups, updates all members.
+   */
+  def updateStartOffset(wettkampfId: Long, title: String, offsetInMillis: Long): Unit = {
+    service.updateStartOffset(wettkampfId, title, offsetInMillis)
+    onCompleteFn()
+  }
+
   private val AbteilungPattern = "^Abteilung (\\d+)(.*)$".r
 
   private def recalculateAbteilungTitles(durchgaenge: Seq[Durchgang]): Seq[Durchgang] = {
