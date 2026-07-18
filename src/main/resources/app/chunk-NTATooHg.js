@@ -1,0 +1,1 @@
+import {C}from'./main-3UOLBBGD.js';var s=()=>{let e;return {lock:()=>C(null,null,function*(){let o=e,t;return e=new Promise(n=>t=n),o!==void 0&&(yield o),t})}};export{s};
