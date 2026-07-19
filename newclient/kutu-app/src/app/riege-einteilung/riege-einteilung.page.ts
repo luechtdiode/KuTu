@@ -805,4 +805,12 @@ export class RiegeEinteilungPage implements OnDestroy {
     const counts = this.disziplinen.map(d => this.rowAthletCount(row, d.id)).filter(c => c > 0);
     return counts.length > 0 ? Math.min(...counts) : 0;
   }
+
+  printRiegen() {
+    setTimeout(() => window.print(), 50);
+  }
+
+  getPrintTimestamp(): string {
+    return new Date().toLocaleString('de-CH');
+  }
 }
