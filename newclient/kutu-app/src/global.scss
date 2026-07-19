@@ -167,6 +167,7 @@
 .riege-chip.empty-riege {
   background: var(--ion-color-medium, #92949c);
   opacity: 0.6;
+  cursor: pointer;
 }
 .riege-name {
   max-width: 100px;
@@ -309,5 +310,140 @@ tr.selected {
   font-weight: 600;
   font-size: 0.85rem;
   margin-right: 8px;
+}
+.print-only {
+  display: none;
+}
+
+/* ---- Print styles for Riegeneinteilung ---- */
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
+  /* Hide interactive / non-print elements */
+  ion-header,
+  .no-print,
+  ion-refresher,
+  .unassigned-card,
+  .selection-bar,
+  .col-select,
+  .set-starttime-btn,
+  .add-empty-btn,
+  .dg-actions-btn,
+  ion-card > ion-card-content ion-button {
+    display: none !important;
+  }
+
+  /* Suppress selection background in print */
+  tr.selected {
+    background: none !important;
+  }
+
+  /* Print-only elements */
+  .print-only {
+    display: block !important;
+    font-size: 0.85rem;
+    color: #333;
+    margin-top: 4px;
+  }
+  .print-timestamp {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+
+  /* When rows are selected, hide non-selected rows */
+  .riege-table.has-selection tbody tr:not(.selected) {
+    display: none !important;
+  }
+
+  /* Card reset */
+  ion-card {
+    box-shadow: none !important;
+    border: 1px solid #ccc;
+    break-inside: avoid;
+  }
+
+  /* Logo: larger for print */
+  .toolbar-logo {
+    --size: 48px;
+  }
+
+  /* Table overflow */
+  ion-card-content {
+    overflow: visible !important;
+  }
+
+  /* Table styling */
+  .riege-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .riege-table th,
+  .riege-table td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+  }
+  .riege-table thead th {
+    background: #d7e3ff !important;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  /* Group header page-break control */
+  .group-header-row {
+    page-break-inside: avoid;
+  }
+
+  /* Riege chips: render as plain text */
+  .riege-chip {
+    display: inline !important;
+    background: none !important;
+    color: #000 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    cursor: default !important;
+    font-size: inherit !important;
+    white-space: normal !important;
+    break-inside: avoid;
+  }
+  .riege-chip .riege-count {
+    background: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    font-size: inherit !important;
+    font-weight: 400 !important;
+  }
+  .riege-chip .riege-count::before {
+    content: ' (';
+  }
+  .riege-chip .riege-count::after {
+    content: ')';
+  }
+  .riege-chip + .riege-chip::before {
+    content: ', ';
+  }
+
+  /* Force background colors for legend swatches and colored cells */
+  .legend-swatch,
+  .riege-table td.athlet-max,
+  .riege-table td.athlet-min,
+  .riege-table .group-header-row td {
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  /* Duration / time info: full opacity */
+  .duration-info,
+  .zeiten-info {
+    opacity: 1 !important;
+  }
+
+  /* Body background */
+  body {
+    background: #fff !important;
+  }
 }
 

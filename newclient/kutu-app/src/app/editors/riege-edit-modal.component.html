@@ -1,6 +1,6 @@
 <ion-header>
   <ion-toolbar color="primary">
-    <ion-title>Riege '{{ editName }}' bearbeiten</ion-title>
+    <ion-title>{{ kind === 1 ? 'Leere Riege' : editName }} bearbeiten</ion-title>
     <ion-buttons slot="end">
       <ion-button (click)="dismiss()">Abbrechen</ion-button>
     </ion-buttons>
@@ -36,7 +36,7 @@
     <ion-item-divider></ion-item-divider>
     <ion-item lines="none">
       <ion-text><br>
-        Die leere Riege '{{ editName }}' ist dafür da, dass das Startgerät belegt ist, auch wenn es gerade keine Riege gibt, die dort startet.
+        Die leere Riege '{{ editName }}' (intern) ist dafür da, dass das Startgerät belegt ist, auch wenn es gerade keine Riege gibt, die dort startet.
         Wenn die leere Riege entfernt wird, wird das Gerät im ganzen Turnus nicht mehr verwendet.</ion-text>
     </ion-item>
     }
