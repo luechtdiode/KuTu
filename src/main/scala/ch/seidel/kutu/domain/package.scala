@@ -2044,7 +2044,15 @@ package object domain {
     stations: List[PlaybookStation],
     overallPct: Int,
     totalCount: Int,
-    completedCount: Int
+    completedCount: Int,
+    planStart: String,
+    planFinish: String,
+    effectiveStart: String,
+    effectiveEnd: String,
+    duration: String,
+    planTotal: String,
+    planEinturnen: String,
+    planGeraet: String
   )
 
   case class PlaybookState(
