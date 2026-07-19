@@ -20,7 +20,12 @@
           <img [src]="logoUrl" alt="Logo" />
         </ion-avatar>
         }
-        <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+        <ion-card-title>{{ wettkampfTitle }} am {{ formatDate(wettkampfDatum) }}</ion-card-title>
+        <span class="color-legend" slot="end">
+          <span class="legend-title">Farblegende</span>
+          <span class="legend-item"><span class="legend-swatch athlet-max"></span>grösste Startgruppe</span>
+          <span class="legend-item"><span class="legend-swatch athlet-min"></span>kleinste Startgruppe</span>
+        </span>
       </ion-item>
     </ion-card-header>
     <ion-card-content>
@@ -194,7 +199,7 @@
                     @if (group.duration) {
                       <div class="duration-info group-duration">
                         <span>Einturnen {{ formatMillis(group.duration.einturnenMillis) }} + Gerät {{ formatMillis(group.duration.geraetMillis) }} = Total {{ formatMillis(group.duration.totalMillis) }}</span>
-                        <br><small>{{ group.duration.athletCount }} Athleten</small>
+                        <br><small>{{ group.duration.athletCount }} Athleten, grösste Gruppe: {{ maxGroupAthletCount(group) }}</small>
                       </div>
                     }
                   </td>
@@ -212,7 +217,7 @@
                       [class.athlet-max]="groupAthletCountForGeraet(group, d.id) === maxGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)"
                       [class.athlet-min]="groupAthletCountForGeraet(group, d.id) === minGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)">
                       @if (groupAthletCountForGeraet(group, d.id) > 0) {
-                        max Anzahl am Start {{ groupAthletCountForGeraet(group, d.id) }}
+                        max {{ groupAthletCountForGeraet(group, d.id) }} pro Gerät am Start
                       }
                     </td>
                   }
@@ -235,7 +240,7 @@
                     @if (row.duration) {
                       <div class="duration-info">
                         <span>Einturnen {{ formatMillis(row.duration.einturnenMillis) }} + Gerät {{ formatMillis(row.duration.geraetMillis) }} = Total {{ formatMillis(row.duration.totalMillis) }}</span>
-                        <br><small>{{ row.duration.athletCount }} Athleten</small>
+                        <br><small>{{ row.duration.athletCount }} Athleten, grösste Gruppe: {{ maxRowAthletCount(row) }}</small>
                       </div>
                     }
                   </td>
@@ -246,6 +251,11 @@
                         <br>
                         <span>{{ formatTimestampFromOffset(row.duration.offsetMillis + row.duration.totalMillis) }}</span>
                       </div>
+                    }
+                    @if (canSetStartOffsetForRow(row)) {
+                      <ion-button size="small" fill="clear" class="set-starttime-btn" (click)="setStartOffsetForRow(row)" title="Startzeit setzen">
+                        <ion-icon slot="icon-only" name="time-outline"></ion-icon>
+                      </ion-button>
                     }
                   </td>
                   @for (d of disziplinen; track d.id) {
