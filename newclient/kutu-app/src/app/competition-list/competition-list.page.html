@@ -55,6 +55,9 @@
             <ion-button slot="end" fill="clear" (click)="downloadZip(c)">
               <ion-icon slot="icon-only" size="large" name="download"></ion-icon>
             </ion-button>
+            <ion-button slot="end" fill="clear" (click)="triggerUpload(c)">
+              <ion-icon slot="icon-only" size="large" name="cloud-upload"></ion-icon>
+            </ion-button>
           </ion-item>
           <ion-item-options>
             <ion-item-option color="danger" (click)="confirmDelete(c)">
@@ -72,4 +75,5 @@
       </ion-button>
     </ion-text>
   }
+  <input #fileInput type="file" accept=".zip" hidden (change)="onFileSelected($event)">
 </ion-content>

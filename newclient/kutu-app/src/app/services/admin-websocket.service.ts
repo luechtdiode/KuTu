@@ -10,7 +10,6 @@ export interface DurchgangResetted {
   type: string;
 }
 
-@Injectable()
 export class AdminWebsocketService extends WebsocketService {
   private competitionUUID: string;
   private secret: string;
