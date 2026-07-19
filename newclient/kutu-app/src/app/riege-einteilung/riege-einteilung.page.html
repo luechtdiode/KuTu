@@ -207,7 +207,15 @@
                       </div>
                     }
                   </td>
-                  <td [attr.colspan]="disziplinen.length"></td>
+                  @for (d of disziplinen; track d.id) {
+                    <td class="col-geraet group-geraet-count"
+                      [class.athlet-max]="groupAthletCountForGeraet(group, d.id) === maxGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)"
+                      [class.athlet-min]="groupAthletCountForGeraet(group, d.id) === minGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)">
+                      @if (groupAthletCountForGeraet(group, d.id) > 0) {
+                        max Anzahl am Start {{ groupAthletCountForGeraet(group, d.id) }}
+                      }
+                    </td>
+                  }
                 </tr>
               }
               @for (row of group.rows; track row.durchgangName) {
@@ -242,6 +250,8 @@
                   </td>
                   @for (d of disziplinen; track d.id) {
                     <td class="col-geraet"
+                      [class.athlet-max]="rowAthletCount(row, d.id) === maxRowAthletCount(row) && maxRowAthletCount(row) !== minRowAthletCount(row)"
+                      [class.athlet-min]="rowAthletCount(row, d.id) === minRowAthletCount(row) && maxRowAthletCount(row) !== minRowAthletCount(row)"
                       (dragover)="onDragOver($event)"
                       (drop)="onDrop($event, row.durchgangName, d.id)"
                       (dragleave)="onDragLeave($event)">
@@ -257,7 +267,11 @@
                         </div>
                       }
                       @if (!row.cells[d.id]?.length) {
-                        <span class="empty-cell">—</span>
+                        <ion-button size="small" fill="clear" class="add-empty-btn"
+                          (click)="addEmptyRiege(row.durchgangName, d.id, d.name)"
+                          title="Leere Riege zuweisen – Gerät wird im Turnus verwendet">
+                          <ion-icon slot="icon-only" name="add-outline"></ion-icon>
+                        </ion-button>
                       }
                     </td>
                   }
