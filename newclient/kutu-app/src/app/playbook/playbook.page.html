@@ -1,0 +1,132 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/admin/competitions"></ion-back-button>
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Spielplan</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-refresher slot="fixed" (ionRefresh)="loadPlaybook(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <ion-card>
+    <ion-card-header>
+      <ion-item lines="none" class="ion-no-padding">
+        @if (logoUrl) {
+        <ion-avatar slot="start" class="toolbar-logo">
+          <img [src]="logoUrl" alt="Logo" />
+        </ion-avatar>
+        }
+        <ion-card-title>{{ wettkampfTitle }} am {{ formatDate(wettkampfDatum) }}</ion-card-title>
+      </ion-item>
+    </ion-card-header>
+  </ion-card>
+
+  @if (loading) {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+
+  @if (groups.length > 0 && disziplinen.length > 0) {
+    <ion-card>
+      <ion-card-content class="ion-padding-0" style="overflow-x: auto;">
+        <table class="riege-table playbook-table">
+          <thead>
+            <tr>
+              <th class="col-durchgang">Durchgang</th>
+              <th class="col-actions">Aktionen</th>
+              @for (d of disziplinen; track d.id) {
+                <th class="col-geraet">{{ d.name }}</th>
+              }
+              <th class="col-overall">Fertig</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (group of groups; track group.title) {
+              @if (hasGroupedDgs(group)) {
+                <tr class="group-header-row">
+                  <td class="col-durchgang">
+                    <strong>{{ group.title }}</strong>
+                  </td>
+                  <td class="col-actions"></td>
+                  @for (d of disziplinen; track d.id) {
+                    <td class="col-geraet"></td>
+                  }
+                  <td class="col-overall"></td>
+                </tr>
+              }
+              @for (row of group.rows; track row.name) {
+                <tr [class.dg-running]="row.isRunning" [class.dg-finished]="row.isFinished">
+                  <td class="col-durchgang">
+                    @if (hasGroupedDgs(group)) {
+                      <span class="dg-indent">{{ row.name }}</span>
+                    } @else {
+                      <strong>{{ row.name }}</strong>
+                    }
+                    <div class="dg-info">
+                      <small>{{ row.completedCount }}/{{ row.totalCount }} Athleten</small>
+                    </div>
+                  </td>
+                  <td class="col-actions">
+                    <div class="action-buttons">
+                      @if (canStart(row)) {
+                        <ion-button fill="clear" size="small" color="success" (click)="startDurchgang(row.name)" title="Durchgang starten">
+                          <ion-icon name="play" slot="icon-only"></ion-icon>
+                        </ion-button>
+                      }
+                      @if (canFinish(row)) {
+                        <ion-button fill="clear" size="small" color="warning" (click)="finishDurchgang(row.name)" title="Durchgang abschliessen">
+                          <ion-icon name="checkmark-circle" slot="icon-only"></ion-icon>
+                        </ion-button>
+                      }
+                      @if (canReset(row)) {
+                        <ion-button fill="clear" size="small" color="danger" (click)="resetDurchgang(row.name)" title="Durchgang zurücksetzen">
+                          <ion-icon name="refresh" slot="icon-only"></ion-icon>
+                        </ion-button>
+                      }
+                      @if (canRestart(row)) {
+                        <ion-button fill="clear" size="small" color="success" (click)="startDurchgang(row.name)" title="Durchgang neu starten">
+                          <ion-icon name="play" slot="icon-only"></ion-icon>
+                        </ion-button>
+                      }
+                    </div>
+                  </td>
+                  @for (d of disziplinen; track d.id) {
+                    <td class="col-geraet" (click)="goToResults(row.name, d.id)">
+                      @if (getStation(row, d.id); as station) {
+                        @for (step of station.steps; track step.halt) {
+                          <div class="step-item" [class.complete]="stepPct(step) === 100">
+                            <span class="step-label">Stufe {{ step.halt + 1 }}</span>
+                            <ion-progress-bar
+                              [value]="stepPct(step) / 100"
+                              [color]="stepPct(step) === 100 ? 'success' : stepPct(step) > 0 ? 'warning' : 'medium'">
+                            </ion-progress-bar>
+                            <span class="step-pct">{{ stepPct(step) }}%</span>
+                          </div>
+                        }
+                        <div class="station-total" [class.complete]="station.overallPct === 100">
+                          {{ station.overallPct }}%
+                        </div>
+                      }
+                    </td>
+                  }
+                  <td class="col-overall">
+                    <span class="overall-pct" [class.complete]="row.overallPct === 100" [class.running]="row.isRunning">
+                      {{ row.overallPct }}%
+                    </span>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </ion-card-content>
+    </ion-card>
+  } @else {
+    <ion-text color="medium">
+      <p class="ion-text-center ion-padding">Keine Durchgaenge gefunden.</p>
+    </ion-text>
+  }
+</ion-content>

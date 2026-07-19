@@ -2022,4 +2022,34 @@ package object domain {
   case class JudgeRegistrationProgram(id: Long, judgeregistrationId: Long, vereinregistrationId: Long, program: Long, comment: String)
 
   case class JudgeRegistrationProgramItem(program: String, disziplin: String, disziplinId: Long)
+
+  case class PlaybookStep(
+    halt: Int,
+    totalAthletes: Int,
+    completedAthletes: Int
+  )
+
+  case class PlaybookStation(
+    disziplinId: Long,
+    disziplinName: String,
+    steps: List[PlaybookStep],
+    overallPct: Int
+  )
+
+  case class PlaybookDurchgang(
+    name: String,
+    title: String,
+    isRunning: Boolean,
+    isFinished: Boolean,
+    stations: List[PlaybookStation],
+    overallPct: Int,
+    totalCount: Int,
+    completedCount: Int
+  )
+
+  case class PlaybookState(
+    wettkampfUUID: String,
+    durchgaenge: List[PlaybookDurchgang],
+    activeDurchgaenge: List[String]
+  )
 }
