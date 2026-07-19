@@ -1,1 +1,0 @@
-import {C}from'./main-NW6L32T4.js';var s=()=>{let e;return {lock:()=>C(null,null,function*(){let o=e,t;return e=new Promise(n=>t=n),o!==void 0&&(yield o),t})}};export{s};
