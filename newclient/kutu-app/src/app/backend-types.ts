@@ -453,3 +453,34 @@ export interface RiegePreviewResponse {
   riegen: RiegeItem[];
   durchgange: DurchgangDurationItem[];
 }
+
+// Playbook types
+export interface PlaybookStep {
+  halt: number;
+  totalAthletes: number;
+  completedAthletes: number;
+}
+
+export interface PlaybookStation {
+  disziplinId: number;
+  disziplinName: string;
+  steps: PlaybookStep[];
+  overallPct: number;
+}
+
+export interface PlaybookDurchgang {
+  name: string;
+  title: string;
+  isRunning: boolean;
+  isFinished: boolean;
+  stations: PlaybookStation[];
+  overallPct: number;
+  totalCount: number;
+  completedCount: number;
+}
+
+export interface PlaybookState {
+  wettkampfUUID: string;
+  durchgaenge: PlaybookDurchgang[];
+  activeDurchgaenge: string[];
+}

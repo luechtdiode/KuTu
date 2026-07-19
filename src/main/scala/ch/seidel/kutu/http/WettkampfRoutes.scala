@@ -6,7 +6,7 @@ import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.ServerPrintUtil
+import ch.seidel.kutu.renderer.{RiegenBuilder, ServerPrintUtil}
 import ch.seidel.kutu.squad.{DurchgangBuilder, DurchgangGrouper}
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
@@ -478,6 +478,65 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 } else {
                   complete(StatusCodes.Conflict)
                 }
+              }
+            }
+          }
+        } ~
+        pathLabeled("playbook", "playbook") {
+          get {
+            authenticatedAdmin() { userId =>
+              if userId.equals(wkuuid.toString) then {
+                complete {
+                  Future {
+                    val wettkampfUUID = wkuuid.toString
+                    val wettkampf = readWettkampf(wettkampfUUID)
+                    val durchgaenge = selectDurchgaenge(java.util.UUID.fromString(wettkampfUUID)).map(d => d.name -> d).toMap
+                    val kandidaten = getAllKandidatenWertungen(java.util.UUID.fromString(wettkampfUUID))
+                    val geraeteRiegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList)
+                      .filter(gr => gr.durchgang.nonEmpty)
+
+                    val disziplinOrdinals = Await.result(listDisziplinZuWettkampf(wettkampf), Duration.Inf)
+                      .zipWithIndex.map { case (d, idx) => d.id -> idx }.toMap
+
+                    val grouped = geraeteRiegen.groupBy(gr => gr.durchgang.get)
+                    val dgStates = grouped.map { t =>
+                      val dgName = t._1
+                      val dgData = t._2
+                      val dg = durchgaenge.getOrElse(dgName, Durchgang(wettkampf.id, dgName))
+                      val dgs = DurchgangState(wettkampfUUID, dgName, t._2.forall(_.erfasst), dgData, dg)
+
+                      val stats = DurchgangState.computeStats(dgData)
+                      val stations = stats.map { case (disziplinOpt, pct, completedCnt, totalCnt, haltStats) =>
+                        val steps = haltStats.map { case (halt, haltPct, haltCompleted, haltTotal) =>
+                          PlaybookStep(halt, haltTotal, haltCompleted)
+                        }
+                        PlaybookStation(
+                          disziplinId = disziplinOpt.map(_.id).getOrElse(0L),
+                          disziplinName = if disziplinOpt.exists(_.isPause) then "Pause"
+                            else disziplinOpt.map(_.name).getOrElse(""),
+                          steps = steps,
+                          overallPct = pct
+                        )
+                      }.toList.sortBy(s => disziplinOrdinals.getOrElse(Math.abs(s.disziplinId), Int.MaxValue))
+
+                      PlaybookDurchgang(
+                        name = dgName,
+                        title = dg.title,
+                        isRunning = dgs.isRunning,
+                        isFinished = dgs.finished > 0,
+                        stations = stations,
+                        overallPct = dgs.avg.dropRight(1).toInt,
+                        totalCount = dgs.anz.toInt,
+                        completedCount = stats.map(_._3).sum
+                      )
+                    }.toList.sortBy(_.name)
+
+                    val activeList = dgStates.filter(_.isRunning).map(_.name)
+                    PlaybookState(wettkampfUUID, dgStates, activeList)
+                  }
+                }
+              } else {
+                complete(StatusCodes.Conflict)
               }
             }
           }
