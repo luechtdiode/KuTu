@@ -53,6 +53,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   filterDurchgaenge: string[] = [];
   selectedDgs = new Set<string>();
   showGeneratePanel = false;
+  showAssignedOnly = false;
   loading = false;
   draggedRiege: { name: string; durchgang: string; startId: number | null } | null = null;
 
@@ -66,6 +67,7 @@ export class RiegeEinteilungPage implements OnDestroy {
 
   async ionViewWillEnter() {
     this.uuid = this.route.snapshot.paramMap.get('uuid') || '';
+    this.showAssignedOnly = localStorage.getItem('kutu-showAssignedOnly') === 'true';
     const stored = this.secretService.getSecret(this.uuid);
     if (stored) {
       this.secret = stored.secret;
@@ -785,11 +787,11 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   maxGroupAthletCount(group: TableGroup): number {
-    return Math.max(0, ...this.disziplinen.map(d => this.groupAthletCountForGeraet(group, d.id)));
+    return Math.max(0, ...this.visibleDisziplinen.map(d => this.groupAthletCountForGeraet(group, d.id)));
   }
 
   minGroupAthletCount(group: TableGroup): number {
-    const counts = this.disziplinen.map(d => this.groupAthletCountForGeraet(group, d.id)).filter(c => c > 0);
+    const counts = this.visibleDisziplinen.map(d => this.groupAthletCountForGeraet(group, d.id)).filter(c => c > 0);
     return counts.length > 0 ? Math.min(...counts) : 0;
   }
 
@@ -798,12 +800,26 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   maxRowAthletCount(row: TableRow): number {
-    return Math.max(0, ...this.disziplinen.map(d => this.rowAthletCount(row, d.id)));
+    return Math.max(0, ...this.visibleDisziplinen.map(d => this.rowAthletCount(row, d.id)));
   }
 
   minRowAthletCount(row: TableRow): number {
-    const counts = this.disziplinen.map(d => this.rowAthletCount(row, d.id)).filter(c => c > 0);
+    const counts = this.visibleDisziplinen.map(d => this.rowAthletCount(row, d.id)).filter(c => c > 0);
     return counts.length > 0 ? Math.min(...counts) : 0;
+  }
+
+  toggleAssignedOnly() {
+    this.showAssignedOnly = !this.showAssignedOnly;
+    localStorage.setItem('kutu-showAssignedOnly', String(this.showAssignedOnly));
+  }
+
+  get visibleDisziplinen(): Geraet[] {
+    if (!this.showAssignedOnly) return this.disziplinen;
+    return this.disziplinen.filter(d =>
+      this.groups.some(g =>
+        g.rows.some(r => r.cells[d.id]?.length > 0)
+      )
+    );
   }
 
   printRiegen() {
