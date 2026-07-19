@@ -2060,4 +2060,6 @@ package object domain {
     durchgaenge: List[PlaybookDurchgang],
     activeDurchgaenge: List[String]
   )
+
+  case class JudgeLink(link: String, qrImage: String)
 }

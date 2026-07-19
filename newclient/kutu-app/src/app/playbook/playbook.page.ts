@@ -1,15 +1,35 @@
 import { Component, inject, ChangeDetectorRef, OnDestroy, OnInit } from '@angular/core';
-import { ToastController, NavController } from '@ionic/angular';
+import { ToastController, NavController, ModalController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
 import { BackendService } from '../services/backend.service';
 import { AdminWebsocketService, DurchgangResetted } from '../services/admin-websocket.service';
-import { PlaybookState, PlaybookDurchgang, PlaybookStation, PlaybookStep, Geraet } from '../backend-types';
+import { PlaybookState, PlaybookDurchgang, PlaybookStation, PlaybookStep, Geraet, JudgeLink } from '../backend-types';
+import { JudgeLinkModalComponent } from './judge-link-modal.component';
 import { Subscription } from 'rxjs';
+import { backendUrl } from '../utils';
 
 interface PlaybookGroup {
   title: string;
+  rows: PlaybookDurchgang[];
+}
+
+interface StepperHalt {
+  halt: number;
+  totalAthletes: number;
+  completedAthletes: number;
+  pct: number;
+  status: 'pending' | 'einturnen' | 'active' | 'done';
+}
+
+interface StepperDg {
+  name: string;
+  displayName: string;
+  status: 'pending' | 'running' | 'finished';
+  halts: StepperHalt[];
+  planEinturnen: string;
   rows: PlaybookDurchgang[];
 }
 
@@ -27,6 +47,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
 
   playbook: PlaybookState | null = null;
   groups: PlaybookGroup[] = [];
+  stepperDgs: StepperDg[] = [];
   disziplinen: { id: number; name: string }[] = [];
   loading = false;
   expandedGroups = new Set<string>();
@@ -41,6 +62,9 @@ export class PlaybookPage implements OnInit, OnDestroy {
   private bs = inject(BackendService);
   private toastCtrl = inject(ToastController);
   private navCtrl = inject(NavController);
+  private modalCtrl = inject(ModalController);
+  private alertCtrl = inject(AlertController);
+  private http = inject(HttpClient);
 
   ngOnInit() {
     this.uuid = this.route.snapshot.paramMap.get('uuid') || '';
@@ -63,6 +87,12 @@ export class PlaybookPage implements OnInit, OnDestroy {
     });
     this.loadPlaybook();
     this.initWebSocket();
+  }
+
+  ionViewWillEnter() {
+    if (this.playbook) {
+      this.loadPlaybook();
+    }
   }
 
   ngOnDestroy() {
@@ -121,6 +151,82 @@ export class PlaybookPage implements OnInit, OnDestroy {
           this.expandedGroups.add(g.title);
         }
       }
+    }
+
+    this.buildStepper();
+  }
+
+  private buildStepper() {
+    const allFinished = this.groups.length > 0 && this.groups.every(g => g.rows.every(r => r.isFinished));
+    const visibleGroups = allFinished ? this.groups : this.groups.filter(g => g.rows.some(r => !r.isFinished));
+
+    this.stepperDgs = visibleGroups.map(g => {
+      const rows = g.rows;
+      const ungrouped = rows.length === 1 && rows[0].name === rows[0].title;
+      const displayName = ungrouped ? rows[0].name : g.title;
+
+      let status: StepperDg['status'] = 'pending';
+      if (rows.every(r => r.isFinished)) status = 'finished';
+      else if (rows.some(r => r.isRunning)) status = 'running';
+
+      const haltMap = new Map<number, { totalAthletes: number; completedAthletes: number }>();
+      for (const row of rows) {
+        for (const station of row.stations) {
+          for (const step of station.steps) {
+            const existing = haltMap.get(step.halt) || { totalAthletes: 0, completedAthletes: 0 };
+            haltMap.set(step.halt, {
+              totalAthletes: existing.totalAthletes + step.totalAthletes,
+              completedAthletes: existing.completedAthletes + step.completedAthletes
+            });
+          }
+        }
+      }
+
+      const haltEntries = Array.from(haltMap.entries()).sort((a, b) => a[0] - b[0]);
+      const halts: StepperHalt[] = [];
+      const haltsFinished = new Set<number>();
+
+      for (const [halt, stats] of haltEntries) {
+        const pct = stats.totalAthletes > 0 ? Math.round(100 * stats.completedAthletes / stats.totalAthletes) : 0;
+        let hStatus: StepperHalt['status'] = 'pending';
+        if (status === 'running') {
+          if (pct === 100) {
+            hStatus = 'done';
+            haltsFinished.add(halt);
+          } else if (pct > 0) {
+            hStatus = 'active';
+          } else {
+            const prevDone = halt === 0 || haltsFinished.has(halt - 1);
+            hStatus = prevDone ? 'einturnen' : 'pending';
+          }
+        }
+        halts.push({ halt, totalAthletes: stats.totalAthletes, completedAthletes: stats.completedAthletes, pct, status: hStatus });
+      }
+
+      return { name: g.title, displayName, status, halts, planEinturnen: rows[0]?.planEinturnen || '', rows };
+    });
+  }
+
+  stepperDgClick(dg: StepperDg) {
+    if (dg.status === 'pending') {
+      for (const row of dg.rows.filter(r => !r.isRunning && !r.isFinished)) {
+        this.startDurchgang(row.name);
+      }
+    }
+  }
+
+  isCurrentDg(dg: StepperDg): boolean {
+    const running = this.stepperDgs.find(d => d.status === 'running');
+    if (running) return dg === running;
+    return dg === this.stepperDgs.find(d => d.status === 'pending');
+  }
+
+  haltStatusLabel(halt: StepperHalt, isFirstHalt: boolean): string {
+    switch (halt.status) {
+      case 'einturnen': return isFirstHalt ? 'Einturnen' : 'Gerätewechsel + Einturnen';
+      case 'active': return halt.pct + '%';
+      case 'done': return '\u2713';
+      default: return '';
     }
   }
 
@@ -253,11 +359,24 @@ export class PlaybookPage implements OnInit, OnDestroy {
     });
   }
 
-  resetDurchgang(name: string) {
-    this.backend.resetDurchgang(this.uuid, this.secret, name).subscribe({
-      next: () => this.showToast('Durchgang zurückgesetzt', 'success'),
-      error: () => this.showToast('Fehler beim Zurücksetzen', 'danger')
+  async resetDurchgang(name: string) {
+    const alert = await this.alertCtrl.create({
+      header: 'Durchgang Zeiten zurücksetzen',
+      message: `Die bereits verbrauchte Zeit wird zurückgesetzt und kann nicht wieder für die Durchgangsdauer beigezogen werden. Sollen die aufgezeichneten Durchgangszeiten von "${name}" wirklich zurückgesetzt werden?`,
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Zurücksetzen', role: 'destructive',
+          handler: () => {
+            this.backend.resetDurchgang(this.uuid, this.secret, name).subscribe({
+              next: () => this.showToast('Durchgangszeiten zurückgesetzt', 'success'),
+              error: () => this.showToast('Fehler beim Zurücksetzen', 'danger')
+            });
+          }
+        }
+      ]
     });
+    await alert.present();
   }
 
   startGroup(group: PlaybookGroup) {
@@ -274,19 +393,54 @@ export class PlaybookPage implements OnInit, OnDestroy {
     }
   }
 
-  resetGroup(group: PlaybookGroup) {
+  async resetGroup(group: PlaybookGroup) {
     const resettable = group.rows.filter(r => this.canReset(r));
-    for (const r of resettable) {
-      this.resetDurchgang(r.name);
-    }
+    const names = resettable.map(r => r.name).join(', ');
+    const alert = await this.alertCtrl.create({
+      header: 'Alle aufgezeichneten Durchgangszeiten zurücksetzen',
+      message: `Die bereits verbrauchte Zeit wird bei allen selektierten Durchgängen zurückgesetzt und kann nicht wieder für die Durchgangsdauer beigezogen werden. Sollen die aufgezeichneten Zeiten der selektierten Durchgänge "${names}" wirklich zurückgesetzt werden?`,
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Zurücksetzen', role: 'destructive',
+          handler: () => {
+            for (const r of resettable) {
+              this.backend.resetDurchgang(this.uuid, this.secret, r.name).subscribe({
+                next: () => this.showToast('Durchgangszeiten zurückgesetzt', 'success'),
+                error: () => this.showToast('Fehler beim Zurücksetzen der Durchgangszeiten', 'danger')
+              });
+            }
+          }
+        }
+      ]
+    });
+    await alert.present();
   }
 
   goToStation(durchgang: string, geraetId: number, halt: number) {
-    this.bs.getGeraete(this.uuid, durchgang).subscribe(() => {
-      this.bs.getSteps(this.uuid, durchgang, geraetId).subscribe(() => {
-        this.bs.getWertungen(this.uuid, durchgang, geraetId, halt+1);
-        this.navCtrl.navigateForward('station');
+    const refreshAndNavigate = () => {
+      this.bs.getGeraete(this.uuid, durchgang).subscribe(() => {
+        this.bs.getSteps(this.uuid, durchgang, geraetId).subscribe(() => {
+          this.bs.getWertungen(this.uuid, durchgang, geraetId, halt + 1);
+          this.navCtrl.navigateForward('station');
+        });
       });
+    };
+
+    const headers = new HttpHeaders({ 'x-access-token': this.secret });
+    this.http.options(backendUrl + 'api/isTokenExpired', {
+      observe: 'response',
+      responseType: 'text',
+      headers
+    }).subscribe({
+      next: (data) => {
+        const newToken = data.headers.get('x-access-token');
+        if (newToken) {
+          localStorage.setItem('auth_token', newToken);
+        }
+        refreshAndNavigate();
+      },
+      error: () => refreshAndNavigate()
     });
   }
 
@@ -323,6 +477,19 @@ export class PlaybookPage implements OnInit, OnDestroy {
     );
 
     this.ws.initWebsocket();
+  }
+
+  async showJudgeLink() {
+    this.backend.getJudgeLink(this.uuid, this.secret).subscribe({
+      next: async (jl: JudgeLink) => {
+        const modal = await this.modalCtrl.create({
+          component: JudgeLinkModalComponent,
+          componentProps: { link: jl.link, qrUrl: jl.qrImage }
+        });
+        await modal.present();
+      },
+      error: () => this.showToast('Fehler beim Generieren des Links', 'danger')
+    });
   }
 
   private async showToast(message: string, color: string) {

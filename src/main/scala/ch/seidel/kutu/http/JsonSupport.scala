@@ -232,6 +232,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given playbookStationFormat: RootJsonFormat[PlaybookStation] = jsonFormat4(PlaybookStation.apply)
   given playbookDurchgangFormat: RootJsonFormat[PlaybookDurchgang] = jsonFormat16(PlaybookDurchgang.apply)
   given playbookStateFormat: RootJsonFormat[PlaybookState] = jsonFormat3(PlaybookState.apply)
+  given judgeLinkFormat: RootJsonFormat[JudgeLink] = jsonFormat2(JudgeLink.apply)
 
   // support for websocket incoming json-messages
   private val caseClassesJsonFormatter: Map[String, JsonFormat[? <: KutuAppEvent]] = Map(
