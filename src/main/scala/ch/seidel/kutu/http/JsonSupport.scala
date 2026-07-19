@@ -230,7 +230,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   // playbook models
   given playbookStepFormat: RootJsonFormat[PlaybookStep] = jsonFormat3(PlaybookStep.apply)
   given playbookStationFormat: RootJsonFormat[PlaybookStation] = jsonFormat4(PlaybookStation.apply)
-  given playbookDurchgangFormat: RootJsonFormat[PlaybookDurchgang] = jsonFormat8(PlaybookDurchgang.apply)
+  given playbookDurchgangFormat: RootJsonFormat[PlaybookDurchgang] = jsonFormat16(PlaybookDurchgang.apply)
   given playbookStateFormat: RootJsonFormat[PlaybookState] = jsonFormat3(PlaybookState.apply)
 
   // support for websocket incoming json-messages
