@@ -23,10 +23,50 @@
         <ion-card-title>{{ wettkampfTitle }} am {{ formatDate(wettkampfDatum) }}</ion-card-title>
       </ion-item>
     </ion-card-header>
+    <ion-card-content>
+      <ion-button expand="block" fill="outline" (click)="showJudgeLink()">
+        <ion-icon name="qr-code-outline" slot="start"></ion-icon>
+        Kampfrichter-Link anzeigen
+      </ion-button>
+    </ion-card-content>
   </ion-card>
 
   @if (loading) {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+
+  @if (stepperDgs.length > 0) {
+    <ion-card>
+      <ion-card-content class="stepper-card">
+        <div class="stepper">
+          @for (dg of stepperDgs; track dg.name; let i = $index) {
+            @if (i > 0) { <div class="stepper-connector"></div> }
+            <div class="stepper-dg" [class.running]="dg.status === 'running'" [class.pending]="dg.status === 'pending'"
+                 [class.finished]="dg.status === 'finished'" [class.current]="isCurrentDg(dg)"
+                 (click)="stepperDgClick(dg)">
+              <div class="stepper-dg-title">{{ dg.displayName }}</div>
+              @if (isCurrentDg(dg) && dg.halts.length > 0) {
+                <div class="stepper-halts">
+                  @for (h of dg.halts; track h.halt; let j = $index) {
+                    @if (j > 0) {
+                      <div class="stepper-halt-connector" [class.done]="h.status !== 'pending'">
+                        @if (dg.halts[j-1]?.status === 'done' && h.status === 'einturnen') {
+                          <span class="connector-label">Gerätewechsel</span>
+                        }
+                      </div>
+                    }
+                    <div class="stepper-halt" [class]="h.status">
+                      <span class="halt-label">Station {{ h.halt + 1 }}</span>
+                      <span class="halt-status">{{ haltStatusLabel(h, j === 0) }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </ion-card-content>
+    </ion-card>
   }
 
   @if (groups.length > 0 && disziplinen.length > 0) {

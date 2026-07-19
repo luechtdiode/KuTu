@@ -492,3 +492,8 @@ export interface PlaybookState {
   durchgaenge: PlaybookDurchgang[];
   activeDurchgaenge: string[];
 }
+
+export interface JudgeLink {
+  link: string;
+  qrImage: string;
+}
