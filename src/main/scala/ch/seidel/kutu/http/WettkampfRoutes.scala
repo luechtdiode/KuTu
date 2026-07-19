@@ -571,6 +571,25 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
             }
           }
         } ~
+        pathPrefixLabeled("athlet" / LongNumber, "athlet/:athlet-id") { athletId =>
+          delete {
+            authenticatedAdmin() { userId =>
+              if userId.equals(wkuuid.toString) then {
+                onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
+                  val athletwertungen = selectWertungen(wettkampfId = Some(wk.id), athletId = Some(athletId)).map(_.id).toSet
+                  if athletwertungen.nonEmpty then {
+                    unassignAthletFromWettkampf(athletwertungen)
+                  }
+                  CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
+                  CompetitionRegistrationClientActor.publish(RegistrationResync(wkuuid.toString), clientId)
+                  complete(StatusCodes.OK, JsObject("removedWertungen" -> JsNumber(athletwertungen.size)))
+                }
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            }
+          }
+        } ~
         pathPrefixLabeled("riege", "riege") {
           pathEnd {
             authenticatedAdmin() { userId =>
