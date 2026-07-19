@@ -1,8 +1,9 @@
 import { Component, inject, ChangeDetectorRef, OnDestroy, OnInit } from '@angular/core';
-import { ToastController } from '@ionic/angular';
+import { ToastController, NavController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
+import { BackendService } from '../services/backend.service';
 import { AdminWebsocketService, DurchgangResetted } from '../services/admin-websocket.service';
 import { PlaybookState, PlaybookDurchgang, PlaybookStation, Geraet } from '../backend-types';
 import { Subscription } from 'rxjs';
@@ -36,7 +37,9 @@ export class PlaybookPage implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
+  private bs = inject(BackendService);
   private toastCtrl = inject(ToastController);
+  private navCtrl = inject(NavController);
 
   ngOnInit() {
     this.uuid = this.route.snapshot.paramMap.get('uuid') || '';
@@ -177,8 +180,13 @@ export class PlaybookPage implements OnInit, OnDestroy {
     });
   }
 
-  goToResults(durchgang: string, geraetId: number) {
-    // TODO: Navigate to results page for this geräteriege
+  goToStation(durchgang: string, geraetId: number, halt: number) {
+    this.bs.getGeraete(this.uuid, durchgang).subscribe(() => {
+      this.bs.getSteps(this.uuid, durchgang, geraetId).subscribe(() => {
+        this.bs.getWertungen(this.uuid, durchgang, geraetId, halt+1);
+        this.navCtrl.navigateForward('station');
+      });
+    });
   }
 
   formatDate(d: string): string {

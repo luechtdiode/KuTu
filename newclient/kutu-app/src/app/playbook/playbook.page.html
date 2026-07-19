@@ -114,10 +114,11 @@
                     </div>
                   </td>
                   @for (d of disziplinen; track d.id) {
-                    <td class="col-geraet" (click)="goToResults(row.name, d.id)">
+                    <td class="col-geraet">
                       @if (getStation(row, d.id); as station) {
                         @for (step of station.steps; track step.halt) {
-                          <div class="step-item" [class.complete]="stepPct(step) === 100">
+                          <div class="step-item" [class.complete]="stepPct(step) === 100"
+                               (click)="goToStation(row.name, d.id, step.halt); $event.stopPropagation()">
                             <span class="step-label">Station {{ step.halt + 1 }}</span>
                             <ion-progress-bar
                               [value]="stepPct(step) / 100"
