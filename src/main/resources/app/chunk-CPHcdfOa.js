@@ -1,1 +1,0 @@
-import {ch as n$1}from'./main-2GSQ76J2.js';var n=()=>{if(n$1!==void 0)return n$1.Capacitor};export{n};
