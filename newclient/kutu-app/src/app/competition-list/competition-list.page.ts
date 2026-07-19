@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnDestroy, inject, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { AlertController, ToastController, NavController } from '@ionic/angular';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
@@ -20,7 +20,9 @@ interface CompetitionListItem {
   standalone: false
 })
 export class CompetitionListPage implements OnDestroy {
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
   competitions: CompetitionListItem[] = [];
+  private selectedCompetition: CompetitionListItem | null = null;
   private cdr = inject(ChangeDetectorRef);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
@@ -94,6 +96,54 @@ export class CompetitionListPage implements OnDestroy {
     } catch (e) {
       const toast = await this.toastCtrl.create({
         message: 'Download fehlgeschlagen: ' + (e as any).message,
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
+  triggerUpload(c: CompetitionListItem) {
+    this.selectedCompetition = c;
+    this.fileInput.nativeElement.click();
+  }
+
+  async onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length || !this.selectedCompetition) return;
+
+    const file = input.files[0];
+    const c = this.selectedCompetition;
+    input.value = '';
+
+    const alert = await this.alertCtrl.create({
+      header: 'Wettkampf hochladen',
+      message: `Soll "${c.titel}" (${this.formatDate(c.datum)}) mit der Datei "${file.name}" überschrieben werden? Alle vorhandenen Daten werden überschrieben!`,
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Hochladen',
+          role: 'destructive',
+          handler: () => this.uploadZip(c, file)
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  private async uploadZip(c: CompetitionListItem, file: File) {
+    try {
+      await firstValueFrom(this.backend.uploadCompetitionZip(c.uuid, c.secret, file));
+      const toast = await this.toastCtrl.create({
+        message: 'Wettkampf erfolgreich hochgeladen.',
+        duration: 2000,
+        color: 'success'
+      });
+      await toast.present();
+      this.refreshFromServer();
+    } catch (e) {
+      const toast = await this.toastCtrl.create({
+        message: 'Upload fehlgeschlagen: ' + ((e as any).error || (e as any).message),
         duration: 3000,
         color: 'danger'
       });

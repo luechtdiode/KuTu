@@ -114,6 +114,13 @@ export class AdminBackendService {
     return this.http.post(this.api + 'competition/' + uuid + '/logo', formData, { headers });
   }
 
+  uploadCompetitionZip(uuid: string, secret: string, file: File): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    const formData = new FormData();
+    formData.append('zip', file, file.name);
+    return this.http.put(this.api + 'competition/' + uuid, formData, { headers, responseType: 'text' });
+  }
+
   getCompetitionDetails(uuid: string, secret: string): Observable<AdminGetCompetitionResponse> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.get<AdminGetCompetitionResponse>(this.api + 'admin/competition/' + uuid, { headers });

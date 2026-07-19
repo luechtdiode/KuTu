@@ -878,7 +878,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         val is = file.async.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
                         val processor = Future[(Wettkampf,JwtClaimsSetMap)] {
                           try {
-                            val wettkampf = ResourceExchanger.importWettkampf(is)
+                            val wettkampf = ResourceExchanger.importWettkampf(is, wkuuid.toString)
                             val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
                             val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
                             AthletIndexActor.publish(ResyncIndex)
@@ -925,7 +925,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         val processor = Future {
                           try {
                             val before = readWettkampf(wkuuid.toString)
-                            val wettkampf = ResourceExchanger.importWettkampf(is)
+                            val wettkampf = ResourceExchanger.importWettkampf(is, wkuuid.toString)
                             AthletIndexActor.publish(ResyncIndex)
                             CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
