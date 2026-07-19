@@ -4,7 +4,7 @@
       <ion-back-button defaultHref="/admin/competitions"></ion-back-button>
       <ion-menu-button></ion-menu-button>
     </ion-buttons>
-    <ion-title>Spielplan</ion-title>
+    <ion-title>Wettkampf Drehbuch</ion-title>
   </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
@@ -46,10 +46,12 @@
           <tbody>
             @for (group of groups; track group.title) {
               @if (hasGroupedDgs(group)) {
-                <tr class="group-header-row">
-                  <td class="col-durchgang">
+                <tr class="group-header-row" [class.dg-running]="isGroupRunning(group)" [class.dg-finished]="isGroupFinished(group)">
+                  <td class="col-durchgang group-toggle-cell" (click)="toggleGroup(group)">
+                    <span class="group-toggle" [class.expanded]="expandedGroups.has(group.title)">▶</span>
                     <strong>{{ group.title }}</strong>
                     <div class="dg-info">
+                      <small>{{ groupCompletedAthletes(group) }}/{{ groupTotalAthletes(group) }} Athleten</small>
                       @if (groupPlanStart(group)) {
                         <small class="dg-time">Plan: {{ groupPlanStart(group) }} – {{ groupPlanFinish(group) }}</small>
                       }
@@ -58,67 +60,30 @@
                       }
                     </div>
                   </td>
-                  <td class="col-actions"></td>
-                  @for (d of disziplinen; track d.id) {
-                    <td class="col-geraet"></td>
-                  }
-                  <td class="col-overall"></td>
-                </tr>
-              }
-              @for (row of group.rows; track row.name) {
-                <tr [class.dg-running]="row.isRunning" [class.dg-finished]="row.isFinished">
-                  <td class="col-durchgang">
-                    @if (hasGroupedDgs(group)) {
-                      <span class="dg-indent">{{ row.name }}</span>
-                    } @else {
-                      <strong>{{ row.name }}</strong>
-                    }
-                    <div class="dg-info">
-                      <small>{{ row.completedCount }}/{{ row.totalCount }} Athleten</small>
-                      @if (row.planStart) {
-                        <small class="dg-time">Plan: {{ row.planStart }} – {{ row.planFinish }}</small>
-                      }
-                      @if (row.effectiveStart) {
-                        <small class="dg-time">Start: {{ row.effectiveStart }}</small>
-                      }
-                      @if (row.effectiveEnd) {
-                        <small class="dg-time">Ende: {{ row.effectiveEnd }} ({{ row.duration }})</small>
-                      }
-                      @if (row.planTotal) {
-                        <small class="dg-plan">Plandauer: {{ row.planTotal }} (Eint.: {{ row.planEinturnen }}, Gerät: {{ row.planGeraet }})</small>
-                      }
-                    </div>
-                  </td>
                   <td class="col-actions">
                     <div class="action-buttons">
-                      @if (canStart(row)) {
-                        <ion-button fill="clear" size="small" color="success" (click)="startDurchgang(row.name)" title="Durchgang starten">
+                      @if (canStartGroup(group)) {
+                        <ion-button fill="clear" size="small" color="success" (click)="startGroup(group); $event.stopPropagation()" title="Alle starten">
                           <ion-icon name="play" slot="icon-only"></ion-icon>
                         </ion-button>
                       }
-                      @if (canFinish(row)) {
-                        <ion-button fill="clear" size="small" color="warning" (click)="finishDurchgang(row.name)" title="Durchgang abschliessen">
+                      @if (canFinishGroup(group)) {
+                        <ion-button fill="clear" size="small" color="warning" (click)="finishGroup(group); $event.stopPropagation()" title="Alle abschliessen">
                           <ion-icon name="checkmark-circle" slot="icon-only"></ion-icon>
                         </ion-button>
                       }
-                      @if (canReset(row)) {
-                        <ion-button fill="clear" size="small" color="danger" (click)="resetDurchgang(row.name)" title="Durchgang zurücksetzen">
+                      @if (canResetGroup(group)) {
+                        <ion-button fill="clear" size="small" color="danger" (click)="resetGroup(group); $event.stopPropagation()" title="Alle zurücksetzen">
                           <ion-icon name="refresh" slot="icon-only"></ion-icon>
-                        </ion-button>
-                      }
-                      @if (canRestart(row)) {
-                        <ion-button fill="clear" size="small" color="success" (click)="startDurchgang(row.name)" title="Durchgang neu starten">
-                          <ion-icon name="play" slot="icon-only"></ion-icon>
                         </ion-button>
                       }
                     </div>
                   </td>
                   @for (d of disziplinen; track d.id) {
                     <td class="col-geraet">
-                      @if (getStation(row, d.id); as station) {
+                      @if (getGroupStation(group, d.id); as station) {
                         @for (step of station.steps; track step.halt) {
-                          <div class="step-item" [class.complete]="stepPct(step) === 100"
-                               (click)="goToStation(row.name, d.id, step.halt); $event.stopPropagation()">
+                          <div class="step-item">
                             <span class="step-label">Station {{ step.halt + 1 }}</span>
                             <ion-progress-bar
                               [value]="stepPct(step) / 100"
@@ -134,11 +99,88 @@
                     </td>
                   }
                   <td class="col-overall">
-                    <span class="overall-pct" [class.complete]="row.overallPct === 100" [class.running]="row.isRunning">
-                      {{ row.overallPct }}%
+                    <span class="overall-pct" [class.complete]="groupOverallPct(group) === 100" [class.running]="isGroupRunning(group)">
+                      {{ groupOverallPct(group) }}%
                     </span>
                   </td>
                 </tr>
+              }
+              @if (!hasGroupedDgs(group) || expandedGroups.has(group.title)) {
+                @for (row of group.rows; track row.name) {
+                  <tr [class.dg-running]="row.isRunning" [class.dg-finished]="row.isFinished">
+                    <td class="col-durchgang">
+                      @if (hasGroupedDgs(group)) {
+                        <span class="dg-indent">{{ row.name }}</span>
+                      } @else {
+                        <strong>{{ row.name }}</strong>
+                      }
+                      <div class="dg-info">
+                        <small>{{ row.completedCount }}/{{ row.totalCount }} Athleten</small>
+                        @if (row.planStart) {
+                          <small class="dg-time">Plan: {{ row.planStart }} – {{ row.planFinish }}</small>
+                        }
+                        @if (row.effectiveStart) {
+                          <small class="dg-time">Start: {{ row.effectiveStart }}</small>
+                        }
+                        @if (row.effectiveEnd) {
+                          <small class="dg-time">Ende: {{ row.effectiveEnd }} ({{ row.duration }})</small>
+                        }
+                        @if (row.planTotal) {
+                          <small class="dg-plan">Plandauer: {{ row.planTotal }} (Eint.: {{ row.planEinturnen }}, Gerät: {{ row.planGeraet }})</small>
+                        }
+                      </div>
+                    </td>
+                    <td class="col-actions">
+                      <div class="action-buttons">
+                        @if (canStart(row)) {
+                          <ion-button fill="clear" size="small" color="success" (click)="startDurchgang(row.name)" title="Durchgang starten">
+                            <ion-icon name="play" slot="icon-only"></ion-icon>
+                          </ion-button>
+                        }
+                        @if (canFinish(row)) {
+                          <ion-button fill="clear" size="small" color="warning" (click)="finishDurchgang(row.name)" title="Durchgang abschliessen">
+                            <ion-icon name="checkmark-circle" slot="icon-only"></ion-icon>
+                          </ion-button>
+                        }
+                        @if (canRestart(row)) {
+                        <ion-button fill="clear" size="small" color="success" (click)="startDurchgang(row.name)" title="Durchgang neu starten">
+                            <ion-icon name="play" slot="icon-only"></ion-icon>
+                          </ion-button>
+                        }
+                        @if (canReset(row)) {
+                        <ion-button fill="clear" size="small" color="danger" (click)="resetDurchgang(row.name)" title="Durchgang zurücksetzen">
+                          <ion-icon name="refresh" slot="icon-only"></ion-icon>
+                        </ion-button>
+                        }
+                      </div>
+                    </td>
+                    @for (d of disziplinen; track d.id) {
+                      <td class="col-geraet">
+                        @if (getStation(row, d.id); as station) {
+                          @for (step of station.steps; track step.halt) {
+                            <div class="step-item" [class.complete]="stepPct(step) === 100"
+                                 (click)="goToStation(row.name, d.id, step.halt); $event.stopPropagation()">
+                              <span class="step-label">Station {{ step.halt + 1 }}</span>
+                              <ion-progress-bar
+                                [value]="stepPct(step) / 100"
+                                [color]="stepPct(step) === 100 ? 'success' : stepPct(step) > 0 ? 'warning' : 'medium'">
+                              </ion-progress-bar>
+                              <span class="step-pct">{{ stepPct(step) }}%</span>
+                            </div>
+                          }
+                          <div class="station-total" [class.complete]="station.overallPct === 100">
+                            {{ station.overallPct }}%
+                          </div>
+                        }
+                      </td>
+                    }
+                    <td class="col-overall">
+                      <span class="overall-pct" [class.complete]="row.overallPct === 100" [class.running]="row.isRunning">
+                        {{ row.overallPct }}%
+                      </span>
+                    </td>
+                  </tr>
+                }
               }
             }
           </tbody>
