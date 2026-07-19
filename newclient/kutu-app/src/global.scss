@@ -51,6 +51,15 @@
 .riege-table .col-zeiten {
   min-width: 160px;
   white-space: nowrap;
+  position: relative;
+}
+.riege-table .col-zeiten .set-starttime-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  --padding-start: 4px;
+  --padding-end: 4px;
+  margin: 0;
 }
 .riege-table .col-geraet {
   min-width: 120px;
@@ -67,20 +76,54 @@
   white-space: nowrap;
 }
 .riege-table .group-header-row td.group-geraet-count.athlet-max {
-  background: var(--ion-color-danger, #eb445a);
-  color: var(--ion-color-danger-contrast, #fff);
+  background: var(--ion-color-warning-tint, #ffe0b2);
+  color: var(--ion-color-warning-contrast, #5c3a00);
 }
 .riege-table .group-header-row td.group-geraet-count.athlet-min {
-  background: var(--ion-color-info, #3dc2ff);
-  color: var(--ion-color-info-contrast, #fff);
+  background: var(--ion-color-success-tint, #c8f7c5);
+  color: var(--ion-color-success-contrast, #0d5c1a);
 }
 .riege-table td.col-geraet.athlet-max {
-  background: var(--ion-color-danger, #eb445a);
-  color: var(--ion-color-danger-contrast, #fff);
+  background: var(--ion-color-warning-tint, #ffe0b2);
+  color: var(--ion-color-warning-contrast, #5c3a00);
 }
 .riege-table td.col-geraet.athlet-min {
-  background: var(--ion-color-info, #3dc2ff);
-  color: var(--ion-color-info-contrast, #fff);
+  background: var(--ion-color-success-tint, #c8f7c5);
+  color: var(--ion-color-success-contrast, #0d5c1a);
+}
+.color-legend {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: auto;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.legend-title {
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 1px;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+.legend-swatch.athlet-max {
+  background: var(--ion-color-warning-tint, #ffe0b2);
+}
+.legend-swatch.athlet-min {
+  background: var(--ion-color-success-tint, #c8f7c5);
 }
 .riege-table .dg-name {
   font-weight: 600;

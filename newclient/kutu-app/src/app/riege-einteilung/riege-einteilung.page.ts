@@ -473,6 +473,56 @@ export class RiegeEinteilungPage implements OnDestroy {
     return distinctGroups.size === 1 && selectedRows.length >= 1;
   }
 
+  canSetStartOffsetForRow(row: TableRow): boolean {
+    return true;
+  }
+
+  async setStartOffsetForRow(row: TableRow) {
+    const groupTitle = row.durchgangTitle;
+    const group = this.groups.find(g => g.title === groupTitle);
+    const currentOffset = group?.duration?.offsetMillis ?? row.duration?.offsetMillis ?? 0;
+
+    let defaultDate = this.wettkampfDatum;
+    let defaultTime = '';
+    if (currentOffset > 0 && this.wettkampfDatum) {
+      const wkDate = new Date(this.wettkampfDatum + 'T00:00:00');
+      const ts = new Date(wkDate.getTime() + currentOffset);
+      const y = ts.getFullYear();
+      const mo = (ts.getMonth() + 1).toString().padStart(2, '0');
+      const d = ts.getDate().toString().padStart(2, '0');
+      defaultDate = `${y}-${mo}-${d}`;
+      defaultTime = ts.getHours().toString().padStart(2, '0') + ':' + ts.getMinutes().toString().padStart(2, '0');
+    }
+
+    const modal = await this.modalCtrl.create({
+      component: StartOffsetModalComponent,
+      componentProps: { title: groupTitle, defaultDate, defaultTime }
+    });
+    modal.onDidDismiss().then(async (result) => {
+      if (!result.data) return;
+      const { date: dateStr, time: timeStr } = result.data;
+      const [h, m] = timeStr.split(':').map(Number);
+      const wkMidnight = new Date(this.wettkampfDatum + 'T00:00:00').getTime();
+      const entered = new Date(dateStr + 'T00:00:00').getTime() + (h * 3600 + m * 60) * 1000;
+      const offsetMillis = entered - wkMidnight;
+      this.loading = true;
+      try {
+        const request: UpdateStartOffsetRequest = { title: groupTitle, offsetMillis };
+        await firstValueFrom(this.backend.updateStartOffset(this.uuid, this.secret, request));
+        this.selectedDgs.clear();
+        await this.loadData();
+        const toast = await this.toastCtrl.create({ message: `Startzeit für "${groupTitle}" gesetzt`, duration: 2000, color: 'success' });
+        await toast.present();
+      } catch {
+        const toast = await this.toastCtrl.create({ message: 'Fehler beim Setzen der Startzeit', duration: 3000, color: 'danger' });
+        await toast.present();
+      } finally {
+        this.loading = false;
+      }
+    });
+    await modal.present();
+  }
+
   async ungroupSelected() {
     if (this.selectedDgs.size === 0) return;
     this.loading = true;
@@ -684,6 +734,11 @@ export class RiegeEinteilungPage implements OnDestroy {
       totalMillis: Math.max(...durations.map(d => d.totalMillis)),
       athletCount: durations.reduce((sum, d) => sum + d.athletCount, 0),
     };
+  }
+
+  formatDate(date: string) {
+    const d = new Date(date);
+    return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
   }
 
   formatTimeOfDay(offsetMillis: number): string {
