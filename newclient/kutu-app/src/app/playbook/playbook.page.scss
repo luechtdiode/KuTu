@@ -1,0 +1,103 @@
+.playbook-table {
+  .col-durchgang {
+    min-width: 150px;
+  }
+
+  .col-actions {
+    width: 100px;
+    text-align: center;
+  }
+
+  .col-geraet {
+    min-width: 120px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--ion-color-light);
+    }
+  }
+
+  .col-overall {
+    width: 80px;
+    text-align: center;
+  }
+
+  .dg-indent {
+    padding-left: 1em;
+    font-size: 0.9em;
+  }
+
+  .dg-info {
+    margin-top: 2px;
+    opacity: 0.6;
+  }
+
+  .dg-running {
+    background-color: var(--ion-color-success-tint, rgba(52, 168, 83, 0.1));
+  }
+
+  .dg-finished {
+    background-color: var(--ion-color-medium-tint, rgba(155, 155, 155, 0.1));
+    opacity: 0.7;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+  }
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+    font-size: 0.8em;
+
+    &.complete {
+      color: var(--ion-color-success);
+    }
+
+    .step-label {
+      min-width: 48px;
+      white-space: nowrap;
+    }
+
+    ion-progress-bar {
+      flex: 1;
+      height: 6px;
+    }
+
+    .step-pct {
+      min-width: 32px;
+      text-align: right;
+      font-weight: 500;
+    }
+  }
+
+  .station-total {
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.85em;
+    margin-top: 2px;
+    padding-top: 2px;
+    border-top: 1px solid var(--ion-color-light);
+
+    &.complete {
+      color: var(--ion-color-success);
+    }
+  }
+
+  .overall-pct {
+    font-weight: bold;
+    font-size: 1.1em;
+
+    &.complete {
+      color: var(--ion-color-success);
+    }
+
+    &.running {
+      color: var(--ion-color-warning);
+    }
+  }
+}

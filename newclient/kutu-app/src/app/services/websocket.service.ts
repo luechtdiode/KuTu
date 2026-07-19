@@ -11,15 +11,13 @@ export function encodeURIComponent2(uri: string): string {
   return !!uri ? encodeURIComponent(encodeURIComponent1(uri)) : '';
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable()
 export abstract class WebsocketService {
 
   private identifiedState = false;
   private connectedState = false;
   private websocket: WebSocket;
-  private backendUrl: string;
+  protected backendUrl: string;
   private reconnectionObservable: Observable<number>;
   private explicitClosed = true;
   private reconnectInterval = 30000; // pause between connections
@@ -36,7 +34,7 @@ export abstract class WebsocketService {
     return this.explicitClosed;
   }
 
-  private startKeepAliveObservation() {
+  protected startKeepAliveObservation() {
     setTimeout(() => {
       const yet = new Date().getTime();
       const lastSeenSince = yet - this.lstKeepAliveReceived;
@@ -154,7 +152,7 @@ export abstract class WebsocketService {
       this.connect(message);  
     }
   }
-  private connect(message?: string) {
+  protected connect(message?: string) {
     this.disconnectWS();
     this.explicitClosed = false;
     this.websocket = new WebSocket(this.backendUrl);
