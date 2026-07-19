@@ -1,8 +1,8 @@
 <ion-header>
   <ion-toolbar color="primary">
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/admin/competitions"></ion-back-button>
       <ion-menu-button></ion-menu-button>
+      <ion-back-button defaultHref="/admin/competitions"></ion-back-button>
     </ion-buttons>
     <ion-title>Wettkampf Drehbuch</ion-title>
   </ion-toolbar>
@@ -24,9 +24,13 @@
       </ion-item>
     </ion-card-header>
     <ion-card-content>
-      <ion-button expand="block" fill="outline" (click)="showJudgeLink()">
+      <ion-button size="small" fill="outline" (click)="showJudgeLink()">
         <ion-icon name="qr-code-outline" slot="start"></ion-icon>
-        Kampfrichter-Link anzeigen
+        Kampfrichter-Link anzeigen ...
+      </ion-button>
+      <ion-button size="small" fill="outline" (click)="goToAthletSearch()">
+        <ion-icon name="search-outline" slot="start"></ion-icon>
+        Athlet/-In suchen (Admin), Entfernen
       </ion-button>
     </ion-card-content>
   </ion-card>

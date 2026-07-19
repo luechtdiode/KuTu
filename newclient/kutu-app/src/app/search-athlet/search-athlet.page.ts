@@ -1,11 +1,13 @@
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { StartList, Wettkampf, Teilnehmer, ProgrammItem } from '../backend-types';
-import { NavController, IonItemSliding } from '@ionic/angular';
+import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { async } from 'rxjs/internal/scheduler/async';
 import { BehaviorSubject, Subject, of, Observable } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share } from 'rxjs/operators';
+import { AdminBackendService } from '../services/admin-backend.service';
+import { SecretService } from '../services/secret.service';
 
 @Component({
     selector: 'app-search-athlet',
@@ -19,11 +21,17 @@ export class SearchAthletPage implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   backendService = inject(BackendService);
+  private adminBackend = inject(AdminBackendService);
+  private secretService = inject(SecretService);
+  private alertCtrl = inject(AlertController);
+  private toastCtrl = inject(ToastController);
 
 
   sStartList: StartList;
   sFilteredStartList: StartList;
   sMyQuery: string;
+  adminPlaybookMode = false;
+  private adminSecret = '';
 
   tMyQueryStream = new Subject<any>();
 
@@ -44,7 +52,14 @@ export class SearchAthletPage implements OnInit {
     this.busy.next(true);
     const wkId = this.route.snapshot.paramMap.get('wkId');
     this.sMyQuery = this.route.snapshot.queryParamMap.get('query') || '';
+    this.adminPlaybookMode = this.route.snapshot.queryParamMap.get('admin') === 'true'
+      && this.route.snapshot.queryParamMap.get('origin') === 'playbook';
     if (wkId) {
+      if (this.adminPlaybookMode) {
+        const storedSecret = this.secretService.getSecret(wkId);
+        this.adminSecret = storedSecret?.secret || '';
+        this.adminPlaybookMode = this.adminSecret.trim().length > 0;
+      }
       this.competition = wkId;
     }
   }
@@ -176,6 +191,63 @@ export class SearchAthletPage implements OnInit {
         this.navCtrl.navigateForward('station');
       });
     });
+  }
+
+  canUnassignFromCompetition(item: Teilnehmer): boolean {
+    return this.adminPlaybookMode && this.adminSecret.trim().length > 0 && item.athletid > 0;
+  }
+
+  async unassignFromCompetition(item: Teilnehmer, slidingItem: IonItemSliding) {
+    slidingItem.close();
+    if (!this.canUnassignFromCompetition(item)) {
+      return;
+    }
+    const alert = await this.alertCtrl.create({
+      header: 'Athlet aus Wettkampf entfernen',
+      message: `${item.athlet} wird aus der Wettkampf-Einteilung entfernt.`,
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Entfernen',
+          role: 'destructive',
+          handler: () => {
+            this.adminBackend.unassignAthletFromCompetition(this.competition, item.athletid, this.adminSecret).subscribe({
+              next: async (result) => {
+                const removed = result?.removedWertungen || 0;
+                await this.showToast(`Athlet aus Wettkampf entfernt (${removed} Wertungen).`, 'success');
+                this.refreshStartList();
+              },
+              error: async () => {
+                await this.showToast('Fehler beim Entfernen des Athleten.', 'danger');
+              }
+            });
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  private refreshStartList() {
+    this.busy.next(true);
+    this.backendService.loadStartlist(undefined).subscribe({
+      next: startlist => {
+        this.busy.next(false);
+        this.startlist = startlist;
+      },
+      error: () => {
+        this.busy.next(false);
+      }
+    });
+  }
+
+  private async showToast(message: string, color: 'success' | 'danger') {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2500,
+      color
+    });
+    await toast.present();
   }
 
   getCompetitions(): Wettkampf[] {

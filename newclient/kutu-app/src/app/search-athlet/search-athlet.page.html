@@ -6,6 +6,7 @@
           <ion-icon slot="icon-only" name="menu" />
         </ion-button>
       </ion-menu-toggle>
+      <ion-back-button defaultHref="/" />
     </ion-buttons>
     <ion-title>
       <ion-grid no-padding>
@@ -67,6 +68,12 @@
                       <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />
                       Riege verfolgen
                     </ion-item-option>
+                    @if (canUnassignFromCompetition(tn)) {
+                      <ion-item-option color="danger" (click)="unassignFromCompetition(tn, slidingAthletItem)">
+                        <ion-icon name="trash-outline" ios="md-trash-outline" />
+                        Aus Wettkampf entfernen
+                      </ion-item-option>
+                    }
                   </ion-item-options>
                 </ion-item-sliding>
               }

@@ -492,6 +492,10 @@ export class PlaybookPage implements OnInit, OnDestroy {
     });
   }
 
+  goToAthletSearch() {
+    this.navCtrl.navigateForward(`/search-athlet/${this.uuid}?admin=true&origin=playbook`);
+  }
+
   private async showToast(message: string, color: string) {
     const toast = await this.toastCtrl.create({
       message,
