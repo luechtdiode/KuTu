@@ -5,7 +5,7 @@ import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
 import { BackendService } from '../services/backend.service';
 import { AdminWebsocketService, DurchgangResetted } from '../services/admin-websocket.service';
-import { PlaybookState, PlaybookDurchgang, PlaybookStation, Geraet } from '../backend-types';
+import { PlaybookState, PlaybookDurchgang, PlaybookStation, PlaybookStep, Geraet } from '../backend-types';
 import { Subscription } from 'rxjs';
 
 interface PlaybookGroup {
@@ -29,6 +29,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
   groups: PlaybookGroup[] = [];
   disziplinen: { id: number; name: string }[] = [];
   loading = false;
+  expandedGroups = new Set<string>();
 
   private ws: AdminWebsocketService | null = null;
   private subscriptions: Subscription[] = [];
@@ -98,6 +99,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
     this.disziplinen = Array.from(disziplinMap.entries())
       .map(([id, name]) => ({ id, name }));
 
+    const prevExpanded = new Set(this.expandedGroups);
     const groupMap = new Map<string, PlaybookDurchgang[]>();
     for (const dg of state.durchgaenge) {
       const title = dg.title || dg.name;
@@ -109,6 +111,25 @@ export class PlaybookPage implements OnInit, OnDestroy {
     this.groups = Array.from(groupMap.entries())
       .map(([title, rows]) => ({ title, rows: rows.sort((a, b) => a.name.localeCompare(b.name)) }))
       .sort((a, b) => a.title.localeCompare(b.title));
+
+    if (prevExpanded.size === 0) {
+      // default: all collapsed
+    } else {
+      this.expandedGroups.clear();
+      for (const g of this.groups) {
+        if (prevExpanded.has(g.title)) {
+          this.expandedGroups.add(g.title);
+        }
+      }
+    }
+  }
+
+  toggleGroup(group: PlaybookGroup) {
+    if (this.expandedGroups.has(group.title)) {
+      this.expandedGroups.delete(group.title);
+    } else {
+      this.expandedGroups.add(group.title);
+    }
   }
 
   getStation(dg: PlaybookDurchgang, disziplinId: number): PlaybookStation | undefined {
@@ -143,6 +164,53 @@ export class PlaybookPage implements OnInit, OnDestroy {
     return '';
   }
 
+  groupTotalAthletes(group: PlaybookGroup): number {
+    return group.rows.reduce((sum, r) => sum + r.totalCount, 0);
+  }
+
+  groupCompletedAthletes(group: PlaybookGroup): number {
+    return group.rows.reduce((sum, r) => sum + r.completedCount, 0);
+  }
+
+  groupOverallPct(group: PlaybookGroup): number {
+    const total = this.groupTotalAthletes(group);
+    if (total === 0) return 0;
+    return Math.round(100 * this.groupCompletedAthletes(group) / total);
+  }
+
+  getGroupStation(group: PlaybookGroup, disziplinId: number): PlaybookStation | undefined {
+    const stepMap = new Map<number, { totalAthletes: number; completedAthletes: number }>();
+    let hasData = false;
+    for (const row of group.rows) {
+      const station = this.getStation(row, disziplinId);
+      if (!station) continue;
+      hasData = true;
+      for (const step of station.steps) {
+        const existing = stepMap.get(step.halt) || { totalAthletes: 0, completedAthletes: 0 };
+        stepMap.set(step.halt, {
+          totalAthletes: existing.totalAthletes + step.totalAthletes,
+          completedAthletes: existing.completedAthletes + step.completedAthletes
+        });
+      }
+    }
+    if (!hasData) return undefined;
+    const steps: PlaybookStep[] = Array.from(stepMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([halt, stats]) => ({ halt, ...stats }));
+    const totalAthletes = steps.reduce((s, st) => s + st.totalAthletes, 0);
+    const completedAthletes = steps.reduce((s, st) => s + st.completedAthletes, 0);
+    const overallPct = totalAthletes > 0 ? Math.round(100 * completedAthletes / totalAthletes) : 0;
+    return { disziplinId, disziplinName: '', steps, overallPct };
+  }
+
+  isGroupRunning(group: PlaybookGroup): boolean {
+    return group.rows.some(r => r.isRunning);
+  }
+
+  isGroupFinished(group: PlaybookGroup): boolean {
+    return group.rows.every(r => r.isFinished);
+  }
+
   canStart(dg: PlaybookDurchgang): boolean {
     return !dg.isRunning && !dg.isFinished;
   }
@@ -157,6 +225,18 @@ export class PlaybookPage implements OnInit, OnDestroy {
 
   canRestart(dg: PlaybookDurchgang): boolean {
     return dg.isFinished;
+  }
+
+  canStartGroup(group: PlaybookGroup): boolean {
+    return group.rows.some(r => this.canStart(r) || this.canRestart(r));
+  }
+
+  canFinishGroup(group: PlaybookGroup): boolean {
+    return group.rows.some(r => this.canFinish(r));
+  }
+
+  canResetGroup(group: PlaybookGroup): boolean {
+    return group.rows.some(r => this.canReset(r));
   }
 
   startDurchgang(name: string) {
@@ -178,6 +258,27 @@ export class PlaybookPage implements OnInit, OnDestroy {
       next: () => this.showToast('Durchgang zurückgesetzt', 'success'),
       error: () => this.showToast('Fehler beim Zurücksetzen', 'danger')
     });
+  }
+
+  startGroup(group: PlaybookGroup) {
+    const startable = group.rows.filter(r => this.canStart(r) || this.canRestart(r));
+    for (const r of startable) {
+      this.startDurchgang(r.name);
+    }
+  }
+
+  finishGroup(group: PlaybookGroup) {
+    const finishable = group.rows.filter(r => this.canFinish(r));
+    for (const r of finishable) {
+      this.finishDurchgang(r.name);
+    }
+  }
+
+  resetGroup(group: PlaybookGroup) {
+    const resettable = group.rows.filter(r => this.canReset(r));
+    for (const r of resettable) {
+      this.resetDurchgang(r.name);
+    }
   }
 
   goToStation(durchgang: string, geraetId: number, halt: number) {
