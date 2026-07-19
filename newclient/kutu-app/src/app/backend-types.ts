@@ -477,6 +477,14 @@ export interface PlaybookDurchgang {
   overallPct: number;
   totalCount: number;
   completedCount: number;
+  planStart: string;
+  planFinish: string;
+  effectiveStart: string;
+  effectiveEnd: string;
+  duration: string;
+  planTotal: string;
+  planEinturnen: string;
+  planGeraet: string;
 }
 
 export interface PlaybookState {

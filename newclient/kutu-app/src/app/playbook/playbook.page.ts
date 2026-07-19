@@ -121,6 +121,25 @@ export class PlaybookPage implements OnInit, OnDestroy {
     return group.rows.length > 1 || group.rows[0].name !== group.title;
   }
 
+  groupPlanStart(group: PlaybookGroup): string {
+    return group.rows.find(r => r.planStart)?.planStart || '';
+  }
+
+  groupPlanFinish(group: PlaybookGroup): string {
+    let last = '';
+    for (const r of group.rows) {
+      if (r.planFinish) last = r.planFinish;
+    }
+    return last;
+  }
+
+  groupDuration(group: PlaybookGroup): string {
+    const starts = group.rows.filter(r => r.effectiveStart).map(r => r.effectiveStart);
+    const ends = group.rows.filter(r => r.effectiveEnd).map(r => r.effectiveEnd);
+    if (starts.length && ends.length) return `ab ${starts[0]} bis ${ends[ends.length - 1]}`;
+    return '';
+  }
+
   canStart(dg: PlaybookDurchgang): boolean {
     return !dg.isRunning && !dg.isFinished;
   }

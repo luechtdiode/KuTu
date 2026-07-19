@@ -7,6 +7,7 @@ import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.ResourceExchanger
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.{RiegenBuilder, ServerPrintUtil}
+import ch.seidel.kutu.view.DurchgangView
 import ch.seidel.kutu.squad.{DurchgangBuilder, DurchgangGrouper}
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
@@ -497,6 +498,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
 
                     val disziplinOrdinals = Await.result(listDisziplinZuWettkampf(wettkampf), Duration.Inf)
                       .zipWithIndex.map { case (d, idx) => d.id -> idx }.toMap
+                    val wkDate = wettkampf.datum.toLocalDate
 
                     val grouped = geraeteRiegen.groupBy(gr => gr.durchgang.get)
                     val dgStates = grouped.map { t =>
@@ -527,7 +529,15 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         stations = stations,
                         overallPct = dgs.avg.dropRight(1).toInt,
                         totalCount = dgs.anz.toInt,
-                        completedCount = stats.map(_._3).sum
+                        completedCount = stats.map(_._3).sum,
+                        planStart = if dg.planStartOffset != 0 then dg.effectivePlanStart(wkDate).format(DurchgangView.formatter) else "",
+                        planFinish = if dg.planStartOffset != 0 then dg.effectivePlanFinish(wkDate).format(DurchgangView.formatter) else "",
+                        effectiveStart = toTimeFormat(dgs.started),
+                        effectiveEnd = toTimeFormat(dgs.finished),
+                        duration = toDurationFormat(dgs.started, dgs.finished),
+                        planTotal = toDurationFormat(dg.planTotal),
+                        planEinturnen = toDurationFormat(dg.planEinturnen),
+                        planGeraet = toDurationFormat(dg.planGeraet)
                       )
                     }.toList.sortBy(_.name)
 
