@@ -194,4 +194,9 @@ export class AdminBackendService {
     return this.http.get<JudgeLink>(this.api + 'competition/' + uuid + '/judge-link', { headers });
   }
 
+  unassignAthletFromCompetition(uuid: string, athletId: number, secret: string): Observable<{ removedWertungen: number }> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete<{ removedWertungen: number }>(this.api + 'competition/' + uuid + '/athlet/' + athletId, { headers });
+  }
+
 }
