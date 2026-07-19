@@ -470,7 +470,7 @@ export class RiegeEinteilungPage implements OnDestroy {
     const hasGrouped = selectedRows.some(r => r.durchgangName !== r.durchgangTitle);
     if (!hasGrouped) return this.selectedDgs.size === 1;
     const distinctGroups = new Set(selectedRows.map(r => r.durchgangTitle));
-    return distinctGroups.size === 1 && selectedRows.length > 1;
+    return distinctGroups.size === 1 && selectedRows.length >= 1;
   }
 
   async ungroupSelected() {
