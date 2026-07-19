@@ -26,6 +26,13 @@
           <span class="legend-item"><span class="legend-swatch athlet-max"></span>grösste Startgruppe</span>
           <span class="legend-item"><span class="legend-swatch athlet-min"></span>kleinste Startgruppe</span>
           <span class="print-only print-timestamp">Stand: {{ getPrintTimestamp() }}</span>
+          <ion-toggle class="no-print"
+            [checked]="showAssignedOnly"
+            (ionChange)="toggleAssignedOnly()"
+            labelPlacement="start"
+            justify="start">
+            Nur belegte Geräte anzeigen
+          </ion-toggle>
         </span>
       </ion-item>
       <ion-button fill="clear" class="no-print" (click)="printRiegen()" slot="end" title="Drucken">
@@ -57,22 +64,22 @@
             <ion-icon slot="start" name="pencil-outline"></ion-icon>
             Umbenennen
           </ion-button>
-          <ion-button size="small" fill="clear" (click)="switchGroupSelected()">
-            <ion-icon slot="start" name="swap-horizontal-outline"></ion-icon>
-            Gruppe wechseln
-          </ion-button>
           @if (selectedDgs.size >= 2) {
-            <ion-button size="small" fill="clear" (click)="mergeSelected()">
+          <ion-button size="small" fill="clear" (click)="mergeSelected()">
               <ion-icon slot="start" name="git-merge-outline"></ion-icon>
               Zusammenführen
             </ion-button>
-            <ion-button size="small" fill="clear" (click)="aggregateSelected()">
+          <ion-button size="small" fill="clear" (click)="aggregateSelected()">
               <ion-icon slot="start" name="layers-outline"></ion-icon>
               Gruppe bilden
             </ion-button>
           }
+          <ion-button size="small" fill="clear" (click)="switchGroupSelected()">
+            <ion-icon slot="start" name="swap-horizontal-outline"></ion-icon>
+            Gruppe wechseln
+          </ion-button>
           @if (hasGroupedSelection) {
-            <ion-button size="small" fill="clear" (click)="ungroupSelected()">
+          <ion-button size="small" fill="clear" (click)="ungroupSelected()">
               <ion-icon slot="start" name="expand-outline"></ion-icon>
               Gruppe auflösen
             </ion-button>
@@ -186,7 +193,7 @@
               </th>
               <th class="col-durchgang">Durchgang</th>
               <th class="col-zeiten">Start / Ende</th>
-              @for (d of disziplinen; track d.id) {
+              @for (d of visibleDisziplinen; track d.id) {
                 <th class="col-geraet">{{ d.name }}</th>
               }
             </tr>
@@ -216,7 +223,7 @@
                       </div>
                     }
                   </td>
-                  @for (d of disziplinen; track d.id) {
+                  @for (d of visibleDisziplinen; track d.id) {
                     <td class="col-geraet group-geraet-count"
                       [class.athlet-max]="groupAthletCountForGeraet(group, d.id) === maxGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)"
                       [class.athlet-min]="groupAthletCountForGeraet(group, d.id) === minGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)">
@@ -262,7 +269,7 @@
                       </ion-button>
                     }
                   </td>
-                  @for (d of disziplinen; track d.id) {
+                  @for (d of visibleDisziplinen; track d.id) {
                     <td class="col-geraet"
                       [class.athlet-max]="rowAthletCount(row, d.id) === maxRowAthletCount(row) && maxRowAthletCount(row) !== minRowAthletCount(row)"
                       [class.athlet-min]="rowAthletCount(row, d.id) === minRowAthletCount(row) && maxRowAthletCount(row) !== minRowAthletCount(row)"
