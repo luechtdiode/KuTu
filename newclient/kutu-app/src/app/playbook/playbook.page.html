@@ -49,6 +49,14 @@
                 <tr class="group-header-row">
                   <td class="col-durchgang">
                     <strong>{{ group.title }}</strong>
+                    <div class="dg-info">
+                      @if (groupPlanStart(group)) {
+                        <small class="dg-time">Plan: {{ groupPlanStart(group) }} – {{ groupPlanFinish(group) }}</small>
+                      }
+                      @if (groupDuration(group)) {
+                        <small class="dg-time">Dauer: {{ groupDuration(group) }}</small>
+                      }
+                    </div>
                   </td>
                   <td class="col-actions"></td>
                   @for (d of disziplinen; track d.id) {
@@ -67,6 +75,18 @@
                     }
                     <div class="dg-info">
                       <small>{{ row.completedCount }}/{{ row.totalCount }} Athleten</small>
+                      @if (row.planStart) {
+                        <small class="dg-time">Plan: {{ row.planStart }} – {{ row.planFinish }}</small>
+                      }
+                      @if (row.effectiveStart) {
+                        <small class="dg-time">Start: {{ row.effectiveStart }}</small>
+                      }
+                      @if (row.effectiveEnd) {
+                        <small class="dg-time">Ende: {{ row.effectiveEnd }} ({{ row.duration }})</small>
+                      }
+                      @if (row.planTotal) {
+                        <small class="dg-plan">Plandauer: {{ row.planTotal }} (Eint.: {{ row.planEinturnen }}, Gerät: {{ row.planGeraet }})</small>
+                      }
                     </div>
                   </td>
                   <td class="col-actions">
@@ -98,7 +118,7 @@
                       @if (getStation(row, d.id); as station) {
                         @for (step of station.steps; track step.halt) {
                           <div class="step-item" [class.complete]="stepPct(step) === 100">
-                            <span class="step-label">Stufe {{ step.halt + 1 }}</span>
+                            <span class="step-label">Station {{ step.halt + 1 }}</span>
                             <ion-progress-bar
                               [value]="stepPct(step) / 100"
                               [color]="stepPct(step) === 100 ? 'success' : stepPct(step) > 0 ? 'warning' : 'medium'">
