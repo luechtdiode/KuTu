@@ -112,6 +112,11 @@
   align-items: center;
   gap: 4px;
 }
+.color-legend ion-toggle {
+  margin-top: 2px;
+  --min-height: 24px;
+  font-size: 0.75rem;
+}
 .legend-swatch {
   display: inline-block;
   width: 12px;
