@@ -253,6 +253,22 @@ export class RiegeEinteilungPage implements OnDestroy {
     });
   }
 
+  async addEmptyRiege(durchgang: string, geraetId: number, geraetName: string) {
+    const request: UpdateRiegeRequest = {
+      name: `Leere Riege ${durchgang}/${geraetName}`,
+      durchgang,
+      startId: geraetId,
+      kind: 1
+    };
+    try {
+      await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
+      await this.loadData();
+    } catch {
+      const toast = await this.toastCtrl.create({ message: 'Fehler beim Zuweisen der leeren Riege', duration: 3000, color: 'danger' });
+      await toast.present();
+    }
+  }
+
   async editRiege(item: CellRiege, durchgang: string, startId: number) {
     const modal = await this.modalCtrl.create({
       component: RiegeEditModalComponent,
@@ -705,5 +721,33 @@ export class RiegeEinteilungPage implements OnDestroy {
 
   totalAthleten(): number {
     return this.groups.reduce((sum, g) => sum + g.rows.reduce((s, r) => s + Object.values(r.cells).reduce((s2, c) => s2 + c.reduce((a, ri) => a + ri.athletCount, 0), 0), 0), 0);
+  }
+
+  groupAthletCountForGeraet(group: TableGroup, geraetId: number): number {
+    const perDg = group.rows.map(row =>
+      (row.cells[geraetId] ?? []).reduce((s, r) => s + r.athletCount, 0));
+    return Math.max(0, ...perDg);
+  }
+
+  maxGroupAthletCount(group: TableGroup): number {
+    return Math.max(0, ...this.disziplinen.map(d => this.groupAthletCountForGeraet(group, d.id)));
+  }
+
+  minGroupAthletCount(group: TableGroup): number {
+    const counts = this.disziplinen.map(d => this.groupAthletCountForGeraet(group, d.id)).filter(c => c > 0);
+    return counts.length > 0 ? Math.min(...counts) : 0;
+  }
+
+  rowAthletCount(row: TableRow, geraetId: number): number {
+    return (row.cells[geraetId] ?? []).reduce((s, r) => s + r.athletCount, 0);
+  }
+
+  maxRowAthletCount(row: TableRow): number {
+    return Math.max(0, ...this.disziplinen.map(d => this.rowAthletCount(row, d.id)));
+  }
+
+  minRowAthletCount(row: TableRow): number {
+    const counts = this.disziplinen.map(d => this.rowAthletCount(row, d.id)).filter(c => c > 0);
+    return counts.length > 0 ? Math.min(...counts) : 0;
   }
 }
