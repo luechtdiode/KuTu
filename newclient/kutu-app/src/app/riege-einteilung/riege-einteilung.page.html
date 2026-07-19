@@ -25,8 +25,12 @@
           <span class="legend-title">Farblegende</span>
           <span class="legend-item"><span class="legend-swatch athlet-max"></span>grösste Startgruppe</span>
           <span class="legend-item"><span class="legend-swatch athlet-min"></span>kleinste Startgruppe</span>
+          <span class="print-only print-timestamp">Stand: {{ getPrintTimestamp() }}</span>
         </span>
       </ion-item>
+      <ion-button fill="clear" class="no-print" (click)="printRiegen()" slot="end" title="Drucken">
+        <ion-icon name="print-outline" slot="icon-only"></ion-icon>
+      </ion-button>
     </ion-card-header>
     <ion-card-content>
       <ion-button (click)="showGeneratePanel = !showGeneratePanel" fill="outline" class="ion-margin-end" size="small">
@@ -160,10 +164,10 @@
       <ion-card-content class="unassigned-chips">
         @for (riege of unassignedRiegen; track riege.name) {
           <div class="riege-chip unassigned"
-            draggable="true"
-            (dragstart)="onDragStart($event, riege.name, '', null)"
-               [title]="riege.name + ' (' + riege.athletCount + ' Athleten)'">
-            <span class="riege-name">{{ riege.name }}</span>
+            [attr.draggable]="riege.kind !== 1"
+            (dragstart)="riege.kind !== 1 && onDragStart($event, riege.name, '', null)"
+               [title]="riege.kind === 1 ? 'Leere Riege – ' + riege.name + ' (' + riege.athletCount + ' Athleten)' : riege.name + ' (' + riege.athletCount + ' Athleten)'">
+            <span class="riege-name">{{ riege.kind === 1 ? 'Leere Riege' : riege.name }}</span>
             <span class="riege-count">{{ riege.athletCount }}</span>
           </div>
         }
@@ -174,7 +178,7 @@
   @if (groups.length > 0 && disziplinen.length > 0) {
     <ion-card>
       <ion-card-content class="ion-padding-0" style="overflow-x: auto;">
-        <table class="riege-table">
+        <table class="riege-table" [class.has-selection]="selectedDgs.size > 0">
           <thead>
             <tr>
               <th class="col-select">
@@ -267,12 +271,12 @@
                       (dragleave)="onDragLeave($event)">
                       @for (riege of row.cells[d.id]; track riege.name) {
                         <div class="riege-chip"
-                          draggable="true"
-                          (dragstart)="onDragStart($event, riege.name, row.durchgangName, d.id)"
-                          [title]="riege.name + ' (' + riege.athletCount + ' Athleten)'"
+                          [attr.draggable]="riege.kind !== 1"
+                          (dragstart)="riege.kind !== 1 && onDragStart($event, riege.name, row.durchgangName, d.id)"
+                          [title]="riege.kind === 1 ? 'Leere Riege – ' + riege.name + ' (' + riege.athletCount + ' Athleten)' : riege.name + ' (' + riege.athletCount + ' Athleten)'"
                           (click)="editRiege(riege, row.durchgangName, d.id)"
                           [class.empty-riege]="riege.kind === 1">
-                          <span class="riege-name">{{ riege.name }}</span>
+                          <span class="riege-name">{{ riege.kind === 1 ? 'Leere Riege' : riege.name }}</span>
                           <span class="riege-count">{{ riege.athletCount }}</span>
                         </div>
                       }
