@@ -129,6 +129,10 @@ export class CompetitionListPage implements OnDestroy {
     this.nav.navigateRoot('/admin/registrations/' + s.uuid);
   }
 
+  openPlaybook(s: CompetitionListItem) {
+    this.nav.navigateRoot('/admin/playbook/' + s.uuid);
+  }
+
   private async deleteCompetition(s: CompetitionListItem) {
     try {
       await firstValueFrom(this.backend.deleteCompetition(s.uuid, s.secret));
