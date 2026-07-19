@@ -74,6 +74,10 @@ const routes: Routes = [
     loadChildren: () => import('./riege-einteilung/riege-einteilung.module').then(m => m.RiegeEinteilungPageModule)
   },
   {
+    path: 'admin/playbook/:uuid',
+    loadChildren: () => import('./playbook/playbook.module').then(m => m.PlaybookPageModule)
+  },
+  {
     path: 'admin/registrations/:uuid',
     loadChildren: () => import('./admin-registrations/admin-registrations.module').then(m => m.AdminRegistrationsPageModule)
   }
