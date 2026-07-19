@@ -1,3 +1,4 @@
+
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.actors.*
@@ -315,7 +316,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
   }
 
-  def importWettkampf(file: InputStream): Wettkampf = {
+  def importWettkampf(file: InputStream, expectedUuid: String = ""): Wettkampf = {
     val buffer = new BufferedInputStream(file)
     buffer.mark(1024 * 1024 * 1024) // max 1GB
 
@@ -336,6 +337,15 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         }).flatMap(DBService.parseLine).zipWithIndex.toMap
         acc + (entry._1.getName -> (csv.drop(1), header))
       } else acc
+    }
+
+    if expectedUuid.nonEmpty && collection.contains("wettkampf.csv") then {
+      val (wettkampfCsvLines, wettkampfHeader) = collection("wettkampf.csv")
+      val fetchedUuid = wettkampfHeader.get("uuid").map(idx => DBService.parseLine(wettkampfCsvLines.head)(idx)).getOrElse("(leer)")
+      if (fetchedUuid eq null) || fetchedUuid.isEmpty || fetchedUuid != expectedUuid then
+        throw new RuntimeException(
+          s"Die UUID (${if fetchedUuid == null || fetchedUuid.isEmpty then "(leer)" else fetchedUuid}) in der importierten Datei stimmt nicht mit der UUID ($expectedUuid) des Wettkampfs überein."
+        )
     }
 
     def getValue(header: Map[String, Int], fields: IndexedSeq[String], key: String, default: String): String = {
