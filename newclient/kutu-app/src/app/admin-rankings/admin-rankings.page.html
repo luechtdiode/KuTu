@@ -42,23 +42,23 @@
               } @else {
                 <ion-badge slot="end" color="medium">Entwurf</ion-badge>
               }
-              <ion-button slot="end" fill="clear" (click)="openScore(score.id)">
-                <ion-icon slot="icon-only" name="open-outline"></ion-icon>
+              <ion-button slot="end" fill="clear" (click)="openScore(score.id)" title="Öffnen">
+                <ion-icon slot="icon-only" size="large" name="open-outline"></ion-icon>
               </ion-button>
-              <ion-button slot="end" fill="clear" (click)="editScore(score)">
-                <ion-icon slot="icon-only" name="create"></ion-icon>
+              <ion-button slot="end" fill="clear" (click)="editScore(score)" title="Bearbeiten">
+                <ion-icon slot="icon-only" size="large" name="create"></ion-icon>
               </ion-button>
               @if (!score.published) {
-                <ion-button slot="end" fill="clear" color="success" (click)="publishScore(score)">
-                  <ion-icon slot="icon-only" name="cloud-upload"></ion-icon>
+                <ion-button slot="end" fill="clear" color="success" (click)="publishScore(score)" title="Veröffentlichen">
+                  <ion-icon slot="icon-only" size="large" name="cloud-upload"></ion-icon>
                 </ion-button>
               } @else {
-                <ion-button slot="end" fill="clear" color="warning" (click)="unpublishScore(score)">
-                  <ion-icon slot="icon-only" name="cloud-done"></ion-icon>
+                <ion-button slot="end" fill="clear" color="warning" (click)="unpublishScore(score)" title="Veröffentlichung zurücknehmen">
+                  <ion-icon slot="icon-only" size="large" name="cloud-done"></ion-icon>
                 </ion-button>
               }
-              <ion-button slot="end" fill="clear" color="danger" (click)="deleteScore(score)">
-                <ion-icon slot="icon-only" name="trash"></ion-icon>
+              <ion-button slot="end" fill="clear" color="danger" (click)="deleteScore(score)" title="Löschen">
+                <ion-icon slot="icon-only" size="large" name="trash"></ion-icon>
               </ion-button>
             </ion-item>
           }
@@ -80,9 +80,12 @@
       <ion-card-header>
         <ion-card-title style="display: flex; align-items: center; gap: 8px;">
           {{ editingScore ? 'Rangliste bearbeiten' : 'Neue Rangliste' }}
+          <ion-button fill="clear" size="small" (click)="closeEditor()" title="Schliessen">
+            <ion-icon slot="icon-only" size="large" name="close"></ion-icon>
+          </ion-button>
           @if (editingScore && hasGroupers) {
-            <ion-button fill="clear" size="small" (click)="openScore(editingScore.id)">
-              <ion-icon slot="start" name="open-outline"></ion-icon>
+            <ion-button fill="clear" size="small" (click)="openScore(editingScore.id)" title="Öffnen">
+              <ion-icon slot="start" size="large" name="open-outline"></ion-icon>
               Öffnen
             </ion-button>
           }
@@ -90,7 +93,7 @@
       </ion-card-header>
       <ion-card-content>
         <ion-item>
-          <ion-input label="Titel" label-placement="floating" [(ngModel)]="editTitle" placeholder="z.B. Turn10 Gesamtrangliste"></ion-input>
+          <ion-input label="Titel" label-placement="floating" [(ngModel)]="editTitle" placeholder="z.B. Gesamtrangliste"></ion-input>
         </ion-item>
 
         <ion-item>
@@ -127,53 +130,42 @@
 
         @for (level of [0, 1, 2, 3]; track level) {
           @if (level === 0 || selectedGroupers[level - 1] !== null) {
-            <ion-item>
-              <ion-select
-                [label]="'Gruppierungsebene ' + (level + 1)"
-                label-placement="floating"
-                [(ngModel)]="selectedGroupers[level]"
-                (ionChange)="onGrouperChange(level)"
-                placeholder="--- keine ---">
-                <ion-select-option [value]="null">--- keine ---</ion-select-option>
-                @for (grouper of availableGroupers; track grouper) {
-                  <ion-select-option [value]="grouper">{{ grouper }}</ion-select-option>
-                }
-              </ion-select>
-            </ion-item>
+            <ion-card [color]="selectedGroupers[level] ? 'light' : ''" style="margin: 8px 0;">
+              <ion-card-content style="padding: 4px 8px;">
+                <ion-item>
+                  <ion-select
+                    [label]="'Gruppierungsebene ' + (level + 1)"
+                    label-placement="floating"
+                    [(ngModel)]="selectedGroupers[level]"
+                    (ionChange)="onGrouperChange(level)"
+                    placeholder="--- keine ---">
+                    <ion-select-option [value]="null">--- keine ---</ion-select-option>
+                    @for (grouper of availableGroupers; track grouper) {
+                      <ion-select-option [value]="grouper">{{ grouper }}</ion-select-option>
+                    }
+                  </ion-select>
+                </ion-item>
 
-            @if (selectedGroupers[level] !== null && getFilterOptions(level).length > 0) {
-              <ion-segment [value]="filterOnly[level] ? 'filter' : 'group'" (ionChange)="onModeChange(level, $event)" style="margin: 8px 0;">
-                <ion-segment-button value="group">
-                  <ion-label>Gruppieren und Filtern</ion-label>
-                </ion-segment-button>
-                <ion-segment-button value="filter">
-                  <ion-label>Nur Filtern</ion-label>
-                </ion-segment-button>
-              </ion-segment>
-              <ion-card color="light" style="margin: 8px 0;">
-                <ion-card-header>
-                  <ion-card-subtitle>
-                    Filter: {{ selectedGroupers[level] }}
-                    ({{ getSelectedFilters(level).size }}/{{ getFilterOptions(level).length }})
-                  </ion-card-subtitle>
-                </ion-card-header>
-                <ion-card-content>
-                  <div style="margin-bottom: 8px;">
-                    <ion-button size="small" fill="clear" (click)="selectAllFilters(level)">Alle</ion-button>
-                    <ion-button size="small" fill="clear" (click)="deselectAllFilters(level)">Keine</ion-button>
-                  </div>
-                  @for (filterVal of getFilterOptions(level); track filterVal) {
-                    <ion-item lines="none" (click)="toggleFilter(level, filterVal)" button>
-                      <ion-checkbox
-                        [checked]="isFilterSelected(level, filterVal)"
-                        slot="start">
-                      </ion-checkbox>
-                      <ion-label>{{ filterVal }}</ion-label>
-                    </ion-item>
-                  }
-                </ion-card-content>
-              </ion-card>
-            }
+                @if (selectedGroupers[level] !== null && getFilterOptions(level).length > 0) {
+                  <ion-item>
+                    <ion-select
+                      [label]="'Filter: ' + selectedGroupers[level]"
+                      label-placement="floating"
+                      [value]="getSelectedFilterArray(level)"
+                      (ionChange)="onFilterSelect(level, $event)"
+                      multiple="true"
+                      interface="popover">
+                      @for (filterVal of getFilterOptions(level); track filterVal) {
+                        <ion-select-option [value]="filterVal">{{ filterVal }}</ion-select-option>
+                      }
+                    </ion-select>
+                  </ion-item>
+                  <ion-item lines="none">
+                    <ion-toggle [checked]="filterOnly[level]" [disabled]="getSelectedFilterArray(level).length <= 1" (ionChange)="onModeChange(level, $event)" labelPlacement="end">alle</ion-toggle>
+                  </ion-item>
+                }
+              </ion-card-content>
+            </ion-card>
           }
         }
 
