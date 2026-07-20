@@ -55,6 +55,8 @@ export class PlaybookPage implements OnInit, OnDestroy {
 
   private ws: AdminWebsocketService | null = null;
   private subscriptions: Subscription[] = [];
+  private autoFinishedHalts = new Set<string>();
+  markedHalts = new Set<string>();
 
   private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
@@ -190,9 +192,10 @@ export class PlaybookPage implements OnInit, OnDestroy {
 
       for (const [halt, stats] of haltEntries) {
         const pct = stats.totalAthletes > 0 ? Math.round(100 * stats.completedAthletes / stats.totalAthletes) : 0;
+        const manuallyDone = this.markedHalts.has(this.milestoneKey(displayName, halt));
         let hStatus: StepperHalt['status'] = 'pending';
         if (status === 'running') {
-          if (pct === 100) {
+          if (pct === 100 || manuallyDone) {
             hStatus = 'done';
             haltsFinished.add(halt);
           } else if (pct > 0) {
@@ -203,6 +206,13 @@ export class PlaybookPage implements OnInit, OnDestroy {
           }
         }
         halts.push({ halt, totalAthletes: stats.totalAthletes, completedAthletes: stats.completedAthletes, pct, status: hStatus });
+        if (hStatus === 'done') {
+          const key = this.milestoneKey(displayName, halt);
+          if (!this.autoFinishedHalts.has(key) && !this.markedHalts.has(key)) {
+            this.autoFinishedHalts.add(key);
+            this.backend.finishDurchgangStep(this.uuid, this.secret).subscribe({ error: () => {} });
+          }
+        }
       }
 
       return { name: g.title, displayName, status, halts, planEinturnen: rows[0]?.planEinturnen || '', rows };
@@ -223,13 +233,31 @@ export class PlaybookPage implements OnInit, OnDestroy {
     return dg === this.stepperDgs.find(d => d.status === 'pending');
   }
 
-  haltStatusLabel(halt: StepperHalt, isFirstHalt: boolean): string {
+  haltStatusLabel(halt: StepperHalt, isFirstHalt: boolean, dgName?: string): string {
+    if (dgName && this.isMilestoneChecked(halt, dgName)) return '\u2713';
     switch (halt.status) {
       case 'einturnen': return isFirstHalt ? 'Einturnen' : 'Gerätewechsel + Einturnen';
       case 'active': return halt.pct + '%';
       case 'done': return '\u2713';
       default: return '';
     }
+  }
+
+  milestoneKey(dgName: string, halt: number): string {
+    return `${dgName}-${halt}`;
+  }
+
+  isMilestoneChecked(halt: StepperHalt, dgName: string): boolean {
+    return halt.pct === 100 || this.markedHalts.has(this.milestoneKey(dgName, halt.halt));
+  }
+
+  toggleMilestone(halt: StepperHalt, dgName: string) {
+    const key = this.milestoneKey(dgName, halt.halt);
+    if (this.markedHalts.has(key)) return;
+    this.markedHalts.add(key);
+    this.backend.finishDurchgangStep(this.uuid, this.secret).subscribe({
+      error: () => {}
+    });
   }
 
   toggleGroup(group: PlaybookGroup) {
@@ -257,10 +285,22 @@ export class PlaybookPage implements OnInit, OnDestroy {
     return group.rows.find(r => r.planStart)?.planStart || '';
   }
 
+  groupStartEffective(group: PlaybookGroup): string {
+    return group.rows.find(r => r.effectiveStart)?.effectiveStart || '';
+  }
+
   groupPlanFinish(group: PlaybookGroup): string {
     let last = '';
     for (const r of group.rows) {
       if (r.planFinish) last = r.planFinish;
+    }
+    return last;
+  }
+
+  groupEffectiveFinish(group: PlaybookGroup): string {
+    let last = '';
+    for (const r of group.rows) {
+      if (r.effectiveEnd) last = r.effectiveEnd;
     }
     return last;
   }
