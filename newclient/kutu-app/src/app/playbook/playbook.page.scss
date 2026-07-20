@@ -20,7 +20,7 @@
   flex: 0 0 auto;
   text-align: center;
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 6px 12px 24px;
   border-radius: 8px;
   border: 2px solid transparent;
 
@@ -64,6 +64,32 @@
   margin-top: 6px;
 }
 
+.stepper-halt-col {
+  position: relative;
+}
+
+.milestone-btn {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 2px;
+  padding: 1px 6px;
+  font-size: 0.6rem;
+  border: 1px solid var(--ion-color-primary);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ion-color-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  z-index: 1;
+
+  &:hover {
+    background: var(--ion-color-primary);
+    color: #fff;
+  }
+}
+
 .stepper-halt-connector {
   flex: 0 0 16px;
   height: 1px;
@@ -72,17 +98,6 @@
 
   &.done {
     background: var(--ion-color-success);
-  }
-
-  .connector-label {
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.55rem;
-    white-space: nowrap;
-    color: var(--ion-color-success);
-    font-weight: 600;
   }
 }
 

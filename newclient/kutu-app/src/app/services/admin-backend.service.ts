@@ -183,6 +183,12 @@ export class AdminBackendService {
       { wettkampfUUID: uuid, durchgang }, { headers });
   }
 
+  finishDurchgangStep(uuid: string, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post(this.api + 'competition/' + uuid + '/finishedStep',
+      { wettkampfUUID: uuid }, { headers });
+  }
+
   resetDurchgang(uuid: string, secret: string, durchgang: string): Observable<any> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.post(this.api + 'competition/' + uuid + '/reset',
