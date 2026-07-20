@@ -1,0 +1,219 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button defaultHref="/admin/competitions"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Ranglisten</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-refresher slot="fixed" (ionRefresh)="loadSavedScores(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+    </ion-card-header>
+  </ion-card>
+
+  @if (loading) {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Gespeicherte Ranglisten</ion-card-title>
+      <ion-card-subtitle>Verwaltung der gespeicherten und veröffentlichten Ranglisten</ion-card-subtitle>
+    </ion-card-header>
+    <ion-card-content>
+      @if (savedScores.length > 0) {
+        <ion-list>
+          @for (score of savedScores; track score.id) {
+            <ion-item [color]="editingScore?.id === score.id ? 'light' : ''">
+              <ion-icon name="document-text-outline" slot="start"></ion-icon>
+              <ion-label>
+                <h2>{{ score.title }}</h2>
+                <p>{{ score.query }}</p>
+              </ion-label>
+              @if (score.published) {
+                <ion-badge slot="end" color="success">Veröffentlicht</ion-badge>
+              } @else {
+                <ion-badge slot="end" color="medium">Entwurf</ion-badge>
+              }
+              <ion-button slot="end" fill="clear" (click)="openScore(score.id)">
+                <ion-icon slot="icon-only" name="open-outline"></ion-icon>
+              </ion-button>
+              <ion-button slot="end" fill="clear" (click)="editScore(score)">
+                <ion-icon slot="icon-only" name="create"></ion-icon>
+              </ion-button>
+              @if (!score.published) {
+                <ion-button slot="end" fill="clear" color="success" (click)="publishScore(score)">
+                  <ion-icon slot="icon-only" name="cloud-upload"></ion-icon>
+                </ion-button>
+              } @else {
+                <ion-button slot="end" fill="clear" color="warning" (click)="unpublishScore(score)">
+                  <ion-icon slot="icon-only" name="cloud-done"></ion-icon>
+                </ion-button>
+              }
+              <ion-button slot="end" fill="clear" color="danger" (click)="deleteScore(score)">
+                <ion-icon slot="icon-only" name="trash"></ion-icon>
+              </ion-button>
+            </ion-item>
+          }
+        </ion-list>
+      } @else if (!loading) {
+        <ion-text color="medium">
+          <p class="ion-text-center">Noch keine Ranglisten gespeichert.</p>
+        </ion-text>
+      }
+      <ion-button expand="block" fill="outline" (click)="startNewScore()" style="margin-top: 12px;">
+        <ion-icon slot="start" name="add"></ion-icon>
+        Neue Rangliste
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+
+  @if (creatingNew || editingScore || selectedGroupers.some(g => g !== null)) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title style="display: flex; align-items: center; gap: 8px;">
+          {{ editingScore ? 'Rangliste bearbeiten' : 'Neue Rangliste' }}
+          @if (editingScore && hasGroupers) {
+            <ion-button fill="clear" size="small" (click)="openScore(editingScore.id)">
+              <ion-icon slot="start" name="open-outline"></ion-icon>
+              Öffnen
+            </ion-button>
+          }
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-item>
+          <ion-input label="Titel" label-placement="floating" [(ngModel)]="editTitle" placeholder="z.B. Turn10 Gesamtrangliste"></ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-select label="Ranglisten-Typ" label-placement="floating" [(ngModel)]="kind">
+            <ion-select-option value="Einzelrangliste">Einzelrangliste</ion-select-option>
+            <ion-select-option value="Teamrangliste">Teamrangliste</ion-select-option>
+            <ion-select-option value="Kombirangliste">Kombirangliste</ion-select-option>
+          </ion-select>
+        </ion-item>
+
+        <ion-item>
+          <ion-select label="Beste N Wertungen" label-placement="floating" [(ngModel)]="bestN">
+            <ion-select-option value="alle">Alle Wertungen</ion-select-option>
+            <ion-select-option value="beste(1)">Beste 1 Wertung</ion-select-option>
+            <ion-select-option value="beste(2)">Beste 2 Wertungen</ion-select-option>
+            <ion-select-option value="beste(3)">Beste 3 Wertungen</ion-select-option>
+            <ion-select-option value="beste(4)">Beste 4 Wertungen</ion-select-option>
+            <ion-select-option value="beste(5)">Beste 5 Wertungen</ion-select-option>
+          </ion-select>
+        </ion-item>
+
+        <ion-item>
+          <ion-checkbox [(ngModel)]="isAlphanumeric">Alphabetische Sortierung</ion-checkbox>
+        </ion-item>
+        <ion-item>
+          <ion-checkbox [(ngModel)]="isAvg">Durchschnitt bei mehreren Wettkämpfen</ion-checkbox>
+        </ion-item>
+
+        @if (loadingGroupers) {
+          <ion-item>
+            <ion-label color="medium">Lade verfügbare Gruppierungen...</ion-label>
+          </ion-item>
+        }
+
+        @for (level of [0, 1, 2, 3]; track level) {
+          @if (level === 0 || selectedGroupers[level - 1] !== null) {
+            <ion-item>
+              <ion-select
+                [label]="'Gruppierungsebene ' + (level + 1)"
+                label-placement="floating"
+                [(ngModel)]="selectedGroupers[level]"
+                (ionChange)="onGrouperChange(level)"
+                placeholder="--- keine ---">
+                <ion-select-option [value]="null">--- keine ---</ion-select-option>
+                @for (grouper of availableGroupers; track grouper) {
+                  <ion-select-option [value]="grouper">{{ grouper }}</ion-select-option>
+                }
+              </ion-select>
+            </ion-item>
+
+            @if (selectedGroupers[level] !== null && getFilterOptions(level).length > 0) {
+              <ion-segment [value]="filterOnly[level] ? 'filter' : 'group'" (ionChange)="onModeChange(level, $event)" style="margin: 8px 0;">
+                <ion-segment-button value="group">
+                  <ion-label>Gruppieren und Filtern</ion-label>
+                </ion-segment-button>
+                <ion-segment-button value="filter">
+                  <ion-label>Nur Filtern</ion-label>
+                </ion-segment-button>
+              </ion-segment>
+              <ion-card color="light" style="margin: 8px 0;">
+                <ion-card-header>
+                  <ion-card-subtitle>
+                    Filter: {{ selectedGroupers[level] }}
+                    ({{ getSelectedFilters(level).size }}/{{ getFilterOptions(level).length }})
+                  </ion-card-subtitle>
+                </ion-card-header>
+                <ion-card-content>
+                  <div style="margin-bottom: 8px;">
+                    <ion-button size="small" fill="clear" (click)="selectAllFilters(level)">Alle</ion-button>
+                    <ion-button size="small" fill="clear" (click)="deselectAllFilters(level)">Keine</ion-button>
+                  </div>
+                  @for (filterVal of getFilterOptions(level); track filterVal) {
+                    <ion-item lines="none" (click)="toggleFilter(level, filterVal)" button>
+                      <ion-checkbox
+                        [checked]="isFilterSelected(level, filterVal)"
+                        slot="start">
+                      </ion-checkbox>
+                      <ion-label>{{ filterVal }}</ion-label>
+                    </ion-item>
+                  }
+                </ion-card-content>
+              </ion-card>
+            }
+          }
+        }
+
+        <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <ion-button expand="block" color="primary" [disabled]="!hasGroupers" (click)="loadPreview()" style="flex: 1;">
+            <ion-icon slot="start" name="eye"></ion-icon>
+            Vorschau
+          </ion-button>
+          <ion-button expand="block" color="medium" [disabled]="!hasGroupers || !editTitle.trim()" (click)="saveScore(false)" style="flex: 1;">
+            <ion-icon slot="start" name="save"></ion-icon>
+            Als Entwurf speichern
+          </ion-button>
+          <ion-button expand="block" color="success" [disabled]="!hasGroupers || !editTitle.trim()" (click)="saveScore(true)" style="flex: 1;">
+            <ion-icon slot="start" name="cloud-upload"></ion-icon>
+            Speichern & Veröffentlichen
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  }
+
+  @if (previewLoading) {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+
+  @if (scoreblocks.length > 0) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Vorschau</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        @for (block of scoreblocks; track $index) {
+          <div>
+            <ion-item-divider>{{ block.title.text }}</ion-item-divider>
+            @for (tn of block.rows; track $index) {
+              <scorelist-item [teilnehmer]="tn" />
+            }
+          </div>
+        }
+      </ion-card-content>
+    </ion-card>
+  }
+</ion-content>
