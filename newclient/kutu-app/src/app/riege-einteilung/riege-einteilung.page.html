@@ -36,7 +36,7 @@
         </span>
       </ion-item>
       <ion-button fill="clear" class="no-print" (click)="printRiegen()" slot="end" title="Drucken">
-        <ion-icon name="print-outline" slot="icon-only"></ion-icon>
+        <ion-icon size="large" name="print-outline" slot="icon-only"></ion-icon>
       </ion-button>
     </ion-card-header>
     <ion-card-content>
@@ -265,7 +265,7 @@
                     }
                     @if (canSetStartOffsetForRow(row)) {
                       <ion-button size="small" fill="clear" class="set-starttime-btn" (click)="setStartOffsetForRow(row)" title="Startzeit setzen">
-                        <ion-icon slot="icon-only" name="time-outline"></ion-icon>
+                        <ion-icon slot="icon-only" size="large" name="time-outline"></ion-icon>
                       </ion-button>
                     }
                   </td>
@@ -291,7 +291,7 @@
                         <ion-button size="small" fill="clear" class="add-empty-btn"
                           (click)="addEmptyRiege(row.durchgangName, d.id, d.name)"
                           title="Leere Riege zuweisen – Gerät wird im Turnus verwendet">
-                          <ion-icon slot="icon-only" name="add-outline"></ion-icon>
+                          <ion-icon slot="icon-only" size="large" name="add-outline"></ion-icon>
                         </ion-button>
                       }
                     </td>

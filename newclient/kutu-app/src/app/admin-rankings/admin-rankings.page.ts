@@ -67,7 +67,9 @@ export class AdminRankingsPage implements OnDestroy {
   async loadGroupers() {
     this.loadingGroupers = true;
     try {
-      this.availableGroupers = await firstValueFrom(this.backend.getAvailableGroupers(this.uuid));
+      this.availableGroupers = [...new Set(
+        (await firstValueFrom(this.backend.getAvailableGroupers(this.uuid))).map(g => decodeURIComponent(g))
+      )];
     } catch {
       this.availableGroupers = [];
     } finally {
@@ -85,15 +87,15 @@ export class AdminRankingsPage implements OnDestroy {
     }
     try {
       const groupby = this.selectedGroupers.filter(g => g !== null).join(':');
-      const filters = await firstValueFrom(this.backend.getAvailableFilters(this.uuid, groupby));
+      const filters = (await firstValueFrom(this.backend.getAvailableFilters(this.uuid, groupby))).map(f => decodeURIComponent(f));
       const prefix = grouper + ':';
-      const matching = filters.find(f => decodeURIComponent(f.split(':')[0]) === grouper);
+      const matching = filters.find(f => f.startsWith(prefix));
       const parsedFilters = matching
-        ? matching.substring(prefix.length).split('!').map(v => decodeURIComponent(v)).sort()
+        ? matching.substring(prefix.length).split('!').sort()
         : [];
       this.filterOptions.set('' + level, parsedFilters);
       if (!this.selectedFilters.has('' + level)) {
-        this.selectedFilters.set('' + level, new Set(parsedFilters));
+        this.selectedFilters.set('' + level, new Set());
       } else {
         const existing = this.selectedFilters.get('' + level);
         const newSet = new Set<string>();
@@ -123,7 +125,7 @@ export class AdminRankingsPage implements OnDestroy {
   }
 
   onModeChange(level: number, event: any) {
-    this.filterOnly[level] = event.detail.value === 'filter';
+    this.filterOnly[level] = event.detail.checked;
   }
 
   getFilterOptions(level: number): string[] {
@@ -134,26 +136,15 @@ export class AdminRankingsPage implements OnDestroy {
     return this.selectedFilters.get('' + level) || new Set();
   }
 
-  toggleFilter(level: number, value: string) {
-    const filters = this.getSelectedFilters(level);
-    if (filters.has(value)) {
-      filters.delete(value);
-    } else {
-      filters.add(value);
+  getSelectedFilterArray(level: number): string[] {
+    return Array.from(this.getSelectedFilters(level));
+  }
+
+  onFilterSelect(level: number, event: any) {
+    this.selectedFilters.set('' + level, new Set(event.detail.value || []));
+    if (this.getSelectedFilterArray(level).length <= 1) {
+      this.filterOnly[level] = false;
     }
-  }
-
-  isFilterSelected(level: number, value: string): boolean {
-    return this.getSelectedFilters(level).has(value);
-  }
-
-  selectAllFilters(level: number) {
-    const options = this.getFilterOptions(level);
-    this.selectedFilters.set('' + level, new Set(options));
-  }
-
-  deselectAllFilters(level: number) {
-    this.selectedFilters.set('' + level, new Set());
   }
 
   buildQuery(): string {
@@ -206,7 +197,8 @@ export class AdminRankingsPage implements OnDestroy {
   async loadSavedScores() {
     this.loading = true;
     try {
-      this.savedScores = await firstValueFrom(this.backend.getAdminScores(this.uuid, this.secret));
+      this.savedScores = (await firstValueFrom(this.backend.getAdminScores(this.uuid, this.secret)))
+        .sort((a, b) => a.title.localeCompare(b.title));
     } catch {
       this.savedScores = [];
     } finally {
@@ -233,6 +225,17 @@ export class AdminRankingsPage implements OnDestroy {
     if (default0 || default1) {
       this.loadAllFilterOptions();
     }
+  }
+
+  closeEditor() {
+    this.creatingNew = false;
+    this.editingScore = null;
+    this.editTitle = '';
+    this.selectedGroupers = [null, null, null, null];
+    this.filterOptions.clear();
+    this.selectedFilters.clear();
+    this.filterOnly = [false, false, false, false];
+    this.scoreblocks = [];
   }
 
   async editScore(score: PublishedScoreView) {
@@ -318,8 +321,7 @@ export class AdminRankingsPage implements OnDestroy {
         color: 'success'
       });
       await toast.present();
-      this.creatingNew = false;
-      this.editingScore = null;
+      this.closeEditor();
       await this.loadSavedScores();
     } catch (e: any) {
       const toast = await this.toastCtrl.create({ message: 'Fehler: ' + (e.message || e), duration: 3000, color: 'danger' });
