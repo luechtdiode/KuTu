@@ -406,7 +406,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 if userId.equals(wkuuid.toString) then {
                   entity(as[AdminScoreRequest]) { request =>
                     val wettkampf = readWettkampf(wkuuid.toString)
-                    val saved = savePublishedScore(wettkampf.id, request.title, request.query, request.published, propagate = true)
+                    val saved = savePublishedScore(wettkampf.id, request.title, request.query, request.published, propagate = false)
                     complete(saved.toJson)
                   }
                 } else {
@@ -421,7 +421,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 if userId.equals(wkuuid.toString) then {
                   entity(as[AdminScoreRequest]) { request =>
                     val wettkampf = readWettkampf(wkuuid.toString)
-                    val updated = updatePublishedScore(wettkampf.id, scoreId.toString, request.title, request.query, request.published, propagate = true)
+                    val updated = updatePublishedScore(wettkampf.id, scoreId.toString, request.title, request.query, request.published, propagate = false)
                     complete(updated.toJson)
                   }
                 } else {
