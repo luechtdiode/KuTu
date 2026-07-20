@@ -32,6 +32,10 @@
         <ion-icon name="search-outline" slot="start"></ion-icon>
         Athlet/-In suchen (Admin), Entfernen
       </ion-button>
+      <ion-button size="small" fill="outline" (click)="goToRankings()">
+        <ion-icon name="podium-outline" slot="start"></ion-icon>
+        Ranglisten
+      </ion-button>
     </ion-card-content>
   </ion-card>
 
@@ -105,20 +109,20 @@
                     </div>
                   </td>
                   <td class="col-actions">
-                    <div class="action-buttons">
+                       <div class="action-buttons">
                       @if (canStartGroup(group)) {
                         <ion-button fill="clear" size="small" color="success" (click)="startGroup(group); $event.stopPropagation()" title="Alle starten">
-                          <ion-icon name="play" slot="icon-only"></ion-icon>
+                          <ion-icon size="large" name="play" slot="icon-only"></ion-icon>
                         </ion-button>
                       }
                       @if (canFinishGroup(group)) {
                         <ion-button fill="clear" size="small" color="warning" (click)="finishGroup(group); $event.stopPropagation()" title="Alle abschliessen">
-                          <ion-icon name="checkmark-circle" slot="icon-only"></ion-icon>
+                          <ion-icon size="large" name="checkmark-circle" slot="icon-only"></ion-icon>
                         </ion-button>
                       }
                       @if (canResetGroup(group)) {
                         <ion-button fill="clear" size="small" color="danger" (click)="resetGroup(group); $event.stopPropagation()" title="Alle zurücksetzen">
-                          <ion-icon name="refresh" slot="icon-only"></ion-icon>
+                          <ion-icon size="large" name="refresh" slot="icon-only"></ion-icon>
                         </ion-button>
                       }
                     </div>
@@ -178,22 +182,22 @@
                       <div class="action-buttons">
                         @if (canStart(row)) {
                           <ion-button fill="clear" size="small" color="success" (click)="startDurchgang(row.name)" title="Durchgang starten">
-                            <ion-icon name="play" slot="icon-only"></ion-icon>
+                            <ion-icon size="large" name="play" slot="icon-only"></ion-icon>
                           </ion-button>
                         }
                         @if (canFinish(row)) {
                           <ion-button fill="clear" size="small" color="warning" (click)="finishDurchgang(row.name)" title="Durchgang abschliessen">
-                            <ion-icon name="checkmark-circle" slot="icon-only"></ion-icon>
+                            <ion-icon size="large" name="checkmark-circle" slot="icon-only"></ion-icon>
                           </ion-button>
                         }
                         @if (canRestart(row)) {
                         <ion-button fill="clear" size="small" color="success" (click)="startDurchgang(row.name)" title="Durchgang neu starten">
-                            <ion-icon name="play" slot="icon-only"></ion-icon>
+                            <ion-icon size="large" name="play" slot="icon-only"></ion-icon>
                           </ion-button>
                         }
                         @if (canReset(row)) {
                         <ion-button fill="clear" size="small" color="danger" (click)="resetDurchgang(row.name)" title="Durchgang zurücksetzen">
-                          <ion-icon name="refresh" slot="icon-only"></ion-icon>
+                          <ion-icon size="large" name="refresh" slot="icon-only"></ion-icon>
                         </ion-button>
                         }
                       </div>
@@ -235,5 +239,42 @@
     <ion-text color="medium">
       <p class="ion-text-center ion-padding">Keine Durchgaenge gefunden.</p>
     </ion-text>
+  }
+
+  @if (savedScores.length > 0) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Ranglisten</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list>
+          @for (score of savedScores; track score.id) {
+            <ion-item>
+              <ion-icon name="document-text-outline" slot="start"></ion-icon>
+              <ion-label button (click)="openScore(score.id)">
+                <h2>{{ score.title }}</h2>
+              </ion-label>
+              @if (score.published) {
+                <ion-badge slot="end" color="success">Veröffentlicht</ion-badge>
+              } @else {
+                <ion-badge slot="end" color="medium">Entwurf</ion-badge>
+              }
+              @if (!score.published) {
+                <ion-button slot="end" fill="clear" size="small" color="success" (click)="publishScore(score)" title="Veröffentlichen">
+                  <ion-icon slot="icon-only" size="large" name="cloud-upload"></ion-icon>
+                </ion-button>
+              } @else {
+                <ion-button slot="end" fill="clear" size="small" color="warning" (click)="unpublishScore(score)" title="Veröffentlichung zurücknehmen">
+                  <ion-icon slot="icon-only" size="large" name="cloud-done"></ion-icon>
+                </ion-button>
+              }
+              <ion-button slot="end" fill="clear" size="small" (click)="openScore(score.id)" title="Öffnen">
+                <ion-icon slot="icon-only" size="large" name="open-outline"></ion-icon>
+              </ion-button>
+            </ion-item>
+          }
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
   }
 </ion-content>
