@@ -61,12 +61,12 @@
                     }
                     <div class="stepper-halt-col">
                       <div class="stepper-halt" [class]="h.status"
-                           [class.manual-done]="isMilestoneChecked(h, dg.displayName)">
+                           [class.manual-done]="isMilestoneChecked(h, dg.milestoneDgName)">
                         <span class="halt-label">Station {{ h.halt + 1 }}</span>
-                        <span class="halt-status">{{ haltStatusLabel(h, j === 0, dg.displayName) }}</span>
+                        <span class="halt-status">{{ haltStatusLabel(h, j === 0, dg.milestoneDgName) }}</span>
                       </div>
-                      @if (h.status === 'active' && !isMilestoneChecked(h, dg.displayName)) {
-                        <button class="milestone-btn" (click)="toggleMilestone(h, dg.displayName); $event.stopPropagation()">
+                      @if ((h.status === 'active' || h.status === 'einturnen') && !isMilestoneChecked(h, dg.milestoneDgName)) {
+                        <button class="milestone-btn" (click)="toggleMilestone(h, dg.milestoneDgName); $event.stopPropagation()">
                           Abschliessen
                         </button>
                       }
