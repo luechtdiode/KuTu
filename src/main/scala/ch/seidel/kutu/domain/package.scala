@@ -1105,6 +1105,12 @@ package object domain {
     teamrule: String
   ) extends DataObject
 
+  case class AdminScoreRequest(
+    title: String,
+    query: String,
+    published: Boolean
+  ) extends DataObject
+
   case class RiegeSuggestionRequest(
     maxRiegenSize: Int = 0,
     maxParallelDg: Int = 0,

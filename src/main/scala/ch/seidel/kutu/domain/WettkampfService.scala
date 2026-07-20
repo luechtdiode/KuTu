@@ -301,6 +301,12 @@ trait WettkampfService extends DBService
     publishedScoreView
   }
 
+  def deletePublishedScore(wettkampfId: Long, scoreId: String): Unit = {
+    Await.result(database.run(
+      sqlu"delete from published_scores where id = $scoreId and wettkampf_id = $wettkampfId"
+    ), Duration.Inf)
+  }
+
   def updateOrinsertScoreDefs(scores: Iterable[PublishedScoreRaw]): Unit = {
     val process = DBIO.sequence(for
       (wettkampfid, scores) <- scores.groupBy(_.wettkampfId)
