@@ -27,6 +27,7 @@ interface StepperHalt {
 interface StepperDg {
   name: string;
   displayName: string;
+  milestoneDgName: string;
   status: 'pending' | 'running' | 'finished';
   halts: StepperHalt[];
   planEinturnen: string;
@@ -71,6 +72,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.uuid = this.route.snapshot.paramMap.get('uuid') || '';
+    this.loadMarkedHalts();
     const stored = this.secretService.getSecret(this.uuid);
     if (stored) {
       this.secret = stored.secret;
@@ -103,6 +105,32 @@ export class PlaybookPage implements OnInit, OnDestroy {
     this.ws?.disconnectWS(true);
     this.subscriptions.forEach(s => s.unsubscribe());
     if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+  }
+
+  private loadMarkedHalts() {
+    try {
+      const stored = localStorage.getItem('kutu-markedHalts-' + this.uuid);
+      if (stored) {
+        this.markedHalts = new Set(JSON.parse(stored) as string[]);
+      }
+    } catch {}
+  }
+
+  private persistMarkedHalts() {
+    try {
+      localStorage.setItem('kutu-markedHalts-' + this.uuid, JSON.stringify(Array.from(this.markedHalts)));
+    } catch {}
+  }
+
+  private clearMarkedHaltsForDurchgang(durchgangName: string) {
+    let changed = false;
+    for (const key of this.markedHalts) {
+      if (key.startsWith(durchgangName + '-')) {
+        this.markedHalts.delete(key);
+        changed = true;
+      }
+    }
+    if (changed) this.persistMarkedHalts();
   }
 
   loadPlaybook() {
@@ -173,6 +201,9 @@ export class PlaybookPage implements OnInit, OnDestroy {
       if (rows.every(r => r.isFinished)) status = 'finished';
       else if (rows.some(r => r.isRunning)) status = 'running';
 
+      const currentRow = rows.find(r => r.isRunning) || rows.find(r => !r.isFinished) || rows[0];
+      const milestoneDgName = currentRow ? currentRow.name : displayName;
+
       const haltMap = new Map<number, { totalAthletes: number; completedAthletes: number }>();
       for (const row of rows) {
         for (const station of row.stations) {
@@ -190,9 +221,10 @@ export class PlaybookPage implements OnInit, OnDestroy {
       const halts: StepperHalt[] = [];
       const haltsFinished = new Set<number>();
 
-      for (const [halt, stats] of haltEntries) {
+      for (let i = 0; i < haltEntries.length; i++) {
+        const [halt, stats] = haltEntries[i];
         const pct = stats.totalAthletes > 0 ? Math.round(100 * stats.completedAthletes / stats.totalAthletes) : 0;
-        const manuallyDone = this.markedHalts.has(this.milestoneKey(displayName, halt));
+        const manuallyDone = this.markedHalts.has(this.milestoneKey(milestoneDgName, halt));
         let hStatus: StepperHalt['status'] = 'pending';
         if (status === 'running') {
           if (pct === 100 || manuallyDone) {
@@ -201,21 +233,23 @@ export class PlaybookPage implements OnInit, OnDestroy {
           } else if (pct > 0) {
             hStatus = 'active';
           } else {
-            const prevDone = halt === 0 || haltsFinished.has(halt - 1);
+            const prevDone = i === 0 || haltsFinished.has(haltEntries[i - 1][0]);
             hStatus = prevDone ? 'einturnen' : 'pending';
           }
         }
         halts.push({ halt, totalAthletes: stats.totalAthletes, completedAthletes: stats.completedAthletes, pct, status: hStatus });
         if (hStatus === 'done') {
-          const key = this.milestoneKey(displayName, halt);
+          const key = this.milestoneKey(milestoneDgName, halt);
           if (!this.autoFinishedHalts.has(key) && !this.markedHalts.has(key)) {
             this.autoFinishedHalts.add(key);
+            this.markedHalts.add(key);
+            this.persistMarkedHalts();
             this.backend.finishDurchgangStep(this.uuid, this.secret).subscribe({ error: () => {} });
           }
         }
       }
 
-      return { name: g.title, displayName, status, halts, planEinturnen: rows[0]?.planEinturnen || '', rows };
+      return { name: g.title, displayName, milestoneDgName, status, halts, planEinturnen: rows[0]?.planEinturnen || '', rows };
     });
   }
 
@@ -255,6 +289,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
     const key = this.milestoneKey(dgName, halt.halt);
     if (this.markedHalts.has(key)) return;
     this.markedHalts.add(key);
+    this.persistMarkedHalts();
     this.backend.finishDurchgangStep(this.uuid, this.secret).subscribe({
       error: () => {}
     });
@@ -501,19 +536,38 @@ export class PlaybookPage implements OnInit, OnDestroy {
     );
 
     this.subscriptions.push(
+      this.ws.durchgangStartedEvent.subscribe((event) => {
+        this.clearMarkedHaltsForDurchgang(event.durchgang);
+      })
+    );
+
+    this.subscriptions.push(
       this.ws.durchgangFinished.subscribe(() => {
         this.loadPlaybook();
       })
     );
 
     this.subscriptions.push(
-      this.ws.durchgangResetted.subscribe(() => {
+      this.ws.durchgangResetted.subscribe((event) => {
+        this.clearMarkedHaltsForDurchgang(event.durchgang);
         this.loadPlaybook();
       })
     );
 
     this.subscriptions.push(
       this.ws.wertungUpdated.subscribe(() => {
+        this.loadPlaybook();
+      })
+    );
+
+    this.subscriptions.push(
+      this.ws.stepFinished.subscribe(() => {
+        this.loadPlaybook();
+      })
+    );
+
+    this.subscriptions.push(
+      this.ws.stationFinished.subscribe(() => {
         this.loadPlaybook();
       })
     );
