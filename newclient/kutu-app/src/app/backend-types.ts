@@ -334,6 +334,20 @@ export interface ScoreLink {
   "scores-query"?: string;
 }
 
+export interface PublishedScoreView {
+  id: string;
+  title: string;
+  query: string;
+  published: boolean;
+  publishedDate: string;
+}
+
+export interface AdminScoreRequest {
+  title: string;
+  query: string;
+  published: boolean;
+}
+
 // actions
 export interface FinishDurchgangStation {
   wettkampfUUID: string;

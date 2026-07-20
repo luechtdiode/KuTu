@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -197,6 +197,40 @@ export class AdminBackendService {
   unassignAthletFromCompetition(uuid: string, athletId: number, secret: string): Observable<{ removedWertungen: number }> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.delete<{ removedWertungen: number }>(this.api + 'competition/' + uuid + '/athlet/' + athletId, { headers });
+  }
+
+  getAdminScores(uuid: string, secret: string): Observable<PublishedScoreView[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<PublishedScoreView[]>(this.api + 'admin/scores/' + uuid, { headers });
+  }
+
+  createAdminScore(uuid: string, request: AdminScoreRequest, secret: string): Observable<PublishedScoreView> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<PublishedScoreView>(this.api + 'admin/scores/' + uuid, request, { headers });
+  }
+
+  updateAdminScore(uuid: string, scoreId: string, request: AdminScoreRequest, secret: string): Observable<PublishedScoreView> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put<PublishedScoreView>(this.api + 'admin/scores/' + uuid + '/' + scoreId, request, { headers });
+  }
+
+  deleteAdminScore(uuid: string, scoreId: string, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete(this.api + 'admin/scores/' + uuid + '/' + scoreId, { headers });
+  }
+
+  getScoreToken(uuid: string, scoreId: string, secret: string): Observable<string> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post(this.api + 'admin/scores/' + uuid + '/scoretoken',
+      { scoreId }, { headers, responseType: 'text' });
+  }
+
+  getAvailableGroupers(uuid: string): Observable<string[]> {
+    return this.http.get<string[]>(this.api + 'scores/' + uuid + '/grouper');
+  }
+
+  getAvailableFilters(uuid: string, groupby: string): Observable<string[]> {
+    return this.http.get<string[]>(this.api + 'scores/' + uuid + '/filter?groupby=' + encodeURIComponent(groupby));
   }
 
 }

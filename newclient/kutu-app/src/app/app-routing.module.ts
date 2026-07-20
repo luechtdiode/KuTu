@@ -80,6 +80,10 @@ const routes: Routes = [
   {
     path: 'admin/registrations/:uuid',
     loadChildren: () => import('./admin-registrations/admin-registrations.module').then(m => m.AdminRegistrationsPageModule)
+  },
+  {
+    path: 'admin/rankings/:uuid',
+    loadChildren: () => import('./admin-rankings/admin-rankings.module').then(m => m.AdminRankingsPageModule)
   }
 
 ];
