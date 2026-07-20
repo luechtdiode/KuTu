@@ -6,9 +6,9 @@ import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
 import { BackendService } from '../services/backend.service';
 import { AdminWebsocketService, DurchgangResetted } from '../services/admin-websocket.service';
-import { PlaybookState, PlaybookDurchgang, PlaybookStation, PlaybookStep, Geraet, JudgeLink } from '../backend-types';
+import { PlaybookState, PlaybookDurchgang, PlaybookStation, PlaybookStep, Geraet, JudgeLink, PublishedScoreView, AdminScoreRequest } from '../backend-types';
 import { JudgeLinkModalComponent } from './judge-link-modal.component';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { backendUrl } from '../utils';
 
 interface PlaybookGroup {
@@ -49,6 +49,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
   groups: PlaybookGroup[] = [];
   stepperDgs: StepperDg[] = [];
   disziplinen: { id: number; name: string }[] = [];
+  savedScores: PublishedScoreView[] = [];
   loading = false;
   expandedGroups = new Set<string>();
 
@@ -86,6 +87,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
       error: () => {}
     });
     this.loadPlaybook();
+    this.loadSavedScores();
     this.initWebSocket();
   }
 
@@ -494,6 +496,48 @@ export class PlaybookPage implements OnInit, OnDestroy {
 
   goToAthletSearch() {
     this.navCtrl.navigateForward(`/search-athlet/${this.uuid}?admin=true&origin=playbook`);
+  }
+
+  goToRankings() {
+    this.navCtrl.navigateForward(`/admin/rankings/${this.uuid}`);
+  }
+
+  loadSavedScores() {
+    this.backend.getAdminScores(this.uuid, this.secret).subscribe({
+      next: scores => {
+        this.savedScores = scores.sort((a, b) => a.title.localeCompare(b.title));
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
+  }
+
+  async openScore(scoreId: string) {
+    const token = await firstValueFrom(this.backend.getScoreToken(this.uuid, scoreId, this.secret));
+    const url = `${backendUrl}api/scores/${this.uuid}/${scoreId}?html&token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank');
+  }
+
+  publishScore(score: PublishedScoreView) {
+    const request: AdminScoreRequest = { title: score.title, query: score.query, published: true };
+    this.backend.updateAdminScore(this.uuid, score.id, request, this.secret).subscribe({
+      next: () => {
+        this.showToast('Veröffentlicht', 'success');
+        this.loadSavedScores();
+      },
+      error: () => this.showToast('Fehler', 'danger')
+    });
+  }
+
+  unpublishScore(score: PublishedScoreView) {
+    const request: AdminScoreRequest = { title: score.title, query: score.query, published: false };
+    this.backend.updateAdminScore(this.uuid, score.id, request, this.secret).subscribe({
+      next: () => {
+        this.showToast('Veröffentlichung zurückgenommen', 'success');
+        this.loadSavedScores();
+      },
+      error: () => this.showToast('Fehler', 'danger')
+    });
   }
 
   private async showToast(message: string, color: string) {
