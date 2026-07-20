@@ -15,9 +15,12 @@ export class AdminWebsocketService extends WebsocketService {
   private secret: string;
 
   durchgangStarted = new BehaviorSubject<DurchgangStarted[]>([]);
+  durchgangStartedEvent = new Subject<DurchgangStarted>();
   durchgangFinished = new Subject<DurchgangFinished>();
   durchgangResetted = new Subject<DurchgangResetted>();
   wertungUpdated = new Subject<AthletWertungUpdated>();
+  stepFinished = new Subject<void>();
+  stationFinished = new Subject<void>();
 
   private _activeDurchgangList: DurchgangStarted[] = [];
 
@@ -61,9 +64,11 @@ export class AdminWebsocketService extends WebsocketService {
         }).reduce((a, b) => a && b, true);
 
       case 'DurchgangStarted':
-        this._activeDurchgangList = [...this._activeDurchgangList, message as DurchgangStarted]
+        const started = message as DurchgangStarted;
+        this._activeDurchgangList = [...this._activeDurchgangList, started]
           .filter((value, index, self) => self.findIndex(ds => ds.durchgang === value.durchgang) === index);
         this.durchgangStarted.next(this._activeDurchgangList);
+        this.durchgangStartedEvent.next(started);
         return true;
 
       case 'DurchgangFinished':
@@ -85,6 +90,14 @@ export class AdminWebsocketService extends WebsocketService {
       case 'AthletWertungUpdatedSequenced':
       case 'AthletWertungUpdated':
         this.wertungUpdated.next(message as AthletWertungUpdated);
+        return true;
+
+      case 'DurchgangStepFinished':
+        this.stepFinished.next();
+        return true;
+
+      case 'DurchgangStationFinished':
+        this.stationFinished.next();
         return true;
 
       default:
