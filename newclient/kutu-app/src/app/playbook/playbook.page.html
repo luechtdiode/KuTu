@@ -57,15 +57,19 @@
                 <div class="stepper-halts">
                   @for (h of dg.halts; track h.halt; let j = $index) {
                     @if (j > 0) {
-                      <div class="stepper-halt-connector" [class.done]="h.status !== 'pending'">
-                        @if (dg.halts[j-1]?.status === 'done' && h.status === 'einturnen') {
-                          <span class="connector-label">Gerätewechsel</span>
-                        }
-                      </div>
+          <div class="stepper-halt-connector" [class.done]="h.status !== 'pending'"></div>
                     }
-                    <div class="stepper-halt" [class]="h.status">
-                      <span class="halt-label">Station {{ h.halt + 1 }}</span>
-                      <span class="halt-status">{{ haltStatusLabel(h, j === 0) }}</span>
+                    <div class="stepper-halt-col">
+                      <div class="stepper-halt" [class]="h.status"
+                           [class.manual-done]="isMilestoneChecked(h, dg.displayName)">
+                        <span class="halt-label">Station {{ h.halt + 1 }}</span>
+                        <span class="halt-status">{{ haltStatusLabel(h, j === 0, dg.displayName) }}</span>
+                      </div>
+                      @if (h.status === 'active' && !isMilestoneChecked(h, dg.displayName)) {
+                        <button class="milestone-btn" (click)="toggleMilestone(h, dg.displayName); $event.stopPropagation()">
+                          Abschliessen
+                        </button>
+                      }
                     </div>
                   }
                 </div>
@@ -99,7 +103,7 @@
                     <span class="group-toggle" [class.expanded]="expandedGroups.has(group.title)">▶</span>
                     <strong>{{ group.title }}</strong>
                     <div class="dg-info">
-                      <small>{{ groupCompletedAthletes(group) }}/{{ groupTotalAthletes(group) }} Athleten</small>
+                      <!--<small>{{ groupCompletedAthletes(group) }}/{{ groupTotalAthletes(group) }} Übungen im Durchgang</small>-->
                       @if (groupPlanStart(group)) {
                         <small class="dg-time">Plan: {{ groupPlanStart(group) }} – {{ groupPlanFinish(group) }}</small>
                       }
@@ -163,7 +167,7 @@
                         <strong>{{ row.name }}</strong>
                       }
                       <div class="dg-info">
-                        <small>{{ row.completedCount }}/{{ row.totalCount }} Athleten</small>
+                        <!-- <small>{{ row.completedCount }}/{{ row.totalCount }} Übungen im Durchgang</small>-->
                         @if (row.planStart) {
                           <small class="dg-time">Plan: {{ row.planStart }} – {{ row.planFinish }}</small>
                         }
