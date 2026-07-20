@@ -56,6 +56,33 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
     }
   }
   
+  private def isValidScoreToken(token: String, competitionId: String, scoreId: String): Boolean = {
+    import ch.seidel.jwt.JsonWebToken
+    if !JsonWebToken.validate(token, Config.jwtSecretKey) then false
+    else token match {
+      case JsonWebToken(_, claims, _) =>
+        val m = claims.asSimpleMap.toOption.getOrElse(Map.empty)
+        val userId = m.get("user").getOrElse("")
+        val isAdmin = m.get("admin").contains("true")
+        val hasScoreAccess = m.get("scoreAccess").contains("true")
+        val tokenScoreId = m.get("scoreId").getOrElse("")
+        (isAdmin && userId == competitionId) || (hasScoreAccess && tokenScoreId == scoreId)
+      case _ => false
+    }
+  }
+
+  private def isValidAdminHeader(token: Option[String], competitionId: String): Boolean = {
+    token.exists { t =>
+      import ch.seidel.jwt.JsonWebToken
+      t match {
+        case JsonWebToken(_, claims, _) =>
+          val m = claims.asSimpleMap.toOption.getOrElse(Map.empty)
+          m.get("admin").contains("true") && m.get("user").exists(_ == competitionId)
+        case _ => false
+      }
+    }
+  }
+
   private def queryFilters(groupby: Option[String], groupers: List[FilterBy], data: Seq[WertungView]): Seq[String] = {
     val cblist = groupby.toSeq.flatMap(gb => gb.split(":")).map{groupername =>
       groupers.find(grouper => grouper.groupname.equals(groupername))
@@ -269,12 +296,13 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             } ~
             pathPrefixLabeled(JavaUUID, ":score-id") { scoreUUID =>
               get {
-                parameters(Symbol("html").?) { html =>
+                parameters(Symbol("html").?, Symbol("token").?) { (html, token) =>
                   val scoreId = scoreUUID.toString
+                  val hasScoreAccess = token.exists(t => isValidScoreToken(t, competitionId.toString, scoreId))
                   complete(
                     listPublishedScores(competitionId)
                       .map(sc => sc.filter(c => {
-                        c.id == scoreId && c.published
+                        c.id == scoreId && (hasScoreAccess || c.published)
                       }))
                       .map {list => ToResponseMarshallable {
                         val (score, publishedData) = list match {
@@ -305,8 +333,10 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                   , Symbol("kind").?
                   , Symbol("counting").?
                 ) { (groupby, filter, html, alphanumeric, avg, kind, counting) =>
+                  optionalHeaderValueByName(Config.jwtAuthorizationKey) { authHeader =>
+                  val isAdmin = isValidAdminHeader(authHeader, competitionId.toString)
                   complete(
-                    if !endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby.isEmpty && filter.isEmpty && ScoreListKind(kind) != Teamrangliste) then {
+                    if !isAdmin && !endDate.atStartOfDay().isBefore(LocalDate.now.atStartOfDay) || (groupby.isEmpty && filter.isEmpty && ScoreListKind(kind) != Teamrangliste) then {
                       ToResponseMarshallable(HttpEntity(ContentTypes.`text/html(UTF-8)`,
                         f"""
                            |<html>
@@ -393,11 +423,12 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                       Future{
                         queryScoreResults(wettkampf.easyprint, groupby, filter, html.nonEmpty, groupers, data,
                           alphanumeric.nonEmpty, !avg.exists(s => s.equals("false")), ScoreListKind(kind), ScoreListBestN(counting), logofile)
-                      }
-                    }
-                  )
-                }
-              }
+                       }
+                     }
+                   )
+                   }
+                 }
+               }
             } ~
             pathLabeled("intermediate", "intermediate") {
               get {

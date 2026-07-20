@@ -1,10 +1,10 @@
 package ch.seidel.kutu.http
 
-import ch.seidel.jwt.{JsonWebToken, JwtClaimsSetMap}
+import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet, JwtClaimsSetMap}
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.actors.*
-import ch.seidel.kutu.data.ResourceExchanger
+import ch.seidel.kutu.data.{*, given}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.{RiegenBuilder, ServerPrintUtil}
 import ch.seidel.kutu.view.DurchgangView
@@ -384,6 +384,82 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 }
               } else {
                 complete(StatusCodes.Conflict)
+              }
+            }
+          }
+        }
+      } ~
+      pathPrefixLabeled("admin" / "scores", "admin/scores") {
+        pathPrefixLabeled(JavaUUID, ":uuid") { wkuuid =>
+          pathEnd {
+            get {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  complete(listPublishedScores(UUID.fromString(wkuuid.toString)).map(_.toJson))
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            } ~
+            post {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[AdminScoreRequest]) { request =>
+                    val wettkampf = readWettkampf(wkuuid.toString)
+                    val saved = savePublishedScore(wettkampf.id, request.title, request.query, request.published, propagate = true)
+                    complete(saved.toJson)
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathPrefixLabeled(JavaUUID, ":scoreId") { scoreId =>
+            put {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[AdminScoreRequest]) { request =>
+                    val wettkampf = readWettkampf(wkuuid.toString)
+                    val updated = updatePublishedScore(wettkampf.id, scoreId.toString, request.title, request.query, request.published, propagate = true)
+                    complete(updated.toJson)
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            } ~
+            delete {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  val wettkampf = readWettkampf(wkuuid.toString)
+                  deletePublishedScore(wettkampf.id, scoreId.toString)
+                  complete(JsObject("status" -> JsString("ok")))
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
+              }
+            }
+          } ~
+          pathLabeled("scoretoken", "scoretoken") {
+            post {
+              entity(as[Map[String, String]]) { body =>
+                authenticatedAdmin() { userId =>
+                  if userId.equals(wkuuid.toString) then {
+                    val scoreId = body.getOrElse("scoreId", "")
+                    val expiryMillis = java.util.concurrent.TimeUnit.DAYS.toMillis(365)
+                    val claims = Map(
+                      "user" -> wkuuid.toString,
+                      "expiredAtKey" -> (System.currentTimeMillis() + expiryMillis).toString,
+                      "scoreAccess" -> "true",
+                      "scoreId" -> scoreId
+                    )
+                    val scopedToken = JsonWebToken(jwtHeader, JwtClaimsSet(claims), jwtSecretKey)
+                    complete(scopedToken)
+                  } else {
+                    complete(StatusCodes.Conflict)
+                  }
+                }
               }
             }
           }
