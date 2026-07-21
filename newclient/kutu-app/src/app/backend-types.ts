@@ -252,6 +252,7 @@ export interface AdminCreateCompetitionRequest {
   creatorPhone: string;
   termsAccepted: boolean;
   termsVersion: string;
+  copyFrom?: string;
 }
 
 export interface AdminCreateCompetitionResponse {
