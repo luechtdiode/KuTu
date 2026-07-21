@@ -1586,42 +1586,7 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
           if !dir.exists() then {
             dir.mkdirs()
           }
-          copyFrom.foreach(wkToCopy => {
-            // Ranglisten (scoredef), Planzeiten und Logo kopieren ...
-            val sourceFolder = new File(homedir + "/" + encodeFileName(copyFrom.get.easyprint))
-            val targetFolder = new File(homedir + "/" + encodeFileName(w.easyprint))
-            val sourceLogo = ServerPrintUtil.locateLogoFile(sourceFolder)
-            if !targetFolder.equals(sourceFolder) && sourceLogo.exists() then {
-              val logofileCopyTo = targetFolder.toPath.resolve(sourceLogo.getName)
-              if !logofileCopyTo.toFile.exists() then {
-                Files.copy(sourceLogo.toPath, logofileCopyTo)
-              }
-            }
-            if wkToCopy.programm.id == w.programmId then {
-              updateOrInsertPlanTimes(loadWettkampfDisziplinTimes(using wkToCopy.id).map(_.toWettkampfPlanTimeRaw.copy(wettkampfId = w.id)))
-              updateScoreCalcTemplates(loadScoreCalcTemplates(wkToCopy.id).map(_.copy(wettkampfId = Some(w.id))))
-            }
-
-            if !targetFolder.equals(sourceFolder) then {
-              sourceFolder
-                .listFiles()
-                .filter(f => f.getName.endsWith(".scoredef"))
-                .toList
-                .sortBy {
-                  _.getName
-                }
-                .foreach(scoreFileSource => {
-                  val targetFilePath = targetFolder.toPath.resolve(scoreFileSource.getName)
-                  if !targetFilePath.toFile.exists() then {
-                    Files.copy(scoreFileSource.toPath, targetFilePath)
-                  }
-                })
-            }
-            val scores = Await.result(listPublishedScores(UUID.fromString(wkToCopy.uuid.get)), Duration.Inf)
-            scores.foreach(score => {
-              savePublishedScore(wettkampfId = w.id, title = score.title, query = score.query, published = false, propagate = false)
-            })
-          })
+            copyFrom.foreach(wkToCopy => new CompetitionManager(KuTuApp).cloneWettkampfData(wkToCopy.uuid.get, w))
           updateTree()
           val text = s"${w.titel} ${w.datum}"
           tree.getLeaves("Wettkämpfe").find { item => text.equals(item.value.value) } match {

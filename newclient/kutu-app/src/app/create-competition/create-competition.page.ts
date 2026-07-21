@@ -127,9 +127,13 @@ export class CreateCompetitionPage {
   editUuid: string | null = null;
   private editSecret: string | null = null;
   private editId: number | null = null;
+  private copyFromUuid: string | null = null;
 
   ionViewWillEnter() {
     this.editUuid = this.route.snapshot.paramMap.get('uuid');
+    this.route.queryParams.subscribe(params => {
+      this.copyFromUuid = params['copyFrom'] || null;
+    });
     this.backend.getProgramme().subscribe(pgm => {
       this.programme = pgm;
       if (this.editUuid) {
@@ -163,6 +167,33 @@ export class CreateCompetitionPage {
           });
           this.cdr.detectChanges();
         });
+      } else if (this.copyFromUuid) {
+        const stored = this.secretService.getSecret(this.copyFromUuid);
+        if (stored) {
+          this.backend.getCompetitionDetails(this.copyFromUuid, stored.secret).subscribe(data => {
+            this.form.titel = data.titel;
+            this.form.programmId = data.programmId;
+            this.form.notificationEMail = data.notificationEMail;
+            this.form.auszeichnung = data.auszeichnung;
+            this.form.auszeichnungendnote = data.auszeichnungendnote;
+            this.form.altersklassen = data.altersklassen;
+            this.form.jahrgangsklassen = data.jahrgangsklassen;
+            this.form.punktegleichstandsregel = data.punktegleichstandsregel;
+            this.form.rotation = data.rotation;
+            this.form.teamrule = data.teamrule;
+            this.onProgramChange();
+            this.backend.getCompetitionLogo(this.copyFromUuid!, stored.secret).subscribe({
+              next: blob => {
+                this.selectedLogo = new File([blob], 'logo.png', { type: blob.type });
+                if (this.logoPreview) URL.revokeObjectURL(this.logoPreview);
+                this.logoPreview = URL.createObjectURL(blob);
+                this.cdr.detectChanges();
+              },
+              error: () => { /* no logo */ }
+            });
+            this.cdr.detectChanges();
+          });
+        }
       }
     });
   }
@@ -381,7 +412,8 @@ export class CreateCompetitionPage {
           creatorAddress: this.form.creatorAddress,
           creatorPhone: this.form.creatorPhone,
           termsAccepted: true,
-          termsVersion: '1.0'
+          termsVersion: '1.0',
+          copyFrom: this.copyFromUuid || undefined
         })
       );
 

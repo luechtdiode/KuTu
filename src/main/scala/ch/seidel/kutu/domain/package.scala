@@ -1064,7 +1064,8 @@ package object domain {
     creatorAddress: String,
     creatorPhone: String,
     termsAccepted: Boolean,
-    termsVersion: String
+    termsVersion: String,
+    copyFrom: Option[String] = None
   ) extends DataObject
 
   case class AdminCreateCompetitionResponse(

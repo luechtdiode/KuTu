@@ -171,6 +171,12 @@ export class CompetitionListPage implements OnDestroy {
     this.nav.navigateRoot('/admin/competitions/' + s.uuid + '/edit');
   }
 
+  copyCompetition(s: CompetitionListItem) {
+    this.nav.navigateRoot('/admin/competitions/create', {
+      queryParams: { copyFrom: s.uuid }
+    });
+  }
+
   openRiegen(s: CompetitionListItem) {
     this.nav.navigateRoot('/admin/riege-einteilung/' + s.uuid);
   }
