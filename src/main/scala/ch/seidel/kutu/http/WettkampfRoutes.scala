@@ -311,6 +311,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                       termsAcceptedAt = Some(new java.sql.Timestamp(System.currentTimeMillis())),
                       termsVersion = Some(request.termsVersion)
                     )
+                    request.copyFrom.foreach(new CompetitionManager(this).cloneWettkampfData(_, wettkampf))
                     val claims = setClaims(uuid, Int.MaxValue, isAdmin = true)
                     val secret = JsonWebToken(jwtHeader, claims, jwtSecretKey)
                     wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, secret)
