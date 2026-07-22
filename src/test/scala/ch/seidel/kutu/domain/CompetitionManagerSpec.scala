@@ -160,7 +160,7 @@ class CompetitionManagerSpec extends KuTuBaseSpec {
 
       val targetScoredef = new File(targetFolder, "test-scoredef.scoredef")
       targetScoredef.exists() shouldBe true
-      Files.readString(targetScoredef.toPath) shouldBe "test,data\n"
+      Files.readString(targetScoredef.toPath) shouldBe s"test,data${System.lineSeparator()}"
       deleteRecursively(targetFolder)
     }
 

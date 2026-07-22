@@ -13,6 +13,7 @@ import java.nio.file.{Files, LinkOption, Path, StandardOpenOption}
 import java.sql.{Date, Timestamp}
 import java.text.{ParseException, SimpleDateFormat}
 import java.time.*
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
@@ -93,12 +94,19 @@ package object domain {
       sd.toLocalDate //.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
     }
   }
+
   given Conversion[Double, String] = dbl2Str
-  given Conversion[String,BigDecimal] = str2bd
-  given Conversion[String,Double] = str2dbl
-  given Conversion[String,Int] = str2Int
-  given Conversion[String,Long] = str2Long
+
+  given Conversion[String, BigDecimal] = str2bd
+
+  given Conversion[String, Double] = str2dbl
+
+  given Conversion[String, Int] = str2Int
+
+  given Conversion[String, Long] = str2Long
+
   given Conversion[LocalDate, java.sql.Date] = ld2SQLDate
+
   given Conversion[java.sql.Date, LocalDate] = sqlDate2ld
 
 
@@ -384,17 +392,21 @@ package object domain {
 
   sealed trait TeamAggreateFun {
     def sum(xs: Iterable[Resultat]): Resultat = if xs.nonEmpty then xs.reduce(_ + _) else Resultat(0, 0, 0)
+
     def max(xs: Iterable[Resultat]): Resultat = if xs.nonEmpty then xs.reduce(_.max(_)) else Resultat(0, 0, 0)
+
     def min(xs: Iterable[Resultat]): Resultat = if xs.nonEmpty then xs.reduce(_.min(_)) else Resultat(0, 0, 0)
+
     def mean(xs: Iterable[Resultat]): Resultat = if xs.nonEmpty then sum(xs) / xs.size else Resultat(0, 0, 0)
+
     def median(xs: Iterable[Resultat]): Resultat = xs match {
-      case Nil => Resultat(0,0,0)
-      case x::Nil => x
+      case Nil => Resultat(0, 0, 0)
+      case x :: Nil => x
       case _ =>
         val l = xs.toList.sortBy(_.endnote)
         val i = Math.max(1, l.size / 2)
         if l.size % 2 == 0 then {
-          (l(i-1) + l(i)) / 2
+          (l(i - 1) + l(i)) / 2
         } else {
           l(i)
         }
@@ -412,16 +424,19 @@ package object domain {
     }
 
     def stdDev(xs: Iterable[Resultat]): Resultat = xs match {
-      case Nil => Resultat(0,0,0)
-      case x::Nil => x
+      case Nil => Resultat(0, 0, 0)
+      case x :: Nil => x
       case _ => variance(xs).sqrt
     }
 
     def apply(results: Iterable[Resultat]): Resultat
+
     def sortFactor = 1
+
     def toFormelPart: String = ""
 
     def toDescriptionPart: String
+
     override def toString: String = toDescriptionPart.replace(" aus", " der zählenden Wertungen")
   }
 
@@ -465,7 +480,9 @@ package object domain {
 
   case object DevMin extends TeamAggreateFun {
     override def apply(results: Iterable[Resultat]): Resultat = stdDev(results)
+
     override def sortFactor = -1
+
     override def toFormelPart: String = "devmin/"
 
     def toDescriptionPart: String = "kleinste Abweichung aus"
@@ -473,6 +490,7 @@ package object domain {
 
   case object DevMax extends TeamAggreateFun {
     override def apply(results: Iterable[Resultat]): Resultat = stdDev(results)
+
     override def toFormelPart: String = "devmax/"
 
     def toDescriptionPart: String = "grösste Abweichung aus"
@@ -586,6 +604,7 @@ package object domain {
   case class Durchgang(id: Long, wettkampfId: Long, title: String, name: String, durchgangtype: DurchgangType, ordinal: Int, planStartOffset: Long, effectiveStartTime: Option[java.sql.Timestamp], effectiveEndTime: Option[java.sql.Timestamp], planEinturnen: Long, planGeraet: Long, planTotal: Long) extends DataObject {
     override def easyprint: String = if name.equals(title) then name else s"$title: $name"
 
+    val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     def effectivePlanStart(wkDate: LocalDate): LocalDateTime = LocalDateTime.of(wkDate, LocalTime.MIDNIGHT).plusNanos(planStartOffset * 1000_000L)
 
     def effectivePlanFinish(wkDate: LocalDate): LocalDateTime = LocalDateTime.of(wkDate, LocalTime.MIDNIGHT).plusNanos((planStartOffset + (if planStartOffset > 0 then planTotal else 24000 * 3600)) * 1000_000L)
@@ -623,7 +642,7 @@ package object domain {
 
   object Altersklasse {
     val rangeStepPattern: Regex = "([\\D\\s]*)([0-9]+)-([0-9]+)/([0-9]+)".r
-    val rangepattern : Regex= "([\\D\\s]*)([0-9]+)-([0-9]+)".r
+    val rangepattern: Regex = "([\\D\\s]*)([0-9]+)-([0-9]+)".r
     val intpattern: Regex = "([\\D\\s]*)([0-9]+)".r
     val qualifierPattern: Regex = "(.*)\\(([\\D\\s]+)\\)".r
 
@@ -821,7 +840,7 @@ package object domain {
    * Beispiele   | GeTu/KuTu/KuTuRi   | Turn10® (BS/OS)      | TG Allgäu (Pfl./Kür) | ATT (Kraft/Bewg)
    * +-------------------------------------------+----------------------------------------------------------
    * Rangliste   | Sex/Programm       | Sex/Programm/Jg      | Sex/Programm         | Sex/Programm/Jg
-   *             |                    | Sex/Programm/AK      | Sex/Programm/AK      |
+   * |                    | Sex/Programm/AK      | Sex/Programm/AK      |
    * +===========================================+=========================================================
    * </pre>
    */
@@ -1009,6 +1028,7 @@ package object domain {
       case Some(_) => true
       case None => false
     }
+
     def audiofilesDir = new java.io.File(Config.homedir + "/" + encodeFileName(easyprint) + "/audiofiles")
 
     def isReadonly(homedir: String, origin: String): Boolean = !hasSecred(homedir, origin) && hasRemote(homedir, origin)
@@ -1029,6 +1049,7 @@ package object domain {
       s"${if altersklassen.nonEmpty then ", Altersklassen" else ""}" +
       s"${if jahrgangsklassen.nonEmpty then ", Jahrgangs Altersklassen" else ""}" +
       ""
+
     def toWettkampf: Wettkampf = {
       val ak = if altersklassen != null && altersklassen.nonEmpty then Some(altersklassen) else None
       val jak = if jahrgangsklassen != null && jahrgangsklassen.nonEmpty then Some(jahrgangsklassen) else None
@@ -1049,133 +1070,133 @@ package object domain {
   }
 
   case class AdminCreateCompetitionRequest(
-    datum: java.sql.Date,
-    titel: String,
-    programmId: Long,
-    notificationEMail: String,
-    auszeichnung: Int,
-    auszeichnungendnote: scala.math.BigDecimal,
-    altersklassen: String,
-    jahrgangsklassen: String,
-    punktegleichstandsregel: String,
-    rotation: String,
-    teamrule: String,
-    creatorName: String,
-    creatorAddress: String,
-    creatorPhone: String,
-    termsAccepted: Boolean,
-    termsVersion: String,
-    copyFrom: Option[String] = None
-  ) extends DataObject
+                                            datum: java.sql.Date,
+                                            titel: String,
+                                            programmId: Long,
+                                            notificationEMail: String,
+                                            auszeichnung: Int,
+                                            auszeichnungendnote: scala.math.BigDecimal,
+                                            altersklassen: String,
+                                            jahrgangsklassen: String,
+                                            punktegleichstandsregel: String,
+                                            rotation: String,
+                                            teamrule: String,
+                                            creatorName: String,
+                                            creatorAddress: String,
+                                            creatorPhone: String,
+                                            termsAccepted: Boolean,
+                                            termsVersion: String,
+                                            copyFrom: Option[String] = None
+                                          ) extends DataObject
 
   case class AdminCreateCompetitionResponse(
-    uuid: String,
-    titel: String,
-    datum: java.sql.Date,
-    secret: String
-  ) extends DataObject
+                                             uuid: String,
+                                             titel: String,
+                                             datum: java.sql.Date,
+                                             secret: String
+                                           ) extends DataObject
 
   case class AdminUpdateCompetitionRequest(
-    id: Long,
-    datum: java.sql.Date,
-    titel: String,
-    programmId: Long,
-    notificationEMail: String,
-    auszeichnung: Int,
-    auszeichnungendnote: scala.math.BigDecimal,
-    altersklassen: String,
-    jahrgangsklassen: String,
-    punktegleichstandsregel: String,
-    rotation: String,
-    teamrule: String
-  ) extends DataObject
+                                            id: Long,
+                                            datum: java.sql.Date,
+                                            titel: String,
+                                            programmId: Long,
+                                            notificationEMail: String,
+                                            auszeichnung: Int,
+                                            auszeichnungendnote: scala.math.BigDecimal,
+                                            altersklassen: String,
+                                            jahrgangsklassen: String,
+                                            punktegleichstandsregel: String,
+                                            rotation: String,
+                                            teamrule: String
+                                          ) extends DataObject
 
   case class AdminGetCompetitionResponse(
-    id: Long,
-    uuid: String,
-    datum: java.sql.Date,
-    titel: String,
-    programmId: Long,
-    auszeichnung: Int,
-    auszeichnungendnote: scala.math.BigDecimal,
-    notificationEMail: String,
-    altersklassen: String,
-    jahrgangsklassen: String,
-    punktegleichstandsregel: String,
-    rotation: String,
-    teamrule: String
-  ) extends DataObject
+                                          id: Long,
+                                          uuid: String,
+                                          datum: java.sql.Date,
+                                          titel: String,
+                                          programmId: Long,
+                                          auszeichnung: Int,
+                                          auszeichnungendnote: scala.math.BigDecimal,
+                                          notificationEMail: String,
+                                          altersklassen: String,
+                                          jahrgangsklassen: String,
+                                          punktegleichstandsregel: String,
+                                          rotation: String,
+                                          teamrule: String
+                                        ) extends DataObject
 
   case class AdminScoreRequest(
-    title: String,
-    query: String,
-    published: Boolean
-  ) extends DataObject
+                                title: String,
+                                query: String,
+                                published: Boolean
+                              ) extends DataObject
 
   case class RiegeSuggestionRequest(
-    maxRiegenSize: Int = 0,
-    maxParallelDg: Int = 0,
-    splitPgm: Boolean = true,
-    splitSexOption: Option[String] = None,
-    onDisziplinIds: Option[Set[Long]] = None,
-    separateRiegen2Durchgaenge: Boolean = true,
-    filterDurchgang: Option[Set[String]] = None
-  ) extends DataObject
+                                     maxRiegenSize: Int = 0,
+                                     maxParallelDg: Int = 0,
+                                     splitPgm: Boolean = true,
+                                     splitSexOption: Option[String] = None,
+                                     onDisziplinIds: Option[Set[Long]] = None,
+                                     separateRiegen2Durchgaenge: Boolean = true,
+                                     filterDurchgang: Option[Set[String]] = None
+                                   ) extends DataObject
 
   case class UpdateRiegeRequest(
-    name: String,
-    durchgang: Option[String],
-    startId: Option[Long],
-    kind: Int = 0
-  ) extends DataObject
+                                 name: String,
+                                 durchgang: Option[String],
+                                 startId: Option[Long],
+                                 kind: Int = 0
+                               ) extends DataObject
 
   case class UpdateDurchgangRequest(
-    oldTitle: String,
-    newTitle: String
-  ) extends DataObject
+                                     oldTitle: String,
+                                     newTitle: String
+                                   ) extends DataObject
 
   case class MergeDurchgangRequest(
-    durchgangNames: Set[String],
-    targetName: String
-  ) extends DataObject
+                                    durchgangNames: Set[String],
+                                    targetName: String
+                                  ) extends DataObject
 
   case class GroupDurchgangRequest(
-    durchgangNames: Set[String],
-    groupTitle: String
-  ) extends DataObject
+                                    durchgangNames: Set[String],
+                                    groupTitle: String
+                                  ) extends DataObject
 
   case class UngroupDurchgangRequest(
-    durchgangNames: Set[String]
-  ) extends DataObject
+                                      durchgangNames: Set[String]
+                                    ) extends DataObject
 
   case class UpdateStartOffsetRequest(
-    title: String,
-    offsetMillis: Long
-  ) extends DataObject
+                                       title: String,
+                                       offsetMillis: Long
+                                     ) extends DataObject
 
   case class RiegeItem(
-    name: String,
-    durchgang: Option[String],
-    startId: Option[Long],
-    startName: Option[String],
-    kind: Int,
-    athletCount: Int
-  ) extends DataObject
+                        name: String,
+                        durchgang: Option[String],
+                        startId: Option[Long],
+                        startName: Option[String],
+                        kind: Int,
+                        athletCount: Int
+                      ) extends DataObject
 
   case class DurchgangDurationItem(
-    name: String,
-    title: String,
-    offsetMillis: Long,
-    einturnenMillis: Long,
-    geraetMillis: Long,
-    totalMillis: Long,
-    athletCount: Int
-  ) extends DataObject
+                                    name: String,
+                                    title: String,
+                                    offsetMillis: Long,
+                                    einturnenMillis: Long,
+                                    geraetMillis: Long,
+                                    totalMillis: Long,
+                                    athletCount: Int
+                                  ) extends DataObject
 
   case class RiegePreviewResponse(
-    riegen: Seq[RiegeItem],
-    durchgange: Seq[DurchgangDurationItem]
-  ) extends DataObject
+                                   riegen: Seq[RiegeItem],
+                                   durchgange: Seq[DurchgangDurationItem]
+                                 ) extends DataObject
 
   case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {
     override def easyprint = f"PublishedScore($title)"
@@ -1190,6 +1211,7 @@ package object domain {
     override def easyprint = f"PublishedScore($title - ${wettkampf.easyprint})"
 
     def isAlphanumericOrdered: Boolean = query.contains("&alphanumeric")
+
     def isAvgOnMultipleCompetitions: Boolean = query.contains("&avg=true")
 
     def toRaw = PublishedScoreRaw(id, title, query, published, publishedDate, wettkampf.id)
@@ -1237,8 +1259,11 @@ package object domain {
     def *(cnt: BigDecimal): Resultat = if cnt == 1 then this else Resultat(noteD * cnt, noteE * cnt, endnote * cnt)
 
     def max(other: Resultat): Resultat = Resultat(noteD.max(other.noteD), noteE.max(other.noteE), endnote.max(other.endnote))
+
     def min(other: Resultat): Resultat = Resultat(noteD.min(other.noteD), noteE.min(other.noteE), endnote.min(other.endnote))
+
     def pow(exponent: Int): Resultat = Resultat(noteD.pow(exponent), noteE.pow(exponent), endnote.pow(exponent))
+
     def sqrt: Resultat = Resultat(
       BigDecimal.decimal(Math.sqrt(noteD.toDouble)).setScale(noteD.scale, RoundingMode.HALF_UP),
       BigDecimal.decimal(Math.sqrt(noteE.toDouble)).setScale(noteE.scale, RoundingMode.HALF_UP),
@@ -1247,7 +1272,7 @@ package object domain {
     def asStreichwertung: Resultat = copy(isStreichwertung = true)
 
     lazy val formattedD: String = if noteD > 0 then f"$noteD%4.2f" else " "
-    lazy val formattedE: String =if noteE > 0 then if noteD > 0 then f"$noteE%6.3f" else f"$noteE%6.2f" else ""
+    lazy val formattedE: String = if noteE > 0 then if noteD > 0 then f"$noteE%6.3f" else f"$noteE%6.2f" else ""
     lazy val formattedEnd: String = if endnote > 0 then if noteD > 0 then f"$endnote%6.3f" else f"$endnote%6.2f" else ""
 
     override def easyprint: String = f"$formattedD%6s$formattedE%6s$formattedEnd%6s"
@@ -1429,7 +1454,9 @@ package object domain {
     def template: Option[ScoreCalcTemplate] = None
 
     def validated(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): (Double, Double)
+
     def calcEndnote(dnote: Double, enote: Double, wettkampfDisziplin: WettkampfdisziplinView): Double
+
     def calcEndnote(wertung: Wertung, wettkampfDisziplin: WettkampfdisziplinView): Wertung = {
       def standardCalc = {
         // ignoring variables ...
@@ -1513,8 +1540,8 @@ package object domain {
         Seq(NameCodec.encode(name), colenc.encode(name).mkString(""))).reverse
 
     def similarFactor(left: Seq[String], right: Seq[String]): Int = {
-      val gs = left.take(2).zip(right.take(2)).zipWithIndex.map{
-        case ((l, r), idx) => if l.equals(r) then (idx +1) * 20 else 0
+      val gs = left.take(2).zip(right.take(2)).zipWithIndex.map {
+        case ((l, r), idx) => if l.equals(r) then (idx + 1) * 20 else 0
       }.sum
       val remainingright = right.drop(2).toSet
       val remainingLeft = left.drop(2).toSet
@@ -1547,6 +1574,7 @@ package object domain {
     def nameSimilarFactor(other: MatchCode): Int = {
       similarFactor(encodedNamen, other.encodedNamen)
     }
+
     def vornameSimilarFactor(other: MatchCode): Int = {
       similarFactor(encodedVorNamen, other.encodedVorNamen)
     }
@@ -1560,7 +1588,7 @@ package object domain {
       else {
         val bestOfCount = wertungen.head.wettkampfdisziplin.programm.bestOfCount
         val bestOfwertungen = wertungen.toList.sortBy(w => w.resultat.endnote).reverse.take(bestOfCount)
-        wertungen.map{ w =>
+        wertungen.map { w =>
           if bestOfwertungen.contains(w) then {
             w
           } else {
@@ -1571,6 +1599,7 @@ package object domain {
     }
 
   }
+
   case class Kandidat(wettkampfTitel: String, geschlecht: String, programm: String, id: Long,
                       name: String, vorname: String, jahrgang: String, verein: String, einteilung: Option[Riege], einteilung2: Option[Riege], diszipline: Seq[Disziplin], diszipline2: Seq[Disziplin], wertungen: Seq[WertungView]) {
     lazy val markedWertungen: Iterable[WertungView] = Kandidat.mapToBestOfCounting(wertungen)
@@ -1578,6 +1607,7 @@ package object domain {
     def matches(w1: Wertung, w2: WertungView): Boolean = {
       w2.wettkampfdisziplin.id == w1.wettkampfdisziplinId && w2.athlet.id == w1.athletId
     }
+
     def indexOf(wertung: Wertung): Int = wertungen.indexWhere(w => matches(wertung, w))
 
     def updated(idx: Int, wertung: Wertung): Kandidat = {
@@ -1585,8 +1615,9 @@ package object domain {
         copy(wertungen = wertungen.updated(idx, wertungen(idx).updatedWertung(wertung)))
       else this
     }
-    def getMediaURI(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin], wertung: Wertung): URI = {
-      val pattern =  s"${encodeFileName(s"${name}_$vorname")}_${wertung.wettkampfdisziplinId}.".toLowerCase
+
+    def getMediaURI(wettkampf: Wettkampf, lookup: String => Option[MediaAdmin], wertung: Wertung): URI = {
+      val pattern = s"${encodeFileName(s"${name}_$vorname")}_${wertung.wettkampfdisziplinId}.".toLowerCase
       val dir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampfTitel) + "/audiofiles")
       val pattern2 = wertung.mediafile.flatMap(mf => lookup(mf.id)).map(_.computeFilePath(wettkampf).toString.toLowerCase()).getOrElse(Config.homedir + "/" + encodeFileName(wettkampfTitel) + s"/${pattern}mp3")
       val files: Array[File] = dir.listFiles(new FilenameFilter {
@@ -1613,7 +1644,8 @@ package object domain {
         .getOrElse(new java.io.File(pattern2))
         .toURI
     }
-    def hasMedia(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin], wertung: Wertung): Boolean = {
+
+    def hasMedia(wettkampf: Wettkampf, lookup: String => Option[MediaAdmin], wertung: Wertung): Boolean = {
       val uri = getMediaURI(wettkampf, lookup, wertung)
       //println("searching for mediafile at " + uri )
       new File(uri).exists()
@@ -1660,14 +1692,18 @@ package object domain {
     def softEquals(other: GeraeteRiege): Boolean = {
       hash == other.hash
     }
+
     private def songtitle(kandidat: Kandidat, media: Media) = {
       s"${kandidat.vorname} ${kandidat.name} (${kandidat.verein}), ${disziplin.map(_.easyprint).getOrElse("")} - ${media.name}"
     }
+
     var medialistCache: Option[Seq[(Kandidat, WertungView, String, URI)]] = None
+
     def resetMediaListCache(): Unit = {
       medialistCache = None
     }
-    def getMediaList(wettkampf: Wettkampf, lookup: String=>Option[MediaAdmin]): Seq[(Kandidat, WertungView, String, URI)] = medialistCache match {
+
+    def getMediaList(wettkampf: Wettkampf, lookup: String => Option[MediaAdmin]): Seq[(Kandidat, WertungView, String, URI)] = medialistCache match {
       case Some(list) => list
       case _ =>
         medialistCache = Some(kandidaten
@@ -1724,7 +1760,7 @@ package object domain {
       case AddRegistration(verein, programId, athlet, suggestion, team, media, reserve, athletRegistrationId) => AddRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, team, media, reserve, athletRegistrationId)
       case MoveRegistration(verein, fromProgramId, fromTeam, toProgramid, toTeam, athlet, suggestion, toReserve, athletRegistrationId) => MoveRegistration(verein.toPublicView, fromProgramId, fromTeam, toProgramid, toTeam, athlet.toPublicView, suggestion.toPublicView, toReserve, athletRegistrationId)
       case RemoveRegistration(verein, programId, athlet, suggestion, athletRegistrationId) => RemoveRegistration(verein.toPublicView, programId, athlet.toPublicView, suggestion.toPublicView, athletRegistrationId)
-      case am:AddMedia => AddMedia(am.verein.toPublicView, am.athletReg.toPublicView)
+      case am: AddMedia => AddMedia(am.verein.toPublicView, am.athletReg.toPublicView)
     }
   }
 
@@ -1733,8 +1769,10 @@ package object domain {
   }
 
   case class RenameVereinAction(override val verein: Registration, oldVerein: Verein) extends SyncAction {
-    override val caption = s"Verein korrigieren: ${oldVerein.easyprint}${oldVerein.verband.map(verband =>
-      s" ($verband)").getOrElse("")} zu ${verein.toVerein.easyprint}${if verein.verband.nonEmpty then s" (${verein.verband})" else ""}"
+    override val caption = s"Verein korrigieren: ${oldVerein.easyprint}${
+      oldVerein.verband.map(verband =>
+        s" ($verband)").getOrElse("")
+    } zu ${verein.toVerein.easyprint}${if verein.verband.nonEmpty then s" (${verein.verband})" else ""}"
 
     def prepareLocalUpdate: Verein = verein.toVerein.copy(id = oldVerein.id)
 
@@ -1779,12 +1817,14 @@ package object domain {
   case class AddMedia(override val verein: Registration, athletReg: AthletRegistration) extends SyncAction {
     override val caption: String = s"Musik für ${athletReg.toAthlet.extendedprint} herunterladen: ${athletReg.mediafile.map(_.name).getOrElse("")}"
   }
+
   case class UpdateAthletMediaAction(override val verein: Registration, athletReg: AthletRegistration, wertung: Wertung) extends SyncAction {
     override val caption: String = if athletReg.mediafile.nonEmpty then
       s"Athlet/-In Musik aktualisieren: Von ${athletReg.toAthlet.extendedprint} (${athletReg.mediafile.map(_.name).getOrElse("")})"
     else
       s"Athlet/-In Musik entfernen: Von ${athletReg.toAthlet.extendedprint} (${wertung.mediafile.map(_.name).getOrElse("")})"
   }
+
   case class RenameAthletAction(override val verein: Registration, athletReg: AthletRegistration, existing: Athlet, expected: Athlet) extends SyncAction {
     override val caption = s"Athlet/-In korrigieren: Von ${existing.extendedprint} zu ${expected.extendedprint}"
 
@@ -1814,7 +1854,9 @@ package object domain {
   }
 
   case class SyncActionKey(registrationId: Long, athletId: Option[Long] = None, oldVereinId: Option[Long] = None, actionType: String = "", caption: Option[String] = None)
+
   case class SyncApplyRequest(actions: List[SyncActionKey])
+
   case class SyncApplyResponse(processed: Int, messages: List[String])
 
   case class RegistrationResetPW(id: Long, wettkampfId: Long, secret: String) extends DataObject
@@ -1822,24 +1864,27 @@ package object domain {
   case class Media(id: String, name: String, extension: String)
 
   /**
-
-  object MediaAdminObject {
-    def computeAudioFilesPath(wettkampf: Wettkampf): URI = new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/").toURI
-    def computeAudioFilesPath(): URI = new File(Config.homedir + "/audiofiles/").toURI
-  }
    *
-   * @param id UUID
-   * @param name Name
+   *  object MediaAdminObject {
+   * def computeAudioFilesPath(wettkampf: Wettkampf): URI = new File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint) + "/audiofiles/").toURI
+   * def computeAudioFilesPath(): URI = new File(Config.homedir + "/audiofiles/").toURI
+   * }
+   *
+   * @param id        UUID
+   * @param name      Name
    * @param extension file-extension
-   * @param stage 1=upload, 2=transcoding, 3=transcoded
-   * @param md5 md5 hash of transcoded normalized audio-file
+   * @param stage     1=upload, 2=transcoding, 3=transcoded
+   * @param md5       md5 hash of transcoded normalized audio-file
    */
   case class MediaAdmin(id: String, name: String, extension: String, stage: Int, metadata: String, md5: String, stamp: Long) {
     def md5Defined: Boolean = md5 != null && md5.nonEmpty
+
     def isTranscoded: Boolean = stage > 2 && md5Defined
+
     def filename: String = if isTranscoded then md5 + ".mp3" else {
       if md5Defined then md5 + "." + extension else id + "." + extension
     }
+
     def computeFilePath(wettkampf: Wettkampf): File = {
       if stage < 2 then {
         new File(new File(wettkampf.prepareFilePath(Config.homedir).getPath + "/audiofiles/" + filename).toURI)
@@ -1847,6 +1892,7 @@ package object domain {
         new File(new File(Config.homedir + "/audiofiles/" + filename).toURI)
       }
     }
+
     def toMedia = Media(id, name, extension)
   }
 
@@ -1855,6 +1901,7 @@ package object domain {
     import spray.json.enrichString
 
     def apply(text: String): Media = mediaFormat.read(text.parseJson)
+
     def apply(text: Option[String]): Option[Media] = text.map(t => mediaFormat.read(t.parseJson))
   }
 
@@ -2031,42 +2078,44 @@ package object domain {
   case class JudgeRegistrationProgramItem(program: String, disziplin: String, disziplinId: Long)
 
   case class PlaybookStep(
-    halt: Int,
-    totalAthletes: Int,
-    completedAthletes: Int
-  )
+                           halt: Int,
+                           totalAthletes: Int,
+                           completedAthletes: Int
+                         )
 
   case class PlaybookStation(
-    disziplinId: Long,
-    disziplinName: String,
-    steps: List[PlaybookStep],
-    overallPct: Int
-  )
+                              disziplinId: Long,
+                              disziplinName: String,
+                              steps: List[PlaybookStep],
+                              overallPct: Int
+                            )
 
   case class PlaybookDurchgang(
-    name: String,
-    title: String,
-    isRunning: Boolean,
-    isFinished: Boolean,
-    stations: List[PlaybookStation],
-    overallPct: Int,
-    totalCount: Int,
-    completedCount: Int,
-    planStart: String,
-    planFinish: String,
-    effectiveStart: String,
-    effectiveEnd: String,
-    duration: String,
-    planTotal: String,
-    planEinturnen: String,
-    planGeraet: String
-  )
+                                name: String,
+                                title: String,
+                                isRunning: Boolean,
+                                isFinished: Boolean,
+                                stations: List[PlaybookStation],
+                                overallPct: Int,
+                                totalCount: Int,
+                                completedCount: Int,
+                                planStart: String,
+                                planFinish: String,
+                                effectiveStart: String,
+                                effectiveEnd: String,
+                                duration: String,
+                                planTotal: String,
+                                planEinturnen: String,
+                                planGeraet: String
+                              )
 
   case class PlaybookState(
-    wettkampfUUID: String,
-    durchgaenge: List[PlaybookDurchgang],
-    activeDurchgaenge: List[String]
-  )
+                            wettkampfUUID: String,
+                            durchgaenge: List[PlaybookDurchgang],
+                            activeDurchgaenge: List[String]
+                          )
 
   case class JudgeLink(link: String, qrImage: String)
+
+  class ValidationException(message: String) extends RuntimeException(message) {}
 }

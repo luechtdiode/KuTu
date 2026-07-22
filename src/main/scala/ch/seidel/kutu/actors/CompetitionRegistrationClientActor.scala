@@ -1,10 +1,11 @@
 package ch.seidel.kutu.actors
 
+import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
 import ch.seidel.kutu.data.{RegistrationAdmin, ResourceExchanger}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.Core.system
-import ch.seidel.kutu.http.JsonSupport
+import ch.seidel.kutu.http.{JsonSupport, JwtSupport}
 import ch.seidel.kutu.renderer.MailTemplates
 import ch.seidel.kutu.view.WettkampfInfo
 import org.apache.pekko.actor.SupervisorStrategy.Restart
@@ -50,7 +51,7 @@ case class RegistrationActionWithContext(action: RegistrationAction, context: St
 case class ApplySyncActions(override val wettkampfUUID: String, actions: List[SyncActionKey]) extends RegistrationAction
 case class ApplySyncActionsResponse(processed: Int, messages: List[String]) extends RegistrationEvent
 
-class CompetitionRegistrationClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with KutuService {
+class CompetitionRegistrationClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with JwtSupport with KutuService {
   def shortName: String = self.toString().split("/").last.split("#").head + "/" + clientId()
 
   lazy val l: LoggingAdapter = Logging(system, this)
@@ -141,8 +142,9 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
           syncState = syncState.approved
           val wk = readWettkampf(wettkampfUUID)
           try {
+            val adminJwt = Some(JsonWebToken(Config.jwtHeader, setClaims(wk.uuid.toString, Int.MaxValue, isAdmin = true), Config.jwtSecretKey))
             val bos = new java.io.ByteArrayOutputStream()
-            ResourceExchanger.exportWettkampfToStream(wk, bos, withSecret = true)
+            ResourceExchanger.exportWettkampfToStream(wk, bos, withSecret = true, adminJwt = adminJwt, adminOrigin = None)
             KuTuMailerActor.send(
               MailTemplates.createBackupMail(wk, bos.toByteArray)
             )

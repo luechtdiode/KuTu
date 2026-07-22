@@ -118,7 +118,10 @@ object MailTemplates {
       s"""Hallo ${wettkampf.notificationEMail}
          |
          |Dein Wettkampf '${wettkampf.easyprint}' wurde erfolgreich verifiziert.
-         |Anbei findest du ein Backup mit allen Berechtigungsschlüsseln.
+         |Anbei findest du ein Backup des Wettkampfs (noch leer, aber mit den Zugangsdaten zu Deinem Wettkampf auf dem Server).
+         |
+         |Damit kannst du den Wettkampf lokal in der Wettkampf-App importieren. 
+         |Danach lässt sich die Verbindung des Wettkampfs mit dem Server wieder herstellen.
          |
          |LG, die Kutuapp
          |
@@ -135,7 +138,10 @@ object MailTemplates {
          |        <p>
          |          Dein Wettkampf '${escaped(wettkampf.easyprint)}' wurde erfolgreich verifiziert.
          |        </p><p>
-         |          Anbei findest du ein Backup mit allen Berechtigungsschlüsseln.
+         |          Anbei findest du ein Backup des Wettkampfs (noch leer, aber mit den Zugangsdaten zu Deinem Wettkampf auf dem Server).
+         |       </p><p>
+         |          Damit kannst du den Wettkampf lokal in der Wettkampf-App importieren.<br>
+         |          Danach lässt sich die Verbindung des Wettkampfs mit dem Server wieder herstellen.
          |        </p><p>
          |          LG, die KuTu-App
          |        </p>
