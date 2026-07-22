@@ -15,6 +15,7 @@ export class AdminRegistrationsPage implements OnDestroy {
   secret = '';
   wettkampfTitle = '';
   logoUrl = '';
+  registrationUrl = '';
   registrations: ClubRegistration[] = [];
   syncActions: SyncAction[] = [];
   selectedSyncIndices = new Set<number>();
@@ -37,6 +38,7 @@ export class AdminRegistrationsPage implements OnDestroy {
       this.secret = stored.secret;
       this.wettkampfTitle = stored.titel;
     }
+    this.registrationUrl = window.location.origin + '/registration/' + this.uuid;
     await this.loadData();
   }
 
