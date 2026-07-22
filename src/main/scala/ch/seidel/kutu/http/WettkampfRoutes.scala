@@ -7,7 +7,6 @@ import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.{*, given}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.renderer.{RiegenBuilder, ServerPrintUtil}
-import ch.seidel.kutu.view.DurchgangView
 import ch.seidel.kutu.squad.{DurchgangBuilder, DurchgangGrouper}
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
@@ -607,8 +606,8 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         overallPct = dgs.avg.dropRight(1).toInt,
                         totalCount = dgs.anz.toInt,
                         completedCount = stats.map(_._3).sum,
-                        planStart = if dg.planStartOffset != 0 then dg.effectivePlanStart(wkDate).format(DurchgangView.formatter) else "",
-                        planFinish = if dg.planStartOffset != 0 then dg.effectivePlanFinish(wkDate).format(DurchgangView.formatter) else "",
+                        planStart = if dg.planStartOffset != 0 then dg.effectivePlanStart(wkDate).format(dg.formatter) else "",
+                        planFinish = if dg.planStartOffset != 0 then dg.effectivePlanFinish(wkDate).format(dg.formatter) else "",
                         effectiveStart = toTimeFormat(dgs.started),
                         effectiveEnd = toTimeFormat(dgs.finished),
                         duration = toDurationFormat(dgs.started, dgs.finished),
@@ -974,7 +973,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         val is = file.async.runWith(StreamConverters.asInputStream(FiniteDuration(180, TimeUnit.SECONDS)))
                         val processor = Future[(Wettkampf,JwtClaimsSetMap)] {
                           try {
-                            val wettkampf = ResourceExchanger.importWettkampf(is, wkuuid.toString)
+                            val wettkampf = ResourceExchanger.importWettkampf(is, wkuuid.toString, validateEmail = true)
                             val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
                             val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
                             AthletIndexActor.publish(ResyncIndex)
@@ -988,16 +987,22 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         onComplete(processor) {
                           case Success((wettkampf, claims)) =>
                             respondWithHeader(RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))) {
-                              if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
-                                complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
-                              } else {
-                                complete(StatusCodes.OK)
-                              }
+                              complete(StatusCodes.OK)
                             }
 
                           case Failure(e) =>
-                            log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
-                            complete(StatusCodes.Conflict, s"Wettkampf $wkuuid konnte wg. einem technischen Fehler nicht hochgeladen werden. (${e.toString})")
+                            e match {
+                              case ex: ValidationException =>
+                                log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                                complete(StatusCodes.Conflict, e.toString)
+                              case ex: Throwable =>
+                                log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                                complete(StatusCodes.BadRequest,
+                                  s"""Der Wettkampf ${metadata.fileName}
+                                     |konnte wg. einem technischen Fehler nicht hochgeladen werden!
+                                     |=>${e.getMessage}""".
+                                    stripMargin)
+                            }
                         }
                     }
                   case _ =>
@@ -1021,7 +1026,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         val processor = Future {
                           try {
                             val before = readWettkampf(wkuuid.toString)
-                            val wettkampf = ResourceExchanger.importWettkampf(is, wkuuid.toString)
+                            val wettkampf = ResourceExchanger.importWettkampf(is, wkuuid.toString, validateEmail = true)
                             AthletIndexActor.publish(ResyncIndex)
                             CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
@@ -1040,22 +1045,24 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         onComplete(processor) {
                           case Success(wettkampf) =>
                             log.info(s"wettkampf ${wettkampf.easyprint} updated")
-                            if wettkampf.notificationEMail == null || wettkampf.notificationEMail.trim.isEmpty then {
-                              complete(StatusCodes.Conflict, s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst.")
-                            } else {
-                              complete(StatusCodes.OK)
-                            }
+                            complete(StatusCodes.OK)
                           case Failure(e) =>
-                            log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
-                            complete(StatusCodes.BadRequest,
-                              s"""Der Wettkampf ${metadata.fileName}
-                                 |konnte wg. einem technischen Fehler nicht hochgeladen werden!
-                                 |=>${e.getMessage}""".
-                                stripMargin)
-                      }
+                            e match {
+                              case ex: ValidationException =>
+                                log.warning(s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                                complete(StatusCodes.Conflict, e.toString)
+                              case ex: Throwable =>
+                                log.error(e, s"wettkampf $wkuuid cannot be uploaded: " + e.toString)
+                                complete(StatusCodes.BadRequest,
+                                  s"""Der Wettkampf ${metadata.fileName}
+                                     |konnte wg. einem technischen Fehler nicht hochgeladen werden!
+                                     |=>${e.getMessage}""".
+                                    stripMargin)
+                            }
+                        }
+                    }
                   }
                 }
-              }
                 else {
                   complete(
                     StatusCodes.Unauthorized)
