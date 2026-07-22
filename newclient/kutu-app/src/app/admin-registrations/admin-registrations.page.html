@@ -23,7 +23,14 @@
         }
         <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
       </ion-item>
+      <ion-card-subtitle>Abgleich der Online-Anmeldungen</ion-card-subtitle>
     </ion-card-header>
+    <ion-card-content>
+      <p class="ion-text-wrap">
+        Die Vereine können sich auf folgender Seite registrieren und ihre Wettkampfanmeldungen erfassen:<br>
+        <a href="{{ registrationUrl }}" target="_blank">{{ registrationUrl }}</a>
+      </p>
+    </ion-card-content>
   </ion-card>
 
   @if (loading) {
