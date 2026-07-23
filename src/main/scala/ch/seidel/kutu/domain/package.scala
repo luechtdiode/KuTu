@@ -1193,11 +1193,6 @@ package object domain {
                                     athletCount: Int
                                   ) extends DataObject
 
-  case class RiegePreviewResponse(
-                                   riegen: Seq[RiegeItem],
-                                   durchgange: Seq[DurchgangDurationItem]
-                                 ) extends DataObject
-
   case class PublishedScoreRaw(id: String, title: String, query: String, published: Boolean, publishedDate: java.sql.Date, wettkampfId: Long) extends DataObject {
     override def easyprint = f"PublishedScore($title)"
   }
@@ -2114,6 +2109,12 @@ package object domain {
                             durchgaenge: List[PlaybookDurchgang],
                             activeDurchgaenge: List[String]
                           )
+
+  case class RiegenEinteilungState(
+                                     riegen: List[RiegeItem],
+                                     duration: List[DurchgangDurationItem],
+                                     disziplinen: List[Disziplin]
+                                   ) extends DataObject
 
   case class JudgeLink(link: String, qrImage: String)
 

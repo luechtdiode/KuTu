@@ -3,8 +3,9 @@ import { AlertController, ToastController, ModalController } from '@ionic/angula
 import {ActivatedRoute} from '@angular/router';
 import {SecretService} from '../services/secret.service';
 import {AdminBackendService} from '../services/admin-backend.service';
+import { AdminWebsocketService } from '../services/admin-websocket.service';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { RiegeItem, RiegeSuggestionRequest, DurchgangDurationItem, UpdateRiegeRequest, Geraet, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest } from '../backend-types';
-import {firstValueFrom} from 'rxjs';
 import {RiegeEditModalComponent} from '../editors/riege-edit-modal.component';
 import {StartOffsetModalComponent} from '../editors/start-offset-modal.component';
 
@@ -57,6 +58,9 @@ export class RiegeEinteilungPage implements OnDestroy {
   loading = false;
   draggedRiege: { name: string; durchgang: string; startId: number | null } | null = null;
 
+  private ws: AdminWebsocketService | null = null;
+  private subscriptions: Subscription[] = [];
+
   private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
@@ -80,9 +84,12 @@ export class RiegeEinteilungPage implements OnDestroy {
       this.secretService.updateStoredSecretTitelDatum(this.uuid, details.titel, details.datum);
     });
     await this.loadData();
+    this.initWebSocket();
   }
 
   ngOnDestroy() {
+    this.ws?.disconnectWS(true);
+    this.subscriptions.forEach(s => s.unsubscribe());
     if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
   }
 
@@ -119,6 +126,25 @@ export class RiegeEinteilungPage implements OnDestroy {
       },
       error: () => {}
     });
+  }
+
+  private initWebSocket() {
+    if (this.ws) return;
+    this.ws = new AdminWebsocketService(this.uuid, this.secret);
+
+    this.subscriptions.push(
+      this.ws.riegeEinteilungStateUpdated.subscribe((event) => {
+        this.disziplinen = event.state.disziplinen;
+        if (this.selectedDisziplinIds.size === 0) {
+          this.selectedDisziplinIds = new Set(event.state.disziplinen.map(d => d.id));
+        }
+        this.buildTable(event.state.riegen, event.state.duration);
+        this.loading = false;
+        this.cdr.detectChanges();
+      })
+    );
+
+    this.ws.initWebsocket();
   }
 
   private buildTable(riegen: RiegeItem[], durations: DurchgangDurationItem[]) {
@@ -180,7 +206,6 @@ export class RiegeEinteilungPage implements OnDestroy {
       };
       await firstValueFrom(this.backend.suggestRiegen(this.uuid, request, this.secret));
       this.filterDurchgaenge = [];
-      await this.loadData();
       const toast = await this.toastCtrl.create({ message: 'Riegeneinteilung generiert', duration: 2000, color: 'success' });
       await toast.present();
     } catch (e) {
@@ -202,7 +227,6 @@ export class RiegeEinteilungPage implements OnDestroy {
           handler: async () => {
             try {
               await firstValueFrom(this.backend.resetRiegen(this.uuid, this.secret));
-              await this.loadData();
               const toast = await this.toastCtrl.create({ message: 'Riegen zurückgesetzt', duration: 2000, color: 'success' });
               await toast.present();
             } catch {
@@ -247,7 +271,6 @@ export class RiegeEinteilungPage implements OnDestroy {
       kind: 0
     };
     this.backend.updateRiege(this.uuid, request, this.secret).subscribe({
-      next: () => this.loadData(),
       error: async () => {
         const toast = await this.toastCtrl.create({ message: `Fehler beim Verschieben von ${name}`, duration: 3000, color: 'danger' });
         await toast.present();
@@ -264,7 +287,6 @@ export class RiegeEinteilungPage implements OnDestroy {
     };
     try {
       await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
-      await this.loadData();
     } catch {
       const toast = await this.toastCtrl.create({ message: 'Fehler beim Zuweisen der leeren Riege', duration: 3000, color: 'danger' });
       await toast.present();
@@ -290,7 +312,6 @@ export class RiegeEinteilungPage implements OnDestroy {
         try {
           const request: UpdateRiegeRequest = {name, durchgang: newDg, startId: newStartId, kind};
           await firstValueFrom(this.backend.deleteRiege(this.uuid, request, this.secret));
-          await this.loadData();
         } catch {
           const toast = await this.toastCtrl.create({
             message: 'Fehler beim Speichern',
@@ -303,10 +324,9 @@ export class RiegeEinteilungPage implements OnDestroy {
         const {name, durchgang: newDg, startId: newStartId, kind} = result.data;
         if (name === item.name && newDg === durchgang && newStartId === startId) return;
         try {
-          const request: UpdateRiegeRequest = {name, durchgang: newDg, startId: newStartId, kind};
-          await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
-          await this.loadData();
-        } catch {
+        const request: UpdateRiegeRequest = {name, durchgang: newDg, startId: newStartId, kind};
+        await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
+      } catch {
           const toast = await this.toastCtrl.create({
             message: 'Fehler beim Speichern',
             duration: 3000,
@@ -368,7 +388,6 @@ export class RiegeEinteilungPage implements OnDestroy {
             try {
               await firstValueFrom(this.backend.renameDurchgang(this.uuid, this.secret, dgName, newName));
               this.selectedDgs.clear();
-              await this.loadData();
               const toast = await this.toastCtrl.create({ message: `Durchgang umbenannt zu "${newName}"`, duration: 2000, color: 'success' });
               await toast.present();
             } catch {
@@ -404,7 +423,6 @@ export class RiegeEinteilungPage implements OnDestroy {
               const request: GroupDurchgangRequest = { durchgangNames: [...this.selectedDgs], groupTitle: selectedTitle };
               await firstValueFrom(this.backend.moveDurchgangToGroup(this.uuid, this.secret, request));
               this.selectedDgs.clear();
-              await this.loadData();
               const toast = await this.toastCtrl.create({ message: `Gruppe geändert zu "${selectedTitle}"`, duration: 2000, color: 'success' });
               await toast.present();
             } catch {
@@ -439,7 +457,6 @@ export class RiegeEinteilungPage implements OnDestroy {
               const request: MergeDurchgangRequest = { durchgangNames: [...this.selectedDgs], targetName };
               await firstValueFrom(this.backend.mergeDurchgang(this.uuid, this.secret, request));
               this.selectedDgs.clear();
-              await this.loadData();
               const toast = await this.toastCtrl.create({ message: `Zusammengeführt zu "${targetName}"`, duration: 2000, color: 'success' });
               await toast.present();
             } catch {
@@ -512,7 +529,6 @@ export class RiegeEinteilungPage implements OnDestroy {
         const request: UpdateStartOffsetRequest = { title: groupTitle, offsetMillis };
         await firstValueFrom(this.backend.updateStartOffset(this.uuid, this.secret, request));
         this.selectedDgs.clear();
-        await this.loadData();
         const toast = await this.toastCtrl.create({ message: `Startzeit für "${groupTitle}" gesetzt`, duration: 2000, color: 'success' });
         await toast.present();
       } catch {
@@ -532,7 +548,6 @@ export class RiegeEinteilungPage implements OnDestroy {
       const request: UngroupDurchgangRequest = { durchgangNames: [...this.selectedDgs] };
       await firstValueFrom(this.backend.ungroupDurchgang(this.uuid, this.secret, request));
       this.selectedDgs.clear();
-      await this.loadData();
       const toast = await this.toastCtrl.create({ message: 'Gruppe aufgelöst', duration: 2000, color: 'success' });
       await toast.present();
     } catch {
@@ -562,7 +577,6 @@ export class RiegeEinteilungPage implements OnDestroy {
               const request: GroupDurchgangRequest = { durchgangNames: [...this.selectedDgs], groupTitle };
               await firstValueFrom(this.backend.aggregateDurchgaenge(this.uuid, this.secret, request));
               this.selectedDgs.clear();
-              await this.loadData();
               const toast = await this.toastCtrl.create({ message: `Gruppe "${groupTitle}" erstellt`, duration: 2000, color: 'success' });
               await toast.present();
             } catch {
@@ -642,7 +656,6 @@ export class RiegeEinteilungPage implements OnDestroy {
         const request: UpdateStartOffsetRequest = { title, offsetMillis };
         await firstValueFrom(this.backend.updateStartOffset(this.uuid, this.secret, request));
         this.selectedDgs.clear();
-        await this.loadData();
         const toast = await this.toastCtrl.create({ message: `Startzeit für "${title}" gesetzt`, duration: 2000, color: 'success' });
         await toast.present();
       } catch {

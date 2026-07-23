@@ -530,8 +530,11 @@ export class PlaybookPage implements OnInit, OnDestroy {
     this.ws = new AdminWebsocketService(this.uuid, this.secret);
 
     this.subscriptions.push(
-      this.ws.durchgangStarted.subscribe(() => {
-        this.loadPlaybook();
+      this.ws.playbookStateUpdated.subscribe((event) => {
+        this.playbook = event.playbookState;
+        this.buildTable(event.playbookState);
+        this.loading = false;
+        this.cdr.detectChanges();
       })
     );
 
@@ -542,33 +545,8 @@ export class PlaybookPage implements OnInit, OnDestroy {
     );
 
     this.subscriptions.push(
-      this.ws.durchgangFinished.subscribe(() => {
-        this.loadPlaybook();
-      })
-    );
-
-    this.subscriptions.push(
       this.ws.durchgangResetted.subscribe((event) => {
         this.clearMarkedHaltsForDurchgang(event.durchgang);
-        this.loadPlaybook();
-      })
-    );
-
-    this.subscriptions.push(
-      this.ws.wertungUpdated.subscribe(() => {
-        this.loadPlaybook();
-      })
-    );
-
-    this.subscriptions.push(
-      this.ws.stepFinished.subscribe(() => {
-        this.loadPlaybook();
-      })
-    );
-
-    this.subscriptions.push(
-      this.ws.stationFinished.subscribe(() => {
-        this.loadPlaybook();
       })
     );
 
