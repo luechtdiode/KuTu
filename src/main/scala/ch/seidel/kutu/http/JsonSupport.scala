@@ -166,7 +166,6 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given updateStartOffsetRequestFormat: RootJsonFormat[UpdateStartOffsetRequest] = jsonFormat2(UpdateStartOffsetRequest.apply)
   given riegeItemFormat: RootJsonFormat[RiegeItem] = jsonFormat6(RiegeItem.apply)
   given durchgangDurationItemFormat: RootJsonFormat[DurchgangDurationItem] = jsonFormat7(DurchgangDurationItem.apply)
-  given riegePreviewResponseFormat: RootJsonFormat[RiegePreviewResponse] = jsonFormat2(RiegePreviewResponse.apply)
 
   given dataObjectFormat: RootJsonWriter[DataObject] = (p: DataObject) => {
     p.easyprint.toJson
@@ -234,6 +233,9 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given playbookDurchgangFormat: RootJsonFormat[PlaybookDurchgang] = jsonFormat16(PlaybookDurchgang.apply)
   given playbookStateFormat: RootJsonFormat[PlaybookState] = jsonFormat3(PlaybookState.apply)
   given judgeLinkFormat: RootJsonFormat[JudgeLink] = jsonFormat2(JudgeLink.apply)
+  given playbookStateUpdatedFormat: RootJsonFormat[PlaybookStateUpdated] = jsonFormat2(PlaybookStateUpdated.apply)
+  given riegenEinteilungStateFormat: RootJsonFormat[RiegenEinteilungState] = jsonFormat3(RiegenEinteilungState.apply)
+  given riegenEinteilungStateUpdatedFormat: RootJsonFormat[RiegenEinteilungStateUpdated] = jsonFormat2(RiegenEinteilungStateUpdated.apply)
 
   // support for websocket incoming json-messages
   private val caseClassesJsonFormatter: Map[String, JsonFormat[? <: KutuAppEvent]] = Map(
@@ -265,6 +267,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     classOf[AthletMediaIsAtStart].getSimpleName -> athletMediaIsAtStartFormat,
     classOf[AthletMediaIsRunning].getSimpleName -> athletMediaIsRunningFormat,
     classOf[AthletMediaIsPaused].getSimpleName -> athletMediaIsPausedFormat,
+    classOf[PlaybookStateUpdated].getSimpleName -> playbookStateUpdatedFormat,
+    classOf[RiegenEinteilungStateUpdated].getSimpleName -> riegenEinteilungStateUpdatedFormat,
   )
 
   given messagesFormatter: RootJsonFormat[KutuAppEvent] = new RootJsonFormat[KutuAppEvent] {
