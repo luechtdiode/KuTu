@@ -173,7 +173,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 authenticateWith(Some(jwt), true) { id =>
                   if id == competitionId.toString then {
                     if durchgang.equalsIgnoreCase("all") then {
-                      handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, None, lastSequenceIdOption))
+                      handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, None, lastSequenceIdOption, true))
                     } else {
                       handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption))
                     }
@@ -184,7 +184,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               } ~
                 authenticated(true) { id =>
                   if id == competitionId.toString then {
-                    handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption))
+                    handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption, true))
                   } else {
                     complete(StatusCodes.Unauthorized)
                   }

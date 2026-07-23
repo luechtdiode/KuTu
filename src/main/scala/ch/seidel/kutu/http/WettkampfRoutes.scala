@@ -564,62 +564,9 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
             authenticatedAdmin() { userId =>
               if userId.equals(wkuuid.toString) then {
                 complete {
-                  Future {
-                    val wettkampfUUID = wkuuid.toString
-                    val wettkampf = readWettkampf(wettkampfUUID)
-                    val durchgaenge = selectDurchgaenge(java.util.UUID.fromString(wettkampfUUID)).map(d => d.name -> d).toMap
-                    val kandidaten = getAllKandidatenWertungen(java.util.UUID.fromString(wettkampfUUID))
-                    val geraeteRiegen = RiegenBuilder.mapToGeraeteRiegen(kandidaten.toList)
-                      .filter(gr => gr.durchgang.nonEmpty)
-
-                    val disziplinOrdinals = Await.result(listDisziplinZuWettkampf(wettkampf), Duration.Inf)
-                      .zipWithIndex.map { case (d, idx) => d.id -> idx }.toMap
-                    val wkDate = wettkampf.datum.toLocalDate
-
-                    val grouped = geraeteRiegen.groupBy(gr => gr.durchgang.get)
-                    val dgStates = grouped.map { t =>
-                      val dgName = t._1
-                      val dgData = t._2
-                      val dg = durchgaenge.getOrElse(dgName, Durchgang(wettkampf.id, dgName))
-                      val dgs = DurchgangState(wettkampfUUID, dgName, t._2.forall(_.erfasst), dgData, dg)
-
-                      val stats = DurchgangState.computeStats(dgData)
-                      val stations = stats.map { case (disziplinOpt, pct, completedCnt, totalCnt, haltStats) =>
-                        val steps = haltStats.map { case (halt, haltPct, haltCompleted, haltTotal) =>
-                          PlaybookStep(halt, haltTotal, haltCompleted)
-                        }
-                        PlaybookStation(
-                          disziplinId = disziplinOpt.map(_.id).getOrElse(0L),
-                          disziplinName = if disziplinOpt.exists(_.isPause) then "Pause"
-                            else disziplinOpt.map(_.name).getOrElse(""),
-                          steps = steps,
-                          overallPct = pct
-                        )
-                      }.toList.sortBy(s => disziplinOrdinals.getOrElse(Math.abs(s.disziplinId), Int.MaxValue))
-
-                      PlaybookDurchgang(
-                        name = dgName,
-                        title = dg.title,
-                        isRunning = dgs.isRunning,
-                        isFinished = dgs.finished > 0,
-                        stations = stations,
-                        overallPct = dgs.avg.dropRight(1).toInt,
-                        totalCount = dgs.anz.toInt,
-                        completedCount = stats.map(_._3).sum,
-                        planStart = if dg.planStartOffset != 0 then dg.effectivePlanStart(wkDate).format(dg.formatter) else "",
-                        planFinish = if dg.planStartOffset != 0 then dg.effectivePlanFinish(wkDate).format(dg.formatter) else "",
-                        effectiveStart = toTimeFormat(dgs.started),
-                        effectiveEnd = toTimeFormat(dgs.finished),
-                        duration = toDurationFormat(dgs.started, dgs.finished),
-                        planTotal = toDurationFormat(dg.planTotal),
-                        planEinturnen = toDurationFormat(dg.planEinturnen),
-                        planGeraet = toDurationFormat(dg.planGeraet)
-                      )
-                    }.toList.sortBy(_.name)
-
-                    val activeList = dgStates.filter(_.isRunning).map(_.name)
-                    PlaybookState(wettkampfUUID, dgStates, activeList)
-                  }
+                  CompetitionCoordinatorClientActor.publish(
+                    GetPlaybookState(wkuuid.toString), clientId
+                  ).mapTo[PlaybookStateUpdated].map(_.playbookState)
                 }
               } else {
                 complete(StatusCodes.Conflict)

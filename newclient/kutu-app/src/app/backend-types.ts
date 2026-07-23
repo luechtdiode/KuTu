@@ -404,6 +404,12 @@ export interface AthletMediaIsFree {
   type: string;
 }
 
+export interface PlaybookStateUpdated {
+  wettkampfUUID: string;
+  playbookState: PlaybookState;
+  type: string;
+}
+
 export interface RiegeSuggestionRequest {
   maxRiegenSize?: number;
   maxParallelDg?: number;

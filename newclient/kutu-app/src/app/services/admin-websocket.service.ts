@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { WebsocketService } from './websocket.service';
-import { DurchgangStarted, DurchgangFinished, AthletWertungUpdated, BulkEvent } from '../backend-types';
+import { DurchgangStarted, DurchgangFinished, AthletWertungUpdated, BulkEvent, PlaybookStateUpdated } from '../backend-types';
 import { clientID, formatCurrentMoment } from '../utils';
 
 export interface DurchgangResetted {
@@ -21,6 +21,7 @@ export class AdminWebsocketService extends WebsocketService {
   wertungUpdated = new Subject<AthletWertungUpdated>();
   stepFinished = new Subject<void>();
   stationFinished = new Subject<void>();
+  playbookStateUpdated = new Subject<PlaybookStateUpdated>();
 
   private _activeDurchgangList: DurchgangStarted[] = [];
 
@@ -98,6 +99,10 @@ export class AdminWebsocketService extends WebsocketService {
 
       case 'DurchgangStationFinished':
         this.stationFinished.next();
+        return true;
+
+      case 'PlaybookStateUpdated':
+        this.playbookStateUpdated.next(message as PlaybookStateUpdated);
         return true;
 
       default:
