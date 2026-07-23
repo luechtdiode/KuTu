@@ -404,6 +404,24 @@ export interface AthletMediaIsFree {
   type: string;
 }
 
+export interface PlaybookStateUpdated {
+  wettkampfUUID: string;
+  playbookState: PlaybookState;
+  type: string;
+}
+
+export interface RiegenEinteilungState {
+  riegen: RiegeItem[];
+  duration: DurchgangDurationItem[];
+  disziplinen: Geraet[];
+}
+
+export interface RiegenEinteilungStateUpdated {
+  wettkampfUUID: string;
+  state: RiegenEinteilungState;
+  type: string;
+}
+
 export interface RiegeSuggestionRequest {
   maxRiegenSize?: number;
   maxParallelDg?: number;
@@ -462,11 +480,6 @@ export interface DurchgangDurationItem {
   geraetMillis: number;
   totalMillis: number;
   athletCount: number;
-}
-
-export interface RiegePreviewResponse {
-  riegen: RiegeItem[];
-  durchgange: DurchgangDurationItem[];
 }
 
 // Playbook types

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, RiegePreviewResponse, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -59,9 +59,9 @@ export class AdminBackendService {
     return this.http.delete(this.api + 'competition/' + uuid + '/riege', { headers, body: request });
   }
 
-  suggestRiegen(uuid: string, request: RiegeSuggestionRequest, secret: string): Observable<RiegePreviewResponse> {
+  suggestRiegen(uuid: string, request: RiegeSuggestionRequest, secret: string): Observable<void> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
-    return this.http.post<RiegePreviewResponse>(this.api + 'competition/' + uuid + '/riege/generate', request, { headers });
+    return this.http.post<void>(this.api + 'competition/' + uuid + '/riege/generate', request, { headers });
   }
 
   resetRiegen(uuid: string, secret: string): Observable<any> {

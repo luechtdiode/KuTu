@@ -24,11 +24,12 @@ import org.apache.pekko.util.Timeout
 import org.slf4j.LoggerFactory
 import spray.json.*
 
+import java.sql.Timestamp
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, Future}
 import scala.util.Failure
 import scala.util.control.NonFatal
@@ -56,7 +57,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val websocketProcessor = ResourceExchanger.processWSMessage(wettkampf, handleWebsocketMessages)
   private val cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
-  private val wkDiszs = listWettkampfDisziplineViews(wettkampf).map(d => d.id -> d).toMap
+  private var wkDiszs = listWettkampfDisziplineViews(wettkampf).map(d => d.id -> d).toMap
   private val wkPgmId = wettkampf.programmId
   private val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
   private val snapShotInterval = 100
@@ -66,6 +67,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   private var wsSend: Map[Option[String], List[ActorRef]] = Map.empty
   private var deviceWebsocketRefs: Map[String, ActorRef] = Map.empty
+  private var adminClients: Set[ActorRef] = Set.empty
   private var pendingKeepAliveAck: Option[Int] = None
   private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdatedSequenced]] = Map.empty
   private var state: CompetitionState = CompetitionState()
@@ -74,6 +76,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var clientId: () => String = () => ""
   private var currentPlayer: Option[(Iterable[ActorRef], UseMyMediaPlayer)] = None
   private val wkUUID: UUID = UUID.fromString(wettkampfUUID)
+  private var durchgaenge: Map[String, Durchgang] = Map.empty
+  private var disziplinOrdinals: Map[Long, Int] = Map.empty
+  private var riegenEinteilungState: Option[RiegenEinteilungState] = None
+  private var playbookState: Option[PlaybookState] = None
 
   def rebuildWettkampfMap(): Unit = {
     openDurchgangJournal = Map.empty
@@ -81,6 +87,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     geraeteRigeListe = RiegenBuilder.mapToGeraeteRiegen(
       getAllKandidatenWertungen(wkUUID)
         .toList)
+    wkDiszs = listWettkampfDisziplineViews(wettkampf).map(d => d.id -> d).toMap
+    disziplinOrdinals = wkDiszs.map(d => d._2.disziplin.id -> d._2.ord)
+    durchgaenge = selectDurchgaenge(wkUUID).map(d => d.name -> d).toMap
+    //recomputePlaybookState()
+    //recomputeRiegenEinteilungState()
+    publishPlaybookState()
+    publishRiegenEinteilungState()
   }
 
   /**
@@ -90,6 +103,124 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
    */
   def findDurchgangForWertung(wertung: Wertung): String = {
     geraeteRigeListe.flatMap(_.findDurchgangForWertung(wertung)).headOption.getOrElse("")
+  }
+
+  private def recomputePlaybookState(): Unit = {
+    val wkDate = wettkampf.datum.toLocalDate
+    val geraeteRiegenFiltered = geraeteRigeListe.filter(gr => gr.durchgang.nonEmpty)
+    val grouped = geraeteRiegenFiltered.groupBy(gr => gr.durchgang.get)
+    val dgStates = grouped.map { t =>
+      val dgName = t._1
+      val dgData = t._2
+      val dg = durchgaenge.getOrElse(dgName, Durchgang(wettkampf.id, dgName))
+      val dgEvents = state.startStopEvents.filter {
+        case DurchgangStarted(_, dgName2, _) => dgName2 == dgName
+        case DurchgangFinished(_, dgName2, _) => dgName2 == dgName
+        case DurchgangResetted(_, dgName2) => dgName2 == dgName
+        case _ => false
+      }
+      val stepComplete = dgEvents.filter {
+        case DurchgangStationFinished(_, dgName2, geraet, step) if dgName2 == dgName => true
+        case _ => false
+      }.groupBy {
+        case DurchgangStationFinished(_, _, geraet, step) => geraet
+        case _ => 0L
+      }.map {
+        case (geraet, events) => geraet -> events.map {
+          case DurchgangStationFinished(_, _, _, step) => step
+          case _ => 0
+        }.toSet.size
+      }
+      val dgt = dgEvents.foldLeft(dg) { (dg, evt) => evt match {
+        case DurchgangStarted(_, _, time) => dg.copy(effectiveStartTime = dg.effectiveStartTime match {
+          case Some(t) if t.getTime < time => Some(t)
+          case _ => Some(new Timestamp(time))
+        }, effectiveEndTime = None)
+        case DurchgangFinished(_, _, time) => dg.copy(effectiveEndTime = dg.effectiveEndTime match {
+          case Some(t) if t.getTime > time => Some(t)
+          case _ => Some(new Timestamp(time))
+        })
+        case DurchgangResetted(_, _) => dg.copy(effectiveStartTime = None, effectiveEndTime = None)
+        case _ => dg
+      }}
+      val dgs = DurchgangState(wettkampfUUID, dgName, dgData.forall(_.erfasst), dgData, dgt)
+
+      val stats = DurchgangState.computeStats(dgData)
+      val stations = stats.map { case (disziplinOpt, pct, completedCnt, totalCnt, haltStats) =>
+//          overallPct = math.min(100, math.max(pct, stepComplete.getOrElse(disziplinOpt.map(_.id).getOrElse(0L), 0) * 100 / math.max(1, steps.size)))
+        val steps = haltStats.map { case (halt, haltPct, haltCompleted, haltTotal) =>
+          PlaybookStep(halt, haltTotal, haltCompleted)
+        }
+        PlaybookStation(
+          disziplinId = disziplinOpt.map(_.id).getOrElse(0L),
+          disziplinName = if disziplinOpt.exists(_.isPause) then "Pause"
+            else disziplinOpt.map(_.name).getOrElse(""),
+          steps = steps,
+          overallPct = pct
+        )
+      }.toList.sortBy(s => disziplinOrdinals.getOrElse(Math.abs(s.disziplinId), Int.MaxValue))
+      PlaybookDurchgang(
+        name = dgName,
+        title = dg.title,
+        isRunning = dgs.isRunning,
+        isFinished = dgs.finished > 0,
+        stations = stations,
+        overallPct = stations.map(_.overallPct).sum / math.max(1, stations.size),
+        totalCount = dgs.anz.toInt,
+        completedCount = stats.map(_._3).sum,
+        planStart = if dg.planStartOffset != 0 then dg.effectivePlanStart(wkDate).format(dg.formatter) else "",
+        planFinish = if dg.planStartOffset != 0 then dg.effectivePlanFinish(wkDate).format(dg.formatter) else "",
+        effectiveStart = toTimeFormat(dgs.started),
+        effectiveEnd = toTimeFormat(dgs.finished),
+        duration = toDurationFormat(dgs.started, dgs.finished),
+        planTotal = toDurationFormat(dg.planTotal),
+        planEinturnen = toDurationFormat(dg.planEinturnen),
+        planGeraet = toDurationFormat(dg.planGeraet)
+      )
+    }.toList.sortBy(_.name)
+    val activeList = dgStates.filter(_.isRunning).map(_.name)
+    playbookState = Some(PlaybookState(wettkampfUUID, dgStates, activeList))
+  }
+
+  private def publishPlaybookState(): Unit = {
+    recomputePlaybookState()
+    playbookState.foreach { ps =>
+      notifyAdminClients(PlaybookStateUpdated(wettkampfUUID, ps))
+    }
+  }
+
+  private def recomputeRiegenEinteilungState(): Unit = {
+    val riegen = selectRiegen(wettkampf.id)
+    val counts = listRiegenZuWettkampf(wettkampf.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
+    val riegeItems = riegen.map(r => RiegeItem(
+      name = r.r,
+      durchgang = r.durchgang,
+      startId = r.start.map(_.id),
+      startName = r.start.map(_.name),
+      kind = r.kind,
+      athletCount = counts.getOrElse(r.r, 0)
+    ))
+
+    val athleteCountsByDurchgang = listRiegenZuWettkampf(wettkampf.id)
+      .groupBy(_._3).view.mapValues(_.map(_._2).sum)
+    val durationItems = durchgaenge.values.map(d => DurchgangDurationItem(
+      name = d.name, title = d.title,
+      offsetMillis = d.planStartOffset,
+      einturnenMillis = d.planEinturnen, geraetMillis = d.planGeraet,
+      totalMillis = d.planTotal,
+      athletCount = athleteCountsByDurchgang.getOrElse(Some(d.name), 0)
+    )).toList.sortBy(_.name)
+
+    val disziplinen = wkDiszs.values.map(wd => (wd.ord, wd.disziplin)).toList.sortBy(_._1).map(_._2).distinct
+
+    riegenEinteilungState = Some(RiegenEinteilungState(riegen = riegeItems, duration = durationItems, disziplinen = disziplinen))
+  }
+
+  private def publishRiegenEinteilungState(): Unit = {
+    recomputeRiegenEinteilungState()
+    riegenEinteilungState.foreach { s =>
+      notifyAdminClients(RiegenEinteilungStateUpdated(wettkampfUUID, s))
+    }
   }
 
   private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).keys
@@ -170,6 +301,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       if handleEvent(resetted) then persist(resetted) { _ =>
         storeDurchgangResetted(resetted)
         notifyWebSocketClients(senderWebSocket, resetted, durchgang)
+        publishPlaybookState()
       }
       sender() ! resetted
 
@@ -184,6 +316,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           state.lastWertungenPerDisz(durchgang),
           state.lastBestenResults)
         notifyWebSocketClients(senderWebSocket, msg, durchgang)
+        publishPlaybookState()
       }
       sender() ! started
 
@@ -195,6 +328,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         notifyWebSocketClients(senderWebSocket, eventDurchgangFinished, durchgang)
         notifyBestenResult(durchgang)
         openDurchgangJournal = openDurchgangJournal - Some(encodeURIComponent(durchgang))
+        publishPlaybookState()
       }
       sender() ! eventDurchgangFinished
 
@@ -224,6 +358,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         addToDurchgangJournal(handledEvent, durchgang)
         notifyWebSocketClients(senderWebSocket, handledEvent, durchgang)
         notifyBestenResult(durchgang)
+        publishPlaybookState()
         //        }
       } catch {
         case e: Exception =>
@@ -261,6 +396,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       persist(DurchgangStationFinished(fds.wettkampfUUID, fds.durchgang, fds.geraet, fds.step)) { evt =>
         handleEvent(evt)
         sender() ! MessageAck("OK")
+        publishPlaybookState()
       }
 
     case fds: FinishDurchgangStep =>
@@ -268,6 +404,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         handleEvent(evt)
         sender() ! MessageAck("OK")
         notifyBestenResult("")
+        publishPlaybookState()
       }
 
     case GetResultsToReplicate(_, fromSequenceId) =>
@@ -277,12 +414,25 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
             .asInstanceOf[KutuAppEvent].toJson.compactPrint)
       }
 
-    case Subscribe(ref, deviceId, durchgang, lastSequenceIdOption) =>
+    case GetPlaybookState(_) =>
+      if playbookState.isEmpty then recomputePlaybookState()
+      sender() ! PlaybookStateUpdated(wettkampfUUID, playbookState.getOrElse(
+        PlaybookState(wettkampfUUID, List.empty, List.empty)
+      ))
+
+    case GetRiegenEinteilungState(_) =>
+      if riegenEinteilungState.isEmpty then recomputeRiegenEinteilungState()
+      sender() ! RiegenEinteilungStateUpdated(wettkampfUUID, riegenEinteilungState.getOrElse(
+        RiegenEinteilungState(List.empty, List.empty, List.empty)
+      ))
+
+    case Subscribe(ref, deviceId, durchgang, lastSequenceIdOption, isAdmin) =>
       val durchgangNormalized = durchgang.map(encodeURIComponent)
       val durchgangClients = wsSend.getOrElse(durchgangNormalized, List.empty) :+ ref
       context.watch(ref)
       wsSend = wsSend + (durchgangNormalized -> durchgangClients)
       deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
+      if isAdmin then adminClients = adminClients + ref
       competitionWebsocketConnectionsActive
         .labelValues(wettkampf.easyprint, durchgangNormalized.getOrElse("all"))
         .set(durchgangClients.size)
@@ -316,6 +466,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           ref ! MediaPlayerIsReady(playerEvent.context)
       }
       lastMediaEvent.foreach(ref ! _)
+      if isAdmin then playbookState.foreach(ps => ref ! PlaybookStateUpdated(wettkampfUUID, ps))
+      if isAdmin then riegenEinteilungState.foreach(s => ref ! RiegenEinteilungStateUpdated(wettkampfUUID, s))
 
 
 
@@ -363,9 +515,13 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       wsSend.values.foreach(_.foreach(_.actorRef ! PoisonPill))
       deviceWebsocketRefs = Map.empty
       wsSend = Map.empty
+      adminClients = Set.empty
       openDurchgangJournal = Map.empty
       pendingKeepAliveAck = None
       state = CompetitionState()
+      playbookState = None
+      riegenEinteilungState = None
+      geraeteRigeListe = List.empty
       handleStop()
 
     case _ =>
@@ -434,6 +590,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
   private def cleanupWebsocketRefs(stoppedWebsocket: ActorRef): Unit = {
     deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)
+    adminClients = adminClients.filter(_ != stoppedWebsocket)
     val durchgaenge = wsSend
       .filter { x => x._2.exists(_.equals(stoppedWebsocket)) }
       .keys
@@ -500,6 +657,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       addToDurchgangJournal(handledEvent, handledEvent.durchgang)
       notifyWebSocketClients(senderWebSocket, handledEvent, handledEvent.durchgang)
       notifyBestenResult(handledEvent.durchgang)
+      publishPlaybookState()
     }
 
     event match {
@@ -585,6 +743,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         }
       }
     }
+  }
+
+  private def notifyAdminClients(toPublish: KutuAppEvent): Unit = {
+    wsSend.values.foreach(wsList => {
+      wsList.filter(ws => adminClients.exists(_ == ws)).foreach(ws => ws ! toPublish)
+    })
   }
 
   private def updategeraeteRigeListe(toPublish: AthletWertungUpdatedSequenced): Unit = {
@@ -809,7 +973,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
   }
 
   // authenticated bidirectional streaming
-  def createActorSinkSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String], lastSequenceId: Option[Long]): Flow[Message, Message, Any] = {
+  def createActorSinkSource(deviceId: String, wettkampfUUID: String, durchgang: Option[String], lastSequenceId: Option[Long], isAdmin: Boolean = false): Flow[Message, Message, Any] = {
     implicit val timeout: Timeout = Timeout(5000, TimeUnit.MILLISECONDS)
     val clientActor = Await.result(
       ask(supervisor, CreateClient(deviceId, wettkampfUUID)).mapTo[ActorRef]
@@ -820,7 +984,7 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
     val source = fromCoordinatorActorToWebsocketFlow(lastSequenceId,
       Source.actorRef(completionMatcher, failureMatcher, 256, OverflowStrategy.dropHead)
         .mapMaterializedValue { (wsSource: ActorRef) =>
-          clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId)
+          clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId, isAdmin)
           wsSource
         }.named(deviceId))
 
