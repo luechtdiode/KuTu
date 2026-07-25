@@ -86,6 +86,10 @@ const routes: Routes = [
     loadChildren: () => import('./admin-registrations/admin-registrations.module').then(m => m.AdminRegistrationsPageModule)
   },
   {
+    path: 'admin/club-detail/:uuid/:regId',
+    loadChildren: () => import('./admin-club-detail/admin-club-detail.module').then(m => m.AdminClubDetailPageModule)
+  },
+  {
     path: 'admin/rankings/:uuid',
     loadChildren: () => import('./admin-rankings/admin-rankings.module').then(m => m.AdminRankingsPageModule)
   }
