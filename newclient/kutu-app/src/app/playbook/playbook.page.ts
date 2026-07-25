@@ -43,7 +43,6 @@ export class PlaybookPage implements OnInit, OnDestroy {
   uuid = '';
   secret = '';
   wettkampfTitle = '';
-  wettkampfDatum = '';
   logoUrl = '';
 
   playbook: PlaybookState | null = null;
@@ -77,11 +76,9 @@ export class PlaybookPage implements OnInit, OnDestroy {
     if (stored) {
       this.secret = stored.secret;
       this.wettkampfTitle = stored.titel;
-      this.wettkampfDatum = stored.datum.substring(0, 10);
     }
     this.backend.getCompetitionDetails(this.uuid, this.secret).subscribe(details => {
       this.wettkampfTitle = details.titel;
-      this.wettkampfDatum = details.datum.substring(0, 10);
     });
     this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
       next: blob => {
@@ -519,11 +516,6 @@ export class PlaybookPage implements OnInit, OnDestroy {
       },
       error: () => refreshAndNavigate()
     });
-  }
-
-  formatDate(d: string): string {
-    if (!d) return '';
-    return d.split('-').reverse().join('.');
   }
 
   private initWebSocket() {
