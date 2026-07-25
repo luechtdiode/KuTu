@@ -675,7 +675,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wkuuid.toString), clientId)
                         CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
                       }) {
-                        case Success(_) => complete(StatusCodes.OK)
+                        case Success(_) => complete(StatusCodes.OK, JsObject.empty)
                         case Failure(e) =>
                           log.error(e.getMessage, e)
                           complete(StatusCodes.InternalServerError, s"Failed to generate riegen: ${e.getMessage}")
