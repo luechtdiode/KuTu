@@ -242,7 +242,7 @@ trait RegistrationService extends DBService with RegistrationResultMapper with M
               inner join vereinregistration vrnow on (vrnow.verein_id = a.verein)
               inner join wettkampf wkthen on (w.wettkampf_id = wkthen.id)
               inner join wettkampf wknow on (vrnow.wettkampf_id = wknow.id)
-              inner join media m on (w.media_id=m.id)
+              left outer join media m on (w.media_id=m.id)
               where vrnow.id = $registrationId
                   and wkthen.uuid = $wettkampfCopyFrom
                   and wkthen.programm_id = wknow.programm_id
