@@ -66,7 +66,7 @@ export class AdminBackendService {
 
   resetRiegen(uuid: string, secret: string): Observable<any> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
-    return this.http.post(this.api + 'competition/' + uuid + '/riege/reset', null, { headers }).pipe(map(() => "OK"));
+    return this.http.post(this.api + 'competition/' + uuid + '/riege/reset', null, { headers });
   }
 
   getRiegeDuration(uuid: string, secret: string): Observable<DurchgangDurationItem[]> {
