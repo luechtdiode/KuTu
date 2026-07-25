@@ -217,4 +217,8 @@ export class AdminRegistrationsPage implements OnDestroy {
   goToRiegenEinteilung() {
     this.router.navigate(['/admin/riege-einteilung', this.uuid]);
   }
+
+  openClubDetail(reg: ClubRegistration) {
+    this.router.navigate(['/admin/club-detail', this.uuid, reg.id]);
+  }
 }

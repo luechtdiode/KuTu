@@ -69,7 +69,8 @@
       <ion-card-content>
         <ion-list>
           @for (reg of registrations; track reg.id) {
-            <ion-item>
+            <ion-item button (click)="openClubDetail(reg)">
+              <ion-badge slot="start" color="{{ getStatusColor(reg) }}">{{ getStatusBadge(reg) }}</ion-badge>
               <ion-label>
                 <h2>{{ reg.vereinname }}</h2>
                 <p>
@@ -80,15 +81,15 @@
                   {{ reg.mail }}@if (reg.mobilephone) { | {{ reg.mobilephone }} }
                 </p>
               </ion-label>
-              <ion-badge slot="start" color="{{ getStatusColor(reg) }}">{{ getStatusBadge(reg) }}</ion-badge>
               @if (!isApproved(reg)) {
-                <ion-button slot="end" fill="clear" color="success" (click)="approveRegistration(reg)">
+                <ion-button slot="end" fill="clear" color="success" (click)="approveRegistration(reg); $event.stopPropagation()">
                   <ion-icon slot="icon-only" name="checkmark-circle"></ion-icon>
                 </ion-button>
               }
-              <ion-button slot="end" fill="clear" color="danger" (click)="deleteRegistration(reg)">
+              <ion-button slot="end" fill="clear" color="danger" (click)="deleteRegistration(reg); $event.stopPropagation()">
                 <ion-icon slot="icon-only" size="large" name="trash"></ion-icon>
               </ion-button>
+              <ion-icon name="chevron-forward" slot="end" color="medium"></ion-icon>
             </ion-item>
           }
         </ion-list>

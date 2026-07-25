@@ -83,6 +83,11 @@ export class AdminBackendService {
     return this.http.get<ClubRegistration[]>(this.api + 'registrations/' + uuid, { headers });
   }
 
+  getRegistration(uuid: string, regId: number, secret: string): Observable<ClubRegistration> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ClubRegistration>(this.api + 'registrations/' + uuid + '/' + regId, { headers });
+  }
+
   approveRegistration(uuid: string, regId: number, verein: Verein, secret: string): Observable<ClubRegistration> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.put<ClubRegistration>(this.api + 'registrations/' + uuid + '/' + regId, verein, { headers });
@@ -105,6 +110,11 @@ export class AdminBackendService {
   getAthletRegistrations(uuid: string, regId: number, secret: string): Observable<AthletRegistration[]> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.get<AthletRegistration[]>(this.api + 'registrations/' + uuid + '/' + regId + '/athletes', { headers });
+  }
+
+  getProgramList(uuid: string, secret: string): Observable<ProgrammRaw[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ProgrammRaw[]>(this.api + 'registrations/' + uuid + '/programmlist', { headers });
   }
 
   uploadLogo(uuid: string, secret: string, file: File): Observable<any> {

@@ -1,0 +1,99 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button [defaultHref]="'/admin/registrations/' + uuid"></ion-back-button>
+      <ion-icon name="people" style="margin-left: 8px"></ion-icon>
+    </ion-buttons>
+    <ion-title>{{ registration?.vereinname || 'Verein' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-refresher slot="fixed" (ionRefresh)="loadData(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  @if (loading) {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+
+  @if (registration) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{ registration.vereinname }}</ion-card-title>
+        <ion-card-subtitle>
+          <ion-badge [color]="isApproved ? 'success' : 'warning'">
+            {{ isApproved ? 'Angenommen' : 'Neu' }}
+          </ion-badge>
+        </ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-item lines="none">
+          <ion-icon name="person-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h3>Verantwortlich</h3>
+            <p>{{ registration.respVorname }} {{ registration.respName }}</p>
+          </ion-label>
+        </ion-item>
+        @if (registration.verband) {
+          <ion-item lines="none">
+            <ion-icon name="ribbon-outline" slot="start"></ion-icon>
+            <ion-label>
+              <h3>Verband</h3>
+              <p>{{ registration.verband }}</p>
+            </ion-label>
+          </ion-item>
+        }
+        <ion-item lines="none">
+          <ion-icon name="mail-outline" slot="start"></ion-icon>
+          <ion-label>
+            <h3>E-Mail</h3>
+            <p>{{ registration.mail }}</p>
+          </ion-label>
+        </ion-item>
+        @if (registration.mobilephone) {
+          <ion-item lines="none">
+            <ion-icon name="call-outline" slot="start"></ion-icon>
+            <ion-label>
+              <h3>Telefon</h3>
+              <p>{{ registration.mobilephone }}</p>
+            </ion-label>
+          </ion-item>
+        }
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Athlet-Anmeldungen ({{ athletRegistrations.length }})</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        @if (athletRegistrations.length > 0) {
+          @for (pgm of groupedPrograms; track pgm.id) {
+            <ion-item-divider class="ion-text-wrap">{{ pgm.name }}</ion-item-divider>
+            @for (ath of pgm.athletes; track ath.id) {
+              <ion-item>
+                <ion-label class="ion-text-wrap">
+                  <h3>{{ ath.name }}, {{ ath.vorname }}</h3>
+                  <p>{{ ath.geschlecht }} | {{ ath.gebdat | date:'dd.MM.yyyy' }}</p>
+                </ion-label>
+              </ion-item>
+            }
+          }
+        } @else {
+          <ion-text color="medium">
+            <p class="ion-text-center">Keine Athlet-Anmeldungen vorhanden.</p>
+          </ion-text>
+        }
+      </ion-card-content>
+    </ion-card>
+  } @else if (!loading) {
+    <ion-card>
+      <ion-card-content>
+        <ion-text color="medium">
+          <p class="ion-text-center">Verein nicht gefunden.</p>
+        </ion-text>
+      </ion-card-content>
+    </ion-card>
+  }
+</ion-content>

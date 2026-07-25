@@ -427,10 +427,11 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             authenticated() { userId =>
               if userId.equals(competitionId.toString) then {
                 requireAdmin {
-                // approve registration - means assign verein-id if missing, and apply registrations
-                // This is made from the FX-Client
-                // 1. get all
-                pathPrefixLabeled("athletes", "athletes") {
+                pathEndOrSingleSlash {
+                  get { // get registration details (admin read-only)
+                    complete(selectRegistration(registrationId).toJson(using registrationFormat))
+                  }
+                } ~ pathPrefixLabeled("athletes", "athletes") {
                   pathEndOrSingleSlash {
                     get { // list Athletes
                       complete(
