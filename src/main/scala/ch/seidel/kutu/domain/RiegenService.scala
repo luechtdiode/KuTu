@@ -239,7 +239,10 @@ trait RiegenService extends DBService with RiegenResultMapper {
     Await.result(database.run{(
       updateOrInsertRiegeRawAction(riege) >>
       DBIO.sequence(riege2List) >>
-      DBIO.sequence(for w <- wertungen yield {
+      DBIO.sequence(for {
+        w <- wertungen
+        if !w.riege2.contains(riege.r)
+      } yield {
         w.riege2 match {
           case Some(riege2) =>
             sqlu"""     UPDATE wertung
