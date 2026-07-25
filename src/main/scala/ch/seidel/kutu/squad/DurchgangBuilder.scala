@@ -254,7 +254,7 @@ case class DurchgangBuilder(service: KutuService) extends Mapper with RiegenSpli
   }
 
   private def makeDurchgangMap(wettkampfId: Long): Map[String, String] = service.selectRiegenRaw(wettkampfId)
-      .filter(rr => rr.durchgang.isDefined)
+      .filter(rr => rr.durchgang.isDefined && rr.durchgang.get.nonEmpty)
       .map(rr => rr.r -> rr.durchgang.get)
       .toMap
       
