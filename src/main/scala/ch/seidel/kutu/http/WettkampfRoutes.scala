@@ -594,6 +594,26 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
             }
           }
         } ~
+        pathLabeled("overview-links", "overview-links") {
+          get {
+            authenticatedAdmin() { userId =>
+              if userId.equals(wkuuid.toString) then {
+                complete {
+                  Future {
+                    val enc = java.util.Base64.getUrlEncoder
+                    val registrationUrl = s"$remoteBaseUrl/registration/$wkuuid"
+                    val registrationQr = ServerPrintUtil.toQRCodeImage(registrationUrl)
+                    val liveResultsUrl = s"$remoteBaseUrl/?" + new String(enc.encodeToString(s"last&c=$wkuuid".getBytes))
+                    val liveResultsQr = ServerPrintUtil.toQRCodeImage(liveResultsUrl)
+                    OverviewLinks(registrationUrl, registrationQr, liveResultsUrl, liveResultsQr)
+                  }
+                }
+              } else {
+                complete(StatusCodes.Conflict)
+              }
+            }
+          }
+        } ~
         pathPrefixLabeled("athlet" / LongNumber, "athlet/:athlet-id") { athletId =>
           delete {
             authenticatedAdmin() { userId =>
