@@ -199,7 +199,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
   }
 
   def findAndStoreMatchingRiege(riege: RiegeRaw): RiegeRaw = {
-    val existingRiegen = selectRiegenRaw(riege.wettkampfId)
+    val existingRiegen = selectRiegenRaw(riege.wettkampfId).filter(r => r.durchgang.nonEmpty && r.start.nonEmpty)
     val riegenParts = riege.r.split(",")
     val scoreSchwellwert = math.pow(riegenParts.length -1d, 10d).intValue
     val scoreSchwellwert2 = math.pow(riegenParts.length -2d, 10d).intValue
@@ -301,6 +301,11 @@ trait RiegenService extends DBService with RiegenResultMapper {
        sql"""select r.wettkampf_id, r.name, r.durchgang, r.start, r.kind
              from riege r
              where wettkampf_id=$wettkampfId
+             union
+             select distinct w.wettkampf_id, w.riege, '' as durchgang, 0 as start, 0 as kind
+             from wertung w
+             where w.wettkampf_id=$wettkampfId and w.riege is not null
+               and not exists (select 1 from riege r2 where r2.name = w.riege and r2.wettkampf_id = w.wettkampf_id)
           """.as[RiegeRaw].withPinnedSession
     }, Duration.Inf).toList
   }
