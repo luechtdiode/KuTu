@@ -1,6 +1,5 @@
 package ch.seidel.kutu.data
 
-import ch.seidel.kutu.KuTuApp.cleanUnusedRiegen
 import ch.seidel.kutu.actors.{AthletIndexActor, AthletLikeFound, AthletsAddedToWettkampf, FindAthletLike}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.{RegistrationRoutes, WebSocketClient}
@@ -330,7 +329,7 @@ object RegistrationAdmin {
       service.regchanged(wkInfo.wettkampf.toWettkampf)
     }
 
-    cleanUnusedRiegen(wkInfo.wettkampf.id)
+    service.cleanUnusedRiegen(wkInfo.wettkampf.id)
 
     val einteilungen = service.selectRiegen(wkInfo.wettkampf.id)
     if einteilungen.nonEmpty then {
@@ -463,7 +462,7 @@ object RegistrationAdmin {
       }
     }
 
-    cleanUnusedRiegen(wkInfo.wettkampf.id)
+    service.cleanUnusedRiegen(wkInfo.wettkampf.id)
 
     val einteilungen = service.selectRiegen(wkInfo.wettkampf.id)
     if einteilungen.nonEmpty then {
