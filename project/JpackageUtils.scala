@@ -1,6 +1,5 @@
 // project/JpackageUtils.scala
-import sbt._
-import Keys._
+import sbt.*
 import sbt.librarymanagement.ConfigurationFilter
 
 object JpackageUtils {
