@@ -283,7 +283,9 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                   complete(
                     CompetitionRegistrationClientActor.publish(ApplySyncActions(wettkampf.uuid.get, request.actions), clientId)
                       .map {
-                        case r: ApplySyncActionsResponse => SyncApplyResponse(r.processed, r.messages).toJson(using syncApplyResponseFormat)
+                        case r: ApplySyncActionsResponse =>
+                          CompetitionCoordinatorClientActor.publish(RefreshWettkampfMap(wettkampf.uuid.get), clientId)
+                          SyncApplyResponse(r.processed, r.messages).toJson(using syncApplyResponseFormat)
                         case _ => SyncApplyResponse(0, List.empty).toJson(using syncApplyResponseFormat)
                       }
                   )
