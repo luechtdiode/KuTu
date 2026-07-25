@@ -17,6 +17,7 @@ export class AdminRankingsPage implements OnDestroy {
   uuid = '';
   secret = '';
   wettkampfTitle = '';
+  logoUrl = '';
 
   availableGroupers: string[] = [];
   selectedGroupers: (string | null)[] = [null, null, null, null];
@@ -51,6 +52,7 @@ export class AdminRankingsPage implements OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(s => s.unsubscribe());
+    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
   }
 
   async ionViewWillEnter() {
@@ -60,6 +62,13 @@ export class AdminRankingsPage implements OnDestroy {
       this.secret = stored.secret;
       this.wettkampfTitle = stored.titel;
     }
+    this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
+      next: blob => {
+        this.logoUrl = URL.createObjectURL(blob);
+        this.cdr.detectChanges();
+      },
+      error: () => { /* no logo */ }
+    });
     await this.loadGroupers();
     await this.loadSavedScores();
   }

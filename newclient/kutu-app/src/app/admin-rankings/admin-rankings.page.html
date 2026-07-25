@@ -2,7 +2,8 @@
   <ion-toolbar color="primary">
     <ion-buttons slot="start">
       <ion-menu-button></ion-menu-button>
-      <ion-back-button defaultHref="/admin/competitions"></ion-back-button>
+      <ion-back-button [defaultHref]="'/admin/competitions/' + uuid"></ion-back-button>
+      <ion-icon name="podium" style="margin-left: 8px"></ion-icon>
     </ion-buttons>
     <ion-title>Ranglisten</ion-title>
   </ion-toolbar>
@@ -14,7 +15,12 @@
 
   <ion-card>
     <ion-card-header>
-      <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+      <ion-item lines="none" class="ion-no-padding">
+        @if (logoUrl) {
+        <img class="wk-logo" [src]="logoUrl" alt="Logo" />
+        }
+        <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+      </ion-item>
     </ion-card-header>
   </ion-card>
 

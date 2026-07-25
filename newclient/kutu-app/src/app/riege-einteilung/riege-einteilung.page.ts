@@ -1,5 +1,5 @@
 import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
-import { AlertController, ToastController, ModalController } from '@ionic/angular';
+import { AlertController, ToastController, ModalController, NavController } from '@ionic/angular';
 import {ActivatedRoute} from '@angular/router';
 import {SecretService} from '../services/secret.service';
 import {AdminBackendService} from '../services/admin-backend.service';
@@ -68,6 +68,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
   private modalCtrl = inject(ModalController);
+  private nav = inject(NavController);
 
   async ionViewWillEnter() {
     this.uuid = this.route.snapshot.paramMap.get('uuid') || '';
@@ -751,10 +752,6 @@ export class RiegeEinteilungPage implements OnDestroy {
     };
   }
 
-  formatDate(date: string) {
-    const d = new Date(date);
-    return `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
-  }
 
   formatTimeOfDay(offsetMillis: number): string {
     if (offsetMillis <= 0) return '--:--';
@@ -833,6 +830,10 @@ export class RiegeEinteilungPage implements OnDestroy {
         g.rows.some(r => r.cells[d.id]?.length > 0)
       )
     );
+  }
+
+  goToPlaybook() {
+    this.nav.navigateForward('/admin/playbook/' + this.uuid);
   }
 
   printRiegen() {
