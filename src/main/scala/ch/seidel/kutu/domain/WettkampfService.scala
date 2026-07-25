@@ -972,7 +972,7 @@ trait WettkampfService extends DBService
                 """.as[(Long, Long)].withPinnedSession
     }, Duration.Inf).toMap
     val athlet = event.athlet
-    val existingriegen = selectRiegenRaw(wettkampf.id).filter(r => r.durchgang.nonEmpty && r.start.nonEmpty)
+    val existingriegen = selectRiegenRaw(wettkampf.id).filter(r => r.durchgang.nonEmpty && r.start.nonEmpty && r.durchgang.get.nonEmpty && r.start.get > 0)
     val cache2 = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
     val wertungen: Seq[(Long, Long, String, String, Option[String], String, Int, Int, Int)] = Await.result(database.run {
         sql"""
