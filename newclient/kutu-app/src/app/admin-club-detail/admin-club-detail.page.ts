@@ -35,7 +35,7 @@ export class AdminClubDetailPage {
     await this.loadData();
   }
 
-  private async loadData() {
+  async loadData() {
     this.loading = true;
     try {
       const [registration, athletes, programs] = await Promise.all([
