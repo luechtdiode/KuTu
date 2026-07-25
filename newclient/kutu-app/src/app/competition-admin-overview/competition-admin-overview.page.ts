@@ -5,6 +5,7 @@ import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
 import { downloadBlob, formatDisplayDate } from '../utils';
 import { firstValueFrom } from 'rxjs';
+import { OverviewLinks } from '../backend-types';
 
 @Component({
   templateUrl: 'competition-admin-overview.page.html',
@@ -17,6 +18,7 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   datum = '';
   secret = '';
   logoUrl: string | null = null;
+  overviewLinks: OverviewLinks | null = null;
   loading = true;
   private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
@@ -66,6 +68,14 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
         this.cdr.detectChanges();
       },
       error: () => { /* no logo */ }
+    });
+
+    this.backend.getOverviewLinks(this.uuid, this.secret).subscribe({
+      next: links => {
+        this.overviewLinks = links;
+        this.cdr.detectChanges();
+      },
+      error: () => { /* ignore */ }
     });
   }
 

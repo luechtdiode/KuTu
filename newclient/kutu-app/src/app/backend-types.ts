@@ -525,3 +525,10 @@ export interface JudgeLink {
   link: string;
   qrImage: string;
 }
+
+export interface OverviewLinks {
+  registrationUrl: string;
+  registrationQr: string;
+  liveResultsUrl: string;
+  liveResultsQr: string;
+}

@@ -2118,5 +2118,12 @@ package object domain {
 
   case class JudgeLink(link: String, qrImage: String)
 
+  case class OverviewLinks(
+    registrationUrl: String,
+    registrationQr: String,
+    liveResultsUrl: String,
+    liveResultsQr: String
+  )
+
   class ValidationException(message: String) extends RuntimeException(message) {}
 }
