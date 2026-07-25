@@ -255,26 +255,25 @@
           @for (score of savedScores; track score.id) {
             <ion-item>
               <ion-icon name="document-text-outline" slot="start"></ion-icon>
-              <ion-label button (click)="openScore(score.id)">
-                <h2>{{ score.title }}</h2>
+              <ion-label class="ion-text-wrap score-item-label">
+                <h2>
+                  {{ score.title }}
+                  <ion-badge [color]="score.published ? 'success' : 'medium'" class="score-badge">
+                    {{ score.published ? 'Veröffentlicht' : 'Entwurf' }}
+                  </ion-badge>
+                </h2>
+                <div class="score-actions">
+                  <ion-button size="small" fill="outline" (click)="openScore(score.id)">
+                    <ion-icon slot="start" name="open-outline"></ion-icon>Öffnen
+                  </ion-button>
+                  <ion-button size="small" fill="outline"
+                    [color]="score.published ? 'warning' : 'success'"
+                    (click)="score.published ? unpublishScore(score) : publishScore(score)">
+                    <ion-icon slot="start" [name]="score.published ? 'cloud-done' : 'cloud-upload'"></ion-icon>
+                    {{ score.published ? 'Zurück' : 'Veröffentlichen' }}
+                  </ion-button>
+                </div>
               </ion-label>
-              @if (score.published) {
-                <ion-badge slot="end" color="success">Veröffentlicht</ion-badge>
-              } @else {
-                <ion-badge slot="end" color="medium">Entwurf</ion-badge>
-              }
-              @if (!score.published) {
-                <ion-button slot="end" fill="clear" size="small" color="success" (click)="publishScore(score)" title="Veröffentlichen">
-                  <ion-icon slot="icon-only" size="large" name="cloud-upload"></ion-icon>
-                </ion-button>
-              } @else {
-                <ion-button slot="end" fill="clear" size="small" color="warning" (click)="unpublishScore(score)" title="Veröffentlichung zurücknehmen">
-                  <ion-icon slot="icon-only" size="large" name="cloud-done"></ion-icon>
-                </ion-button>
-              }
-              <ion-button slot="end" fill="clear" size="small" (click)="openScore(score.id)" title="Öffnen">
-                <ion-icon slot="icon-only" size="large" name="open-outline"></ion-icon>
-              </ion-button>
             </ion-item>
           }
         </ion-list>

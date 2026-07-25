@@ -37,36 +37,40 @@
       @if (savedScores.length > 0) {
         <ion-list>
           @for (score of savedScores; track score.id) {
-            <ion-item [color]="editingScore?.id === score.id ? 'light' : ''">
-              <ion-icon name="document-text-outline" slot="start"></ion-icon>
-              <ion-label>
-                <h2>{{ score.title }}</h2>
-                <p>{{ score.query }}</p>
-              </ion-label>
-              @if (score.published) {
-                <ion-badge slot="end" color="success">Veröffentlicht</ion-badge>
-              } @else {
-                <ion-badge slot="end" color="medium">Entwurf</ion-badge>
-              }
-              <ion-button slot="end" fill="clear" (click)="openScore(score.id)" title="Öffnen">
-                <ion-icon slot="icon-only" size="large" name="open-outline"></ion-icon>
-              </ion-button>
-              <ion-button slot="end" fill="clear" (click)="editScore(score)" title="Bearbeiten">
-                <ion-icon slot="icon-only" size="large" name="create"></ion-icon>
-              </ion-button>
-              @if (!score.published) {
-                <ion-button slot="end" fill="clear" color="success" (click)="publishScore(score)" title="Veröffentlichen">
-                  <ion-icon slot="icon-only" size="large" name="cloud-upload"></ion-icon>
-                </ion-button>
-              } @else {
-                <ion-button slot="end" fill="clear" color="warning" (click)="unpublishScore(score)" title="Veröffentlichung zurücknehmen">
-                  <ion-icon slot="icon-only" size="large" name="cloud-done"></ion-icon>
-                </ion-button>
-              }
-              <ion-button slot="end" fill="clear" color="danger" (click)="deleteScore(score)" title="Löschen">
-                <ion-icon slot="icon-only" size="large" name="trash"></ion-icon>
-              </ion-button>
-            </ion-item>
+            <ion-item-sliding>
+              <ion-item [color]="editingScore?.id === score.id ? 'light' : ''">
+                <ion-icon name="document-text-outline" slot="start"></ion-icon>
+                <ion-label class="ion-text-wrap score-item-label">
+                  <h2>
+                    {{ score.title }}
+                    <ion-badge [color]="score.published ? 'success' : 'medium'" class="score-badge">
+                      {{ score.published ? 'Veröffentlicht' : 'Entwurf' }}
+                    </ion-badge>
+                  </h2>
+                  <p class="score-query">{{ score.query }}</p>
+                  <div class="score-actions">
+                    <ion-button size="small" fill="outline" (click)="openScore(score.id)">
+                      <ion-icon slot="start" name="open-outline"></ion-icon>Öffnen
+                    </ion-button>
+                    <ion-button size="small" fill="outline" (click)="editScore(score)">
+                      <ion-icon slot="start" name="create"></ion-icon>Bearbeiten
+                    </ion-button>
+                    <ion-button size="small" fill="outline"
+                      [color]="score.published ? 'warning' : 'success'"
+                      (click)="score.published ? unpublishScore(score) : publishScore(score)">
+                      <ion-icon slot="start" [name]="score.published ? 'cloud-done' : 'cloud-upload'"></ion-icon>
+                      {{ score.published ? 'Zurück' : 'Veröffentlichen' }}
+                    </ion-button>
+                  </div>
+                </ion-label>
+              </ion-item>
+              <ion-item-options side="end">
+                <ion-item-option color="danger" (click)="deleteScore(score)">
+                  <ion-icon name="trash"></ion-icon>
+                  <ion-label>Löschen</ion-label>
+                </ion-item-option>
+              </ion-item-options>
+            </ion-item-sliding>
           }
         </ion-list>
       } @else if (!loading) {
