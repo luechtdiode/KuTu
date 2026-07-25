@@ -1081,11 +1081,11 @@ trait WettkampfService extends DBService
     val programIds = readWettkampfLeafs(programId).map(_.id)
     if (programIds.isEmpty) Future.successful(Seq.empty)
     else database.run {
-      sql""" select distinct d.name
+      sql""" select distinct wd.ord, d.name
             from wettkampfdisziplin wd, disziplin d
             where wd.disziplin_id = d.id
               and wd.programm_id in (#${programIds.mkString(",")})
-            order by wd.ord """.as[String].withPinnedSession
+            order by wd.ord """.as[(Int, String)].withPinnedSession.map(_.map(_._2))
     }
   }
 
