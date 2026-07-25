@@ -8,7 +8,9 @@
 </ion-header>
 <ion-content class="ion-padding">
   <div style="text-align:center">
-    <img *ngIf="qrUrl" [src]="qrUrl" style="max-width:300px" />
+    @if (qrUrl) {
+      <img [src]="qrUrl" style="max-width:300px" />
+    }
     <p style="word-break:break-all; font-size:0.85em; margin-top:16px">{{ link }}</p>
     <ion-button fill="outline" (click)="copyLink()">
       <ion-icon name="copy-outline" slot="start"></ion-icon>
