@@ -314,3 +314,25 @@
     color: #681f4b;
   }
 }
+
+.score-item-label {
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .score-badge {
+    font-size: 0.65em;
+    flex-shrink: 0;
+  }
+
+  .score-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+  }
+}
