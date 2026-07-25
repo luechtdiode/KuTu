@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -198,6 +198,11 @@ export class AdminBackendService {
   getJudgeLink(uuid: string, secret: string): Observable<JudgeLink> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.get<JudgeLink>(this.api + 'competition/' + uuid + '/judge-link', { headers });
+  }
+
+  getOverviewLinks(uuid: string, secret: string): Observable<OverviewLinks> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<OverviewLinks>(this.api + 'competition/' + uuid + '/overview-links', { headers });
   }
 
   unassignAthletFromCompetition(uuid: string, athletId: number, secret: string): Observable<{ removedWertungen: number }> {
