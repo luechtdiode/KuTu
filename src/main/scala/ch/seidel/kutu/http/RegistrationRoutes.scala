@@ -439,6 +439,14 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                       )
                     }
                   }
+                } ~ pathPrefixLabeled("judges", "judges") {
+                  pathEndOrSingleSlash {
+                    get { // list Judges for club
+                      complete(
+                        selectJudgeRegistrations(registrationId).toJson(using listFormat(using judgeregistrationFormat))
+                      )
+                    }
+                  }
                 } ~ put {
                   entity(as[Verein]) { verein =>
                     val registration = selectRegistration(registrationId)
