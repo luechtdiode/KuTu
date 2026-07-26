@@ -3,8 +3,12 @@ import { AlertController, ToastController } from '@ionic/angular';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
-import { ClubRegistration, SyncAction, SyncActionKey, Verein, RiegeItem } from '../backend-types';
+import { ClubRegistration, SyncAction, SyncActionKey, Verein, RiegeItem, JudgeRegistration } from '../backend-types';
 import { firstValueFrom } from 'rxjs';
+
+export interface JudgeWithClub extends JudgeRegistration {
+  vereinname: string;
+}
 
 @Component({
   templateUrl: 'admin-registrations.page.html',
@@ -18,6 +22,7 @@ export class AdminRegistrationsPage implements OnDestroy {
   registrationUrl = '';
   registrations: ClubRegistration[] = [];
   syncActions: SyncAction[] = [];
+  judgeRegistrations: JudgeWithClub[] = [];
   selectedSyncIndices = new Set<number>();
   applying = false;
   loading = false;
@@ -57,10 +62,20 @@ export class AdminRegistrationsPage implements OnDestroy {
       this.registrations = registrations;
       this.syncActions = syncActions;
       this.unassignedRiegenCount = riegen.filter(r => !r.durchgang).length;
+
+      const judgeResults = await Promise.all(
+        registrations.map(reg =>
+          firstValueFrom(this.backend.getJudgeRegistrations(this.uuid, reg.id, this.secret))
+            .then(judges => judges.map(j => ({ ...j, vereinname: reg.vereinname } as JudgeWithClub)))
+            .catch(() => [] as JudgeWithClub[])
+        )
+      );
+      this.judgeRegistrations = judgeResults.reduce<JudgeWithClub[]>((acc, list) => acc.concat(list), []);
     } catch {
       this.registrations = [];
       this.syncActions = [];
       this.unassignedRiegenCount = 0;
+      this.judgeRegistrations = [];
     } finally {
       this.loading = false;
       this.selectedSyncIndices.clear();
