@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -110,6 +110,11 @@ export class AdminBackendService {
   getAthletRegistrations(uuid: string, regId: number, secret: string): Observable<AthletRegistration[]> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.get<AthletRegistration[]>(this.api + 'registrations/' + uuid + '/' + regId + '/athletes', { headers });
+  }
+
+  getJudgeRegistrations(uuid: string, regId: number, secret: string): Observable<JudgeRegistration[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<JudgeRegistration[]>(this.api + 'registrations/' + uuid + '/' + regId + '/judges', { headers });
   }
 
   getProgramList(uuid: string, secret: string): Observable<ProgrammRaw[]> {
