@@ -4,6 +4,11 @@
       <ion-menu-button></ion-menu-button>
     </ion-buttons>
     <ion-title>Meine Wettkämpfe (admin)</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="triggerZipImport()" title="ZIP Backup importieren">
+        <ion-icon name="cloud-upload" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
@@ -50,4 +55,5 @@
       </ion-button>
     </ion-text>
   }
+  <input #zipFileInput type="file" accept=".zip" hidden (change)="onZipFileSelected($event)">
 </ion-content>

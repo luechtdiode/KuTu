@@ -180,7 +180,8 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   async confirmDelete() {
     const alert = await this.alertCtrl.create({
       header: 'Wettkampf löschen',
-      message: `Soll "${this.titel}" (${this.formatDate(this.datum)}) wirklich gelöscht werden?<br><br><strong>Alle Daten werden unwiderruflich gelöscht.</strong>`,
+      message: `Soll "${this.titel}" (${this.formatDate(this.datum)}) wirklich gelöscht werden?
+                Alle Daten werden unwiderruflich gelöscht.`,
       buttons: [
         { text: 'Abbrechen', role: 'cancel' },
         {
