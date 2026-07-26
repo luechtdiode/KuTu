@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
 import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks } from '../backend-types';
@@ -129,6 +129,15 @@ export class AdminBackendService {
     const formData = new FormData();
     formData.append('zip', file, file.name);
     return this.http.put(this.api + 'competition/' + uuid, formData, { headers, responseType: 'text' });
+  }
+
+  uploadCompetitionZipPost(uuid: string, file: File): Observable<HttpResponse<string>> {
+    const formData = new FormData();
+    formData.append('zip', file, file.name);
+    return this.http.post(this.api + 'competition/' + uuid, formData, {
+      responseType: 'text',
+      observe: 'response'
+    });
   }
 
   getCompetitionDetails(uuid: string, secret: string): Observable<AdminGetCompetitionResponse> {
