@@ -78,7 +78,7 @@
                   @if (reg.verband) { | {{ reg.verband }} }
                 </p>
                 <p class="ion-text-wrap" style="font-size: 0.8em; opacity: 0.7;">
-                  {{ reg.mail }}@if (reg.mobilephone) { | {{ reg.mobilephone }} }
+                  <a [attr.href]="'mailto: ' + reg.mail">{{ reg.mail }}</a>@if (reg.mobilephone) { | <a [attr.href]="'tel: ' + reg.mobilephone">{{ reg.mobilephone }}</a> }
                 </p>
               </ion-label>
               @if (!isApproved(reg)) {
@@ -134,6 +134,29 @@
             {{ applying ? 'Verarbeite...' : selectedCount + ' ausgewählte Aktionen ausführen' }}
           </ion-button>
         }
+      </ion-card-content>
+    </ion-card>
+  }
+
+  @if (judgeRegistrations.length > 0) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Wertungsrichter ({{ judgeRegistrations.length }})</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list>
+          @for (judge of judgeRegistrations; track judge.id) {
+            <ion-item>
+              <ion-icon name="person-outline" slot="start"></ion-icon>
+              <ion-label class="ion-text-wrap">
+                <h3>{{ judge.name }}, {{ judge.vorname }}</h3>
+                <p>{{ judge.geschlecht }} | <a [attr.href]="'mailto:' + judge.mail">{{ judge.mail }}</a> | <a [attr.href]="'tel:' + judge.mobilephone">{{ judge.mobilephone }}</a></p>
+                <p style="font-size: 0.8em; opacity: 0.7;">{{ judge.vereinname }}</p>
+                <p><strong>Hinweise:</strong> {{ judge.comment }}</p>
+              </ion-label>
+            </ion-item>
+          }
+        </ion-list>
       </ion-card-content>
     </ion-card>
   }

@@ -48,7 +48,7 @@
           <ion-icon name="mail-outline" slot="start"></ion-icon>
           <ion-label>
             <h3>E-Mail</h3>
-            <p>{{ registration.mail }}</p>
+            <p><a [attr.href]="'mailto:' + registration.mail">{{ registration.mail }}</a></p>
           </ion-label>
         </ion-item>
         @if (registration.mobilephone) {
@@ -56,7 +56,7 @@
             <ion-icon name="call-outline" slot="start"></ion-icon>
             <ion-label>
               <h3>Telefon</h3>
-              <p>{{ registration.mobilephone }}</p>
+              <p><a [attr.href]="'tel:' + registration.mobilephone">{{ registration.mobilephone }}</a></p>
             </ion-label>
           </ion-item>
         }
@@ -77,12 +77,44 @@
                   <h3>{{ ath.name }}, {{ ath.vorname }}</h3>
                   <p>{{ ath.geschlecht }} | {{ ath.gebdat | date:'dd.MM.yyyy' }}</p>
                 </ion-label>
+                @if (getAthleteSyncStatusSimple(ath)) {
+                  <ion-badge slot="end" [color]="getAthleteSyncStatusSimple(ath) === 'in sync' ? 'success' : 'warning'">
+                    {{ getAthleteSyncStatusSimple(ath) === 'in sync' ? '✔ in sync' : '❗ ' + getAthleteSyncStatusSimple(ath) }}<br>
+                    {{ getAthleteSyncStatusDetail(ath) }}<br>
+                  </ion-badge>
+                }
               </ion-item>
             }
           }
         } @else {
           <ion-text color="medium">
             <p class="ion-text-center">Keine Athlet-Anmeldungen vorhanden.</p>
+          </ion-text>
+        }
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Wertungsrichter ({{ judgeRegistrations.length }})</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        @if (judgeRegistrations.length > 0) {
+          <ion-list>
+            @for (judge of judgeRegistrations; track judge.id) {
+              <ion-item>
+                <ion-icon name="person-outline" slot="start"></ion-icon>
+                <ion-label class="ion-text-wrap">
+                  <h3>{{ judge.name }}, {{ judge.vorname }}</h3>
+                  <p>{{ judge.geschlecht }} | <a [attr.href]="'mailto:' + judge.mail">{{ judge.mail }}</a> | <a [attr.href]="'tel:' + judge.mobilephone">{{ judge.mobilephone }}</a></p>
+                  <p><strong>Hinweise:&nbsp;</strong>{{ judge.comment }}</p>
+                </ion-label>
+              </ion-item>
+            }
+          </ion-list>
+        } @else {
+          <ion-text color="medium">
+            <p class="ion-text-center">Keine Wertungsrichter-Anmeldungen vorhanden.</p>
           </ion-text>
         }
       </ion-card-content>

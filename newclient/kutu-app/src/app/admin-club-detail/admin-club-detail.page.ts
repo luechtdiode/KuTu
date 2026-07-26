@@ -2,7 +2,7 @@ import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
-import { ClubRegistration, AthletRegistration, ProgrammRaw } from '../backend-types';
+import { ClubRegistration, AthletRegistration, ProgrammRaw, SyncAction, JudgeRegistration } from '../backend-types';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -18,6 +18,8 @@ export class AdminClubDetailPage {
   registration: ClubRegistration | null = null;
   athletRegistrations: AthletRegistration[] = [];
   programs: ProgrammRaw[] = [];
+  syncActions: SyncAction[] = [];
+  judgeRegistrations: JudgeRegistration[] = [];
   loading = false;
 
   private cdr = inject(ChangeDetectorRef);
@@ -38,21 +40,53 @@ export class AdminClubDetailPage {
   async loadData() {
     this.loading = true;
     try {
-      const [registration, athletes, programs] = await Promise.all([
+      const [registration, athletes, programs, syncActions, judges] = await Promise.all([
         firstValueFrom(this.backend.getRegistration(this.uuid, this.regId, this.secret)),
         firstValueFrom(this.backend.getAthletRegistrations(this.uuid, this.regId, this.secret)),
-        firstValueFrom(this.backend.getProgramList(this.uuid, this.secret))
+        firstValueFrom(this.backend.getProgramList(this.uuid, this.secret)),
+        firstValueFrom(this.backend.getSyncActions(this.uuid, this.secret)).catch(() => [] as SyncAction[]),
+        firstValueFrom(this.backend.getJudgeRegistrations(this.uuid, this.regId, this.secret)).catch(() => [] as JudgeRegistration[])
       ]);
       this.registration = registration;
       this.athletRegistrations = athletes;
       this.programs = programs;
+      this.syncActions = syncActions;
+      this.judgeRegistrations = judges;
     } catch {
       this.registration = null;
       this.athletRegistrations = [];
       this.programs = [];
+      this.syncActions = [];
+      this.judgeRegistrations = [];
     } finally {
       this.loading = false;
       this.cdr.detectChanges();
+    }
+  }
+
+  getAthleteSyncStatusSimple(ath: AthletRegistration): string {
+    if (this.syncActions.length > 0) {
+      const action = this.syncActions.find(a => a.data.registrationId === ath.vereinregistrationId && a.caption.indexOf(ath.name) > -1 && a.caption.indexOf(ath.vorname) > -1);
+      if (action) {
+        return 'pending';
+      } else {
+        return 'in sync';
+      }
+    } else {
+      return '';
+    }
+  }
+
+  getAthleteSyncStatusDetail(ath: AthletRegistration): string {
+    if (this.syncActions.length > 0) {
+      const action = this.syncActions.find(a => a.data.registrationId === ath.vereinregistrationId && a.caption.indexOf(ath.name) > -1 && a.caption.indexOf(ath.vorname) > -1);
+      if (action) {
+        return action.caption.substring(0, (action.caption + ':').indexOf(':'));
+      } else {
+        return '';
+      }
+    } else {
+      return '';
     }
   }
 
