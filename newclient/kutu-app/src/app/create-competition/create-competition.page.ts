@@ -22,7 +22,7 @@ const PRESETS_ALTERSKLASSEN = [
 ];
 
 const PRESETS_PUNKTEGLEICHSTANDSREGEL = [
-  { label: 'Ohne - Punktgleichstand => gleicher Rang', value: 'Ohne' },
+  { label: 'Ohne - Punktgleichstand => gleicher Rang', value: '' },
   { label: 'GeTu Punktgleichstandsregel', value: 'Disziplin(Schaukelringe,Sprung,Reck)' },
   { label: 'KuTu Punktgleichstandsregel', value: 'E-Note-Summe/D-Note-Summe/JugendVorAlter' },
   { label: 'KuTu STV Punktgleichstandsregel', value: 'StreichWertungen(Endnote,Min)/StreichWertungen(E-Note,Min)/StreichWertungen(D-Note,Min)' },
@@ -105,11 +105,11 @@ export class CreateCompetitionPage {
   selectedLogo: File | null = null;
   logoPreview: string | null = null;
 
-  altersklassenPreset = 'Ohne';
-  jahrgangsklassenPreset = 'Ohne';
-  punktegleichstandsregelPreset = 'Ohne - Punktgleichstand => gleicher Rang';
-  rotationPreset = 'Einfache Rotation';
-  teamrulePreset = 'Keine Teams';
+  altersklassenPreset = '';
+  jahrgangsklassenPreset = '';
+  punktegleichstandsregelPreset = '';
+  rotationPreset = 'Einfach';
+  teamrulePreset = '';
 
   private ngZone = inject(NgZone);
   private cdr = inject(ChangeDetectorRef);
@@ -149,7 +149,7 @@ export class CreateCompetitionPage {
           this.form.titel = data.titel;
           this.form.programmId = data.programmId;
           this.form.notificationEMail = data.notificationEMail;
-          this.form.auszeichnung = data.auszeichnung;
+          this.form.auszeichnung = data.auszeichnung > 100 ? data.auszeichnung / 100 : data.auszeichnung;
           this.form.auszeichnungendnote = data.auszeichnungendnote;
           this.form.altersklassen = data.altersklassen;
           this.form.jahrgangsklassen = data.jahrgangsklassen;
@@ -198,7 +198,17 @@ export class CreateCompetitionPage {
     });
   }
 
+  findMatchingPresets() {
+    this.altersklassenPreset = PRESETS_ALTERSKLASSEN.find(p => p.value === this.form.altersklassen)?.value || (this.form.altersklassen ? '__custom__' : this.altersklassenPreset);
+    this.jahrgangsklassenPreset = PRESETS_ALTERSKLASSEN.find(p => p.value === this.form.jahrgangsklassen)?.value || (this.form.jahrgangsklassen ? '__custom__' : this.jahrgangsklassenPreset);
+    this.punktegleichstandsregelPreset = PRESETS_PUNKTEGLEICHSTANDSREGEL.find(p => p.value === this.form.punktegleichstandsregel)?.value || (this.punktegleichstandsregelPreset ? '__custom__' : this.punktegleichstandsregelPreset);
+    this.rotationPreset = PRESETS_ROTATION.find(p => p.value === this.form.rotation)?.value || (this.form.rotation ? '__custom__' : this.rotationPreset);
+    this.teamrulePreset = PRESETS_TEAMREGEL.find(p => p.value === this.form.teamrule)?.value || (this.form.altersklassen ? '__custom__' : this.teamrulePreset);
+    console.log(this.form.altersklassen, this.form.jahrgangsklassen, this.form.punktegleichstandsregel, this.form.rotation, this.form.teamrule);
+    console.log(this.altersklassenPreset, this.jahrgangsklassenPreset, this.punktegleichstandsregelPreset, this.rotationPreset, this.teamrulePreset);
+  }
   onProgramChange() {
+    this.findMatchingPresets();
     if (!this.form.programmId) {
       this.disziplinen = [];
       this.kategorien = [];
@@ -213,8 +223,8 @@ export class CreateCompetitionPage {
     return label.substring(0, 22) + '...';
   }
 
-  applyPreset(field: keyof FormModel, presetLabel: string, presets: { label: string; value: string }[]) {
-    const preset = presets.find(p => p.label === presetLabel);
+  applyPreset(field: keyof FormModel, presetValue: string, presets: { label: string; value: string }[]) {
+    const preset = presets.find(p => p.value === presetValue);
     if (!preset) return;
     if (preset.value === '__custom__') return;
     console.log("setting " + preset.value + " on field " + field);
@@ -355,6 +365,7 @@ export class CreateCompetitionPage {
       const datumStr = formatDateForApi(new Date(this.form.datum + 'T12:00:00.000Z'));
 
       if (this.isEditMode && this.editUuid && this.editSecret && this.editId) {
+        // if request.auszeichnung.isValidInt then request.auszeichnung.toInt else (request.auszeichnung * 100).toInt,
         await firstValueFrom(
           this.backend.updateCompetition(this.editUuid, this.editSecret, {
             id: this.editId,
@@ -362,7 +373,7 @@ export class CreateCompetitionPage {
             titel: this.form.titel,
             programmId: this.form.programmId!,
             notificationEMail: this.form.notificationEMail,
-            auszeichnung: this.form.auszeichnung || 40,
+            auszeichnung: Number.isInteger(this.form.auszeichnung) ? this.form.auszeichnung : Math.trunc(this.form.auszeichnung * 100) || 40,
             auszeichnungendnote: this.form.auszeichnungendnote || 0,
             altersklassen: this.form.altersklassen,
             jahrgangsklassen: this.form.jahrgangsklassen,

@@ -96,7 +96,7 @@
         (ionChange)="applyPreset('altersklassen', $event.detail.value, PRESETS_ALTERSKLASSEN)"
       >
         @for (p of PRESETS_ALTERSKLASSEN; track p.label) {
-          <ion-select-option [value]="p.label">{{ p.label }}</ion-select-option>
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
         }
       </ion-select>
     </ion-item>
@@ -118,7 +118,7 @@
         (ionChange)="applyPreset('jahrgangsklassen', $event.detail.value, PRESETS_ALTERSKLASSEN)"
       >
         @for (p of PRESETS_ALTERSKLASSEN; track p.label) {
-          <ion-select-option [value]="p.label">{{ p.label }}</ion-select-option>
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
         }
       </ion-select>
     </ion-item>
@@ -140,7 +140,7 @@
         (ionChange)="applyPreset('punktegleichstandsregel', $event.detail.value, PRESETS_PUNKTEGLEICHSTANDSREGEL)"
       >
         @for (p of PRESETS_PUNKTEGLEICHSTANDSREGEL; track p.label) {
-          <ion-select-option [value]="p.label">{{ p.label }}</ion-select-option>
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
         }
       </ion-select>
     </ion-item>
@@ -162,7 +162,7 @@
         (ionChange)="applyPreset('rotation', $event.detail.value, PRESETS_ROTATION)"
       >
         @for (p of PRESETS_ROTATION; track p.label) {
-          <ion-select-option [value]="p.label">{{ p.label }}</ion-select-option>
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
         }
       </ion-select>
     </ion-item>
@@ -184,7 +184,7 @@
         (ionChange)="applyPreset('teamrule', $event.detail.value, PRESETS_TEAMREGEL)"
       >
         @for (p of PRESETS_TEAMREGEL; track p.label) {
-          <ion-select-option [value]="p.label">{{ p.label }}</ion-select-option>
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
         }
       </ion-select>
     </ion-item>
