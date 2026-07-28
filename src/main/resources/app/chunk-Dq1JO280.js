@@ -1,1 +1,0 @@
-import {k,C}from'./main-H6R3VNHP.js';var o=class extends k{show(i){return C(this,null,function*(){})}hide(i){return C(this,null,function*(){})}};export{o as SplashScreenWeb};
