@@ -143,7 +143,7 @@ export class CompetitionListPage implements OnDestroy {
       }
 
       const toast = await this.toastCtrl.create({
-        message: `Wettkampf "${titel}" angelegt! Bestätige dein Email-Postfach zur Verifizierung (24h Timeout).`,
+        message: `Wettkampf "${titel}" angelegt! Bestätige dein Email-Postfach zur Verifizierung (1h Timeout).`,
         duration: 4000,
         color: 'success'
       });
@@ -166,13 +166,14 @@ export class CompetitionListPage implements OnDestroy {
             await toast.present();
             return;
           }
+          this.secretService.saveSecret({ uuid, titel, datum, secret });
           const alert = await this.alertCtrl.create({
             header: 'Wettkampf existiert bereits',
             message: `Der Wettkampf "${titel}" ist bereits auf dem Server vorhanden.
             Sollen die Daten aus dem Backup wiederhergestellt werden?
             ACHTUNG: Alle vorhandenen Daten werden überschrieben!`,
             buttons: [
-              { text: 'Abbrechen', role: 'cancel' },
+              { text: 'Nein', role: 'cancel' },
               {
                 text: 'Ja, wiederherstellen',
                 role: 'destructive',
@@ -213,6 +214,10 @@ export class CompetitionListPage implements OnDestroy {
       await toast.present();
       this.ionViewWillEnter();
     } catch (e) {
+      const status = (e as any).status;
+      if (status === 401) {
+        this.secretService.removeSecret(uuid);
+      }
       const toast = await this.toastCtrl.create({
         message: 'Upload fehlgeschlagen: ' + ((e as any).error || (e as any).message),
         duration: 3000,
