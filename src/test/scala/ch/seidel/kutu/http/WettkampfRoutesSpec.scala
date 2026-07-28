@@ -414,10 +414,10 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
       }
     }
 
-    "return 404 when no logo exists" in {
+    "return default-logo when no logo exists" in {
       HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo")
         .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.NotFound)
+        status should ===(StatusCodes.OK)
       }
     }
 

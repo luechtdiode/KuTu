@@ -853,7 +853,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                     })
                     getFromFile(logofile, contentType)
                   } else {
-                    complete(StatusCodes.NotFound)
+                    getFromResource("images/wettkampf.png", ContentType(MediaTypes.`image/png`))
                   }
                 }
               } else {
