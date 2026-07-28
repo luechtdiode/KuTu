@@ -2,17 +2,17 @@ import { Component, Input, inject, OnInit } from '@angular/core';
 import { ModalController } from '@ionic/angular';
 import { ItemReorderEventDetail } from '@ionic/core';
 
-interface RotationRule { token: string; }
+interface RotationRule { token: string}
 
 const REGEL_TYPEN: { label: string; token: string }[] = [
   { label: 'Einfache Rotation (Einfach)', token: 'Einfach' },
-  { label: 'Kategorie', token: 'Kategorie' },
-  { label: 'Verein', token: 'Verein' },
-  { label: 'Geschlecht', token: 'Geschlecht' },
+  { label: 'anhand Kategorie', token: 'Kategorie' },
+  { label: 'Alphabetisch nach Vereinsnamen', token: 'Verein' },
+  { label: 'nach Geschlecht', token: 'Geschlecht' },
   { label: 'Alter absteigend', token: 'AlterAbsteigend' },
   { label: 'Alter aufsteigend', token: 'AlterAufsteigend' },
-  { label: 'Name', token: 'Name' },
-  { label: 'Vorname', token: 'Vorname' },
+  { label: 'Alphabetisch nach Name', token: 'Name' },
+  { label: 'Alphabetisch nach Vorname', token: 'Vorname' },
   { label: 'Rotierend', token: 'Rotierend' },
   { label: 'Alternierend invers', token: 'AltInvers' },
 ];
@@ -90,6 +90,10 @@ export class RiegenRotationsregelEditorComponent implements OnInit {
     this.rows = newRows;
     this.dirty = true;
     event.detail.complete();
+  }
+
+  labelOfTOken(token: string): string {
+    return REGEL_TYPEN.find(r => r.token === token)?.label;
   }
 
   dismiss() {
