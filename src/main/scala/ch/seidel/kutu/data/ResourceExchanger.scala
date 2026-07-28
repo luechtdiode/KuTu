@@ -971,23 +971,23 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         case None if wettkampf.hasRemote(Config.homedir, origin) =>
           logger.info(s"remote-info was taken from ${secretfile.getName}")
           Some(new FileInputStream(secretfile))
-        case Some(secretContent) =>
+        case Some(sc) =>
           logger.info(s"remote-info for ${secretfile.getName} was taken from adminJwt ")
-          Some(new ByteArrayInputStream(secretContent.getBytes("utf-8")))
+          Some(new ByteArrayInputStream(sc.getBytes("utf-8")))
         case _ => None
       }
       secretContent match {
-        case Some(secretContent) =>
+        case Some(sc) =>
           try {
             zip.putNextEntry(new ZipEntry(secretfile.getName))
             val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
             Iterator
-              .continually(secretContent.read(bytes))
+              .continually(sc.read(bytes))
               .takeWhile(b => -1 != b)
               .foreach(read => zip.write(bytes, 0, read))
             zip.closeEntry()
           } finally {
-            secretContent.close()
+            sc.close()
           }
         case None =>
           logger.warn(s"no secret-content for ${secretfile.getName} was found, skipping secret-file in export")
