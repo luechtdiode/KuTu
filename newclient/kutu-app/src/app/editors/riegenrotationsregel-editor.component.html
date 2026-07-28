@@ -18,12 +18,15 @@
   <ion-content>
     <ion-list>
       <ion-reorder-group (ionItemReorder)="handleReorder($event)" [disabled]="false">
+        <ion-header>
+          <ion-item><ion-label position="stacked">Rotations-Regeln</ion-label></ion-item>
+        </ion-header>
         @for (row of rows; track $index; let i = $index) {
           <ion-item>
             <ion-reorder slot="end" style="display: flex !important;">
               <ion-icon name="reorder-three-outline"></ion-icon>
             </ion-reorder>
-            <ion-label>{{ row.token }}</ion-label>
+            <ion-label>{{ labelOfTOken(row.token) }}</ion-label>
             <ion-buttons slot="end">
               <ion-button (click)="editRule(i)">
                 <ion-icon name="create" slot="icon-only"></ion-icon>
@@ -66,7 +69,7 @@
   <ion-content class="ion-padding">
     <ion-list>
       <ion-item>
-        <ion-label position="stacked">Regeltyp</ion-label>
+        <ion-label position="stacked">Rotations-Regel</ion-label>
         <ion-select [(ngModel)]="editRuleToken" interface="popover">
           @for (def of REGEL_TYPEN; track def.token) {
             <ion-select-option [value]="def.token">{{ def.label }}</ion-select-option>
