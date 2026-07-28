@@ -204,9 +204,8 @@ export class CreateCompetitionPage {
     this.punktegleichstandsregelPreset = PRESETS_PUNKTEGLEICHSTANDSREGEL.find(p => p.value === this.form.punktegleichstandsregel)?.value || (this.punktegleichstandsregelPreset ? '__custom__' : this.punktegleichstandsregelPreset);
     this.rotationPreset = PRESETS_ROTATION.find(p => p.value === this.form.rotation)?.value || (this.form.rotation ? '__custom__' : this.rotationPreset);
     this.teamrulePreset = PRESETS_TEAMREGEL.find(p => p.value === this.form.teamrule)?.value || (this.form.altersklassen ? '__custom__' : this.teamrulePreset);
-    console.log(this.form.altersklassen, this.form.jahrgangsklassen, this.form.punktegleichstandsregel, this.form.rotation, this.form.teamrule);
-    console.log(this.altersklassenPreset, this.jahrgangsklassenPreset, this.punktegleichstandsregelPreset, this.rotationPreset, this.teamrulePreset);
   }
+
   onProgramChange() {
     this.findMatchingPresets();
     if (!this.form.programmId) {
