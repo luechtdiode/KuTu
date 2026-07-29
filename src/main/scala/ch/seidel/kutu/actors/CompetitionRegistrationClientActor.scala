@@ -2,6 +2,7 @@ package ch.seidel.kutu.actors
 
 import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
+import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor
 import ch.seidel.kutu.data.{RegistrationAdmin, ResourceExchanger}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.Core.system
@@ -197,6 +198,7 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
         syncActionReceivers.foreach(_ ! a)
         syncActionReceivers = List()
       }
+      CompetitionCoordinatorClientActor.publish(NotifyRegistrationSyncUpdated(wettkampfUUID), "Registration")
 
     case ApplySyncActions(_, actionKeys) =>
       val replyTo = sender()

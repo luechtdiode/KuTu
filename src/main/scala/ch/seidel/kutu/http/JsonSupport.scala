@@ -237,6 +237,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given playbookStateUpdatedFormat: RootJsonFormat[PlaybookStateUpdated] = jsonFormat2(PlaybookStateUpdated.apply)
   given riegenEinteilungStateFormat: RootJsonFormat[RiegenEinteilungState] = jsonFormat3(RiegenEinteilungState.apply)
   given riegenEinteilungStateUpdatedFormat: RootJsonFormat[RiegenEinteilungStateUpdated] = jsonFormat2(RiegenEinteilungStateUpdated.apply)
+  given registrationSyncUpdatedFormat: RootJsonFormat[RegistrationSyncUpdated] = jsonFormat1(RegistrationSyncUpdated.apply)
 
   // support for websocket incoming json-messages
   private val caseClassesJsonFormatter: Map[String, JsonFormat[? <: KutuAppEvent]] = Map(
@@ -270,6 +271,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     classOf[AthletMediaIsPaused].getSimpleName -> athletMediaIsPausedFormat,
     classOf[PlaybookStateUpdated].getSimpleName -> playbookStateUpdatedFormat,
     classOf[RiegenEinteilungStateUpdated].getSimpleName -> riegenEinteilungStateUpdatedFormat,
+    classOf[RegistrationSyncUpdated].getSimpleName -> registrationSyncUpdatedFormat,
   )
 
   given messagesFormatter: RootJsonFormat[KutuAppEvent] = new RootJsonFormat[KutuAppEvent] {

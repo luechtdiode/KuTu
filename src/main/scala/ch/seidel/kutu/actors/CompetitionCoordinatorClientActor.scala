@@ -426,6 +426,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         RiegenEinteilungState(List.empty, List.empty, List.empty)
       ))
 
+    case NotifyRegistrationSyncUpdated(_) =>
+      notifyAdminClients(RegistrationSyncUpdated(wettkampfUUID))
+      sender() ! MessageAck("OK")
+
     case Subscribe(ref, deviceId, durchgang, lastSequenceIdOption, isAdmin) =>
       val durchgangNormalized = durchgang.map(encodeURIComponent)
       val durchgangClients = wsSend.getOrElse(durchgangNormalized, List.empty) :+ ref

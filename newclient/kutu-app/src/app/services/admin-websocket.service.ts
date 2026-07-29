@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { WebsocketService } from './websocket.service';
-import { DurchgangStarted, DurchgangFinished, AthletWertungUpdated, BulkEvent, PlaybookStateUpdated, RiegenEinteilungStateUpdated } from '../backend-types';
+import { DurchgangStarted, DurchgangFinished, AthletWertungUpdated, BulkEvent, PlaybookStateUpdated, RiegenEinteilungStateUpdated, RegistrationSyncUpdated } from '../backend-types';
 import { clientID, formatCurrentMoment } from '../utils';
 
 export interface DurchgangResetted {
@@ -23,6 +23,7 @@ export class AdminWebsocketService extends WebsocketService {
   stationFinished = new Subject<void>();
   playbookStateUpdated = new Subject<PlaybookStateUpdated>();
   riegeEinteilungStateUpdated = new Subject<RiegenEinteilungStateUpdated>();
+  registrationSyncUpdated = new Subject<RegistrationSyncUpdated>();
 
   private _activeDurchgangList: DurchgangStarted[] = [];
 
@@ -108,6 +109,10 @@ export class AdminWebsocketService extends WebsocketService {
 
       case 'RiegenEinteilungStateUpdated':
         this.riegeEinteilungStateUpdated.next(message as RiegenEinteilungStateUpdated);
+        return true;
+
+      case 'RegistrationSyncUpdated':
+        this.registrationSyncUpdated.next(message as RegistrationSyncUpdated);
         return true;
 
       default:
