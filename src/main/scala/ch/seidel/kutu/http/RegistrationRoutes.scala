@@ -196,7 +196,11 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
           val wettkampf = readWettkampf(competitionId.toString)
           val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
           val logofile = ServerPrintUtil.locateLogoFile(logodir)
-          pathEndOrSingleSlash {
+          pathPrefixLabeled("sync-ws", "sync-ws") {
+            pathEndOrSingleSlash {
+              handleWebSocketMessages(CompetitionCoordinatorClientActor.createRegistrationSyncActorSource(clientId, competitionId.toString))
+            }
+          } ~ pathEndOrSingleSlash {
             authenticated(true) { id =>
               get {
                 parameters(Symbol("html").?) {
