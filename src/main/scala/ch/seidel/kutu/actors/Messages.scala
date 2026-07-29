@@ -3,7 +3,7 @@ package ch.seidel.kutu.actors
 import ch.seidel.kutu.domain.*
 import org.apache.pekko.actor.ActorRef
 
-case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option[String], lastSequenceId: Option[Long], isAdmin: Boolean = false)
+case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option[String], lastSequenceId: Option[Long], isAdmin: Boolean = false, isRegistrationSync: Boolean = false)
 case class StopDevice(deviceId: String)
 case class CreateClient(deviceID: String, wettkampfUUID: String)
 
