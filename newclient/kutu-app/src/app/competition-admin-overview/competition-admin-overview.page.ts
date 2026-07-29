@@ -81,6 +81,21 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
     });
   }
 
+  async copyUrl(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      const toast = await this.toastCtrl.create({
+        message: 'Link kopiert', duration: 1500, color: 'success', position: 'bottom'
+      });
+      await toast.present();
+    } catch {
+      const toast = await this.toastCtrl.create({
+        message: 'Konnte Link nicht kopieren', duration: 2000, color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
   get registrationUrl(): string {
     const base = window.location.origin;
     const payload = btoa(`registration&c=${this.uuid}`);
