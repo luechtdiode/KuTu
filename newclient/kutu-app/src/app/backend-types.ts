@@ -422,6 +422,11 @@ export interface RiegenEinteilungStateUpdated {
   type: string;
 }
 
+export interface RegistrationSyncUpdated {
+  wettkampfUUID: string;
+  type: string;
+}
+
 export interface RiegeSuggestionRequest {
   maxRiegenSize?: number;
   maxParallelDg?: number;

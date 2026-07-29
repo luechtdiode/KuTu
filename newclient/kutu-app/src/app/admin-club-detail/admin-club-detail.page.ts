@@ -1,16 +1,17 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
-import { ClubRegistration, AthletRegistration, ProgrammRaw, SyncAction, JudgeRegistration } from '../backend-types';
-import { firstValueFrom } from 'rxjs';
+import { AdminWebsocketService } from '../services/admin-websocket.service';
+import { ClubRegistration, AthletRegistration, ProgrammRaw, SyncAction, JudgeRegistration, RegistrationSyncUpdated } from '../backend-types';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 @Component({
   templateUrl: 'admin-club-detail.page.html',
   styleUrls: ['admin-club-detail.page.scss'],
   standalone: false
 })
-export class AdminClubDetailPage {
+export class AdminClubDetailPage implements OnDestroy {
   uuid = '';
   secret = '';
   regId = 0;
@@ -26,6 +27,8 @@ export class AdminClubDetailPage {
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
+  private ws: AdminWebsocketService | null = null;
+  private wsSubscriptions: Subscription[] = [];
 
   async ionViewWillEnter() {
     this.uuid = this.route.snapshot.paramMap.get('uuid') || '';
@@ -35,6 +38,24 @@ export class AdminClubDetailPage {
       this.secret = stored.secret;
     }
     await this.loadData();
+    this.initWebSocket();
+  }
+
+  ngOnDestroy() {
+    this.wsSubscriptions.forEach(s => s.unsubscribe());
+    this.ws?.disconnectWS?.();
+    this.ws = null;
+  }
+
+  private initWebSocket() {
+    if (this.ws) return;
+    this.ws = new AdminWebsocketService(this.uuid, this.secret);
+    this.wsSubscriptions.push(
+      this.ws.registrationSyncUpdated.subscribe(() => {
+        this.loadData();
+      })
+    );
+    this.ws.initWebsocket();
   }
 
   async loadData() {
