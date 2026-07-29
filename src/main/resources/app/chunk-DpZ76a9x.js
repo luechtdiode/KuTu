@@ -1,0 +1,1 @@
+import {cn as n$1}from'./main-OOCVD4VB.js';var n=()=>{if(n$1!==void 0)return n$1.Capacitor};export{n};
