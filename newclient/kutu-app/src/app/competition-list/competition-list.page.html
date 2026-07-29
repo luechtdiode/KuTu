@@ -5,15 +5,16 @@
     </ion-buttons>
     <ion-title>Meine Wettkämpfe (admin)</ion-title>
     <ion-buttons slot="end">
-      <ion-button (click)="triggerZipImport()" title="ZIP Backup importieren">
+      <ion-button (click)="triggerZipImport()" title="ZIP Backup importieren" [disabled]="isUploading">
         <ion-icon name="cloud-upload" slot="icon-only"></ion-icon>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
+<ion-progress-bar type="indeterminate" [hidden]="!isUploading"></ion-progress-bar>
 <ion-content class="ion-padding">
   <ion-fab vertical="bottom" horizontal="end" slot="fixed">
-      <ion-fab-button routerLink="/admin/competitions/create">
+      <ion-fab-button routerLink="/admin/competitions/create" [disabled]="isUploading">
       <ion-icon name="add"></ion-icon>
     </ion-fab-button>
   </ion-fab>
