@@ -234,7 +234,7 @@
                       [class.athlet-max]="groupAthletCountForGeraet(group, d.id) === maxGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)"
                       [class.athlet-min]="groupAthletCountForGeraet(group, d.id) === minGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)">
                       @if (groupAthletCountForGeraet(group, d.id) > 0) {
-                        max {{ groupAthletCountForGeraet(group, d.id) }} pro Gerät am Start
+                        {{ groupAthletCountForGeraet(group, d.id) }} am Startgerät
                       }
                     </td>
                   }
