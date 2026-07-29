@@ -1,0 +1,1 @@
+import {co as n$1}from'./main-BPDVRRZ4.js';var n=()=>{if(n$1!==void 0)return n$1.Capacitor};export{n};
