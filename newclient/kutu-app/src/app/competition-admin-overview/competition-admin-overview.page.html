@@ -58,7 +58,7 @@
     <ion-label>Links</ion-label>
   </ion-list-header>
   <ion-list>
-    <ion-item button [href]="registrationUrl" target="_blank" detail>
+    <ion-item>
       <ion-icon name="person-add" slot="start"></ion-icon>
       <ion-label>
         <h2>Online-Anmeldung</h2>
@@ -68,13 +68,16 @@
       <ion-button slot="end" fill="clear" (click)="copyUrl(registrationUrl); $event.stopPropagation()">
         <ion-icon name="copy-outline" slot="icon-only"></ion-icon>
       </ion-button>
+      <ion-button slot="end" fill="clear" [href]="registrationUrl" target="_blank">
+        <ion-icon name="link-outline" slot="icon-only"></ion-icon>
+      </ion-button>
     </ion-item>
     @if (overviewLinks?.registrationQr) {
     <div class="ion-text-center ion-padding">
       <img [src]="overviewLinks!.registrationQr" style="max-width:150px"/>
     </div>
     }
-    <ion-item button [href]="liveResultsUrl" target="_blank" detail>
+    <ion-item>
       <ion-icon name="pulse" slot="start"></ion-icon>
       <ion-label>
         <h2>Live-Resultate</h2>
@@ -83,6 +86,9 @@
       </ion-label>
       <ion-button slot="end" fill="clear" (click)="copyUrl(liveResultsUrl); $event.stopPropagation()">
         <ion-icon name="copy-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+      <ion-button slot="end" fill="clear" [href]="liveResultsUrl" target="_blank">
+        <ion-icon name="link-outline" slot="icon-only"></ion-icon>
       </ion-button>
     </ion-item>
     @if (overviewLinks?.liveResultsQr) {
