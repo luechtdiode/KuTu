@@ -103,12 +103,14 @@
                     <span class="group-toggle" [class.expanded]="expandedGroups.has(group.title)">▶</span>
                     <strong>{{ group.title }}</strong>
                     <div class="dg-info">
-                      <!--<small>{{ groupCompletedAthletes(group) }}/{{ groupTotalAthletes(group) }} Übungen im Durchgang</small>-->
-                      @if (groupPlanStart(group)) {
-                        <small class="dg-time">Plan: {{ groupPlanStart(group) }} – {{ groupPlanFinish(group) }}</small>
+                      @if (groupStartOffset(group) > 0) {
+                        <small class="dg-time">Plan: {{ formatTimestampFromOffset(groupStartOffset(group)) }} – {{ formatTimeOfDay(groupEndOffset(group)) }}, Plandauer: {{ formatMillis(groupTotalMillis(group)) }}</small>
                       }
-                      @if (groupDuration(group)) {
-                        <small class="dg-time">Dauer: {{ groupDuration(group) }}</small>
+                      @if (groupStartEffective(group) || groupEffectiveFinish(group)) {
+                        <small class="dg-time">Start (eff): {{ (groupStartEffective(group) || '--:--').substring(0, 5) }}, Ende (eff): {{ (groupEffectiveFinish(group) || '--:--').substring(0, 5) }}, Dauer: {{ groupDurationStr(group) || '–' }}</small>
+                      }
+                      @if (groupTotalMillis(group) > 0) {
+                        <small class="dg-plan">Einturnen: {{ formatMillis(groupEinturnenMillis(group)) }}, Gerät: {{ formatMillis(groupGeraetMillis(group)) }}</small>
                       }
                     </div>
                   </td>
@@ -167,18 +169,14 @@
                         <strong>{{ row.name }}</strong>
                       }
                       <div class="dg-info">
-                        <!-- <small>{{ row.completedCount }}/{{ row.totalCount }} Übungen im Durchgang</small>-->
-                        @if (row.planStart) {
-                          <small class="dg-time">Plan: {{ row.planStart }} – {{ row.planFinish }}</small>
+                        @if (row.offsetMillis > 0) {
+                          <small class="dg-time">Plan: {{ formatTimestampFromOffset(row.offsetMillis) }} – {{ formatTimeOfDay(row.offsetMillis + row.totalMillis) }}, Plandauer: {{ formatMillis(row.totalMillis) }}</small>
                         }
-                        @if (row.effectiveStart) {
-                          <small class="dg-time">Start: {{ row.effectiveStart }}</small>
+                        @if (row.effectiveStart || row.effectiveEnd) {
+                          <small class="dg-time">Start (eff): {{ (row.effectiveStart || '--:--').substring(0, 5) }}, Ende (eff): {{ (row.effectiveEnd || '--:--').substring(0, 5) }}, Dauer: {{ row.duration || '–' }}</small>
                         }
-                        @if (row.effectiveEnd) {
-                          <small class="dg-time">Ende: {{ row.effectiveEnd }} ({{ row.duration }})</small>
-                        }
-                        @if (row.planTotal) {
-                          <small class="dg-plan">Plandauer: {{ row.planTotal }} (Eint.: {{ row.planEinturnen }}, Gerät: {{ row.planGeraet }})</small>
+                        @if (row.totalMillis > 0) {
+                          <small class="dg-plan">Einturnen: {{ formatMillis(row.einturnenMillis) }}, Gerät: {{ formatMillis(row.geraetMillis) }}</small>
                         }
                       </div>
                     </td>

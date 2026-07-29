@@ -510,14 +510,15 @@ export interface PlaybookDurchgang {
   overallPct: number;
   totalCount: number;
   completedCount: number;
-  planStart: string;
-  planFinish: string;
   effectiveStart: string;
   effectiveEnd: string;
   duration: string;
-  planTotal: string;
   planEinturnen: string;
-  planGeraet: string;
+  offsetMillis: number;
+  einturnenMillis: number;
+  geraetMillis: number;
+  totalMillis: number;
+  athletCount: number;
 }
 
 export interface PlaybookState {

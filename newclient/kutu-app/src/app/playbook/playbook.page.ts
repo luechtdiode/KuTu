@@ -43,6 +43,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
   uuid = '';
   secret = '';
   wettkampfTitle = '';
+  wettkampfDatum = '';
   logoUrl = '';
 
   playbook: PlaybookState | null = null;
@@ -76,9 +77,11 @@ export class PlaybookPage implements OnInit, OnDestroy {
     if (stored) {
       this.secret = stored.secret;
       this.wettkampfTitle = stored.titel;
+      this.wettkampfDatum = stored.datum.substring(0, 10);
     }
     this.backend.getCompetitionDetails(this.uuid, this.secret).subscribe(details => {
       this.wettkampfTitle = details.titel;
+      this.wettkampfDatum = details.datum.substring(0, 10);
     });
     this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
       next: blob => {
@@ -313,20 +316,66 @@ export class PlaybookPage implements OnInit, OnDestroy {
     return group.rows.length > 1 || group.rows[0].name !== group.title;
   }
 
-  groupPlanStart(group: PlaybookGroup): string {
-    return group.rows.find(r => r.planStart)?.planStart || '';
+  formatTimestampFromOffset(offsetMillis: number): string {
+    if (offsetMillis <= 0 || !this.wettkampfDatum) return '—';
+    const wkDate = new Date(this.wettkampfDatum + 'T00:00:00');
+    const ts = new Date(wkDate.getTime() + offsetMillis);
+    const weekdays = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    const wd = weekdays[ts.getDay()];
+    const dd = ts.getDate().toString().padStart(2, '0');
+    const mm = (ts.getMonth() + 1).toString().padStart(2, '0');
+    const hh = ts.getHours().toString().padStart(2, '0');
+    const min = ts.getMinutes().toString().padStart(2, '0');
+    return `${wd}, ${dd}.${mm}. ${hh}:${min}`;
+  }
+
+  formatTimeOfDay(offsetMillis: number): string {
+    if (offsetMillis <= 0) return '--:--';
+    const totalSec = Math.floor(offsetMillis / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }
+
+  formatMillis(ms: number): string {
+    if (ms <= 0) return '-';
+    const totalSec = Math.floor(ms / 1000);
+    const hrs = Math.floor(totalSec / 3600);
+    const min = Math.floor((totalSec % 3600) / 60);
+    const sec = totalSec % 60;
+    const hp = hrs > 0 ? `${hrs}h, ` : '';
+    const mp = min > 0 ? `${min}m, ` : '';
+    const sp = sec > 0 ? `${sec.toString().padStart(2, '0')}s` : '00s';
+    return hp + mp + sp;
+  }
+
+  groupStartOffset(group: PlaybookGroup): number {
+    if (group.rows.length === 0) return 0;
+    return Math.min(...group.rows.map(r => r.offsetMillis));
+  }
+
+  groupEndOffset(group: PlaybookGroup): number {
+    if (group.rows.length === 0) return 0;
+    return Math.max(...group.rows.map(r => r.offsetMillis + r.totalMillis));
+  }
+
+  groupEinturnenMillis(group: PlaybookGroup): number {
+    if (group.rows.length === 0) return 0;
+    return Math.max(...group.rows.map(r => r.einturnenMillis));
+  }
+
+  groupGeraetMillis(group: PlaybookGroup): number {
+    if (group.rows.length === 0) return 0;
+    return Math.max(...group.rows.map(r => r.geraetMillis));
+  }
+
+  groupTotalMillis(group: PlaybookGroup): number {
+    if (group.rows.length === 0) return 0;
+    return Math.max(...group.rows.map(r => r.totalMillis));
   }
 
   groupStartEffective(group: PlaybookGroup): string {
     return group.rows.find(r => r.effectiveStart)?.effectiveStart || '';
-  }
-
-  groupPlanFinish(group: PlaybookGroup): string {
-    let last = '';
-    for (const r of group.rows) {
-      if (r.planFinish) last = r.planFinish;
-    }
-    return last;
   }
 
   groupEffectiveFinish(group: PlaybookGroup): string {
@@ -337,11 +386,23 @@ export class PlaybookPage implements OnInit, OnDestroy {
     return last;
   }
 
-  groupDuration(group: PlaybookGroup): string {
+  groupDurationStr(group: PlaybookGroup): string {
     const starts = group.rows.filter(r => r.effectiveStart).map(r => r.effectiveStart);
     const ends = group.rows.filter(r => r.effectiveEnd).map(r => r.effectiveEnd);
-    if (starts.length && ends.length) return `ab ${starts[0]} bis ${ends[ends.length - 1]}`;
-    return '';
+    if (starts.length === 0) return '';
+    const parseSec = (t: string) => {
+      const p = t.split(':');
+      return p.length === 3 ? parseInt(p[0]) * 3600 + parseInt(p[1]) * 60 + parseInt(p[2]) : 0;
+    };
+    const secDiff = ends.length ? parseSec(ends[ends.length - 1]) - parseSec(starts[0]) : 0;
+    if (secDiff <= 0) return '';
+    const hrs = Math.floor(secDiff / 3600);
+    const min = Math.floor((secDiff % 3600) / 60);
+    const sec = secDiff % 60;
+    const hp = hrs > 0 ? `${hrs}h, ` : '';
+    const mp = min > 0 ? `${min}m, ` : '';
+    const sp = sec > 0 ? `${sec.toString().padStart(2, '0')}s` : '00s';
+    return hp + mp + sp;
   }
 
   groupTotalAthletes(group: PlaybookGroup): number {
