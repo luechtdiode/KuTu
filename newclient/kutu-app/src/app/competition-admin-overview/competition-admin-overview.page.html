@@ -6,6 +6,7 @@
     <ion-title>Wettkampf</ion-title>
   </ion-toolbar>
 </ion-header>
+<ion-progress-bar type="indeterminate" [hidden]="!isDownloading && !isUploading"></ion-progress-bar>
 <ion-content class="ion-padding">
   @if (loading) {
   <div class="ion-padding">
@@ -93,11 +94,11 @@
       <ion-icon name="create" slot="start"></ion-icon>
       <ion-label>Bearbeiten</ion-label>
     </ion-item>
-    <ion-item button (click)="downloadZip()">
+    <ion-item button (click)="downloadZip()" [disabled]="isDownloading || isUploading">
       <ion-icon name="download" slot="start"></ion-icon>
       <ion-label>Backup als ZIP herunterladen</ion-label>
     </ion-item>
-    <ion-item button (click)="triggerUpload()">
+    <ion-item button (click)="triggerUpload()" [disabled]="isUploading || isDownloading">
       <ion-icon name="cloud-upload" slot="start"></ion-icon>
       <ion-label>Restore mit ZIP Backup hochladen</ion-label>
     </ion-item>
