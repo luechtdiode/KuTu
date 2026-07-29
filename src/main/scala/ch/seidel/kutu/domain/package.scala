@@ -2094,14 +2094,15 @@ package object domain {
                                 overallPct: Int,
                                 totalCount: Int,
                                 completedCount: Int,
-                                planStart: String,
-                                planFinish: String,
                                 effectiveStart: String,
                                 effectiveEnd: String,
                                 duration: String,
-                                planTotal: String,
                                 planEinturnen: String,
-                                planGeraet: String
+                                offsetMillis: Long = 0L,
+                                einturnenMillis: Long = 0L,
+                                geraetMillis: Long = 0L,
+                                totalMillis: Long = 0L,
+                                athletCount: Int = 0
                               )
 
   case class PlaybookState(
