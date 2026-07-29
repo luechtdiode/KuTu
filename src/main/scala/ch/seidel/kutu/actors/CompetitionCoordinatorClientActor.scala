@@ -160,6 +160,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           overallPct = pct
         )
       }.toList.sortBy(s => disziplinOrdinals.getOrElse(Math.abs(s.disziplinId), Int.MaxValue))
+      val athleteCount = dgData.flatMap(_.kandidaten).map(_.id).distinct.size
       PlaybookDurchgang(
         name = dgName,
         title = dg.title,
@@ -169,14 +170,15 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         overallPct = stations.map(_.overallPct).sum / math.max(1, stations.size),
         totalCount = dgs.anz.toInt,
         completedCount = stats.map(_._3).sum,
-        planStart = if dg.planStartOffset != 0 then dg.effectivePlanStart(wkDate).format(dg.formatter) else "",
-        planFinish = if dg.planStartOffset != 0 then dg.effectivePlanFinish(wkDate).format(dg.formatter) else "",
         effectiveStart = toTimeFormat(dgs.started),
         effectiveEnd = toTimeFormat(dgs.finished),
         duration = toDurationFormat(dgs.started, dgs.finished),
-        planTotal = toDurationFormat(dg.planTotal),
         planEinturnen = toDurationFormat(dg.planEinturnen),
-        planGeraet = toDurationFormat(dg.planGeraet)
+        offsetMillis = dg.planStartOffset,
+        einturnenMillis = dg.planEinturnen,
+        geraetMillis = dg.planGeraet,
+        totalMillis = dg.planTotal,
+        athletCount = athleteCount
       )
     }.toList.sortBy(_.name)
     val activeList = dgStates.filter(_.isRunning).map(_.name)
