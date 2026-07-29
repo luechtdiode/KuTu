@@ -23,6 +23,7 @@ interface CompetitionListItem {
 export class CompetitionListPage implements OnDestroy {
   @ViewChild('zipFileInput') zipFileInput!: ElementRef<HTMLInputElement>;
   competitions: CompetitionListItem[] = [];
+  isUploading = false;
   private cdr = inject(ChangeDetectorRef);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
@@ -67,6 +68,7 @@ export class CompetitionListPage implements OnDestroy {
     const file = input.files[0];
     input.value = '';
 
+    this.isUploading = true;
     try {
       const arrayBuffer = await file.arrayBuffer();
       const files = unzipSync(new Uint8Array(arrayBuffer));
@@ -125,6 +127,9 @@ export class CompetitionListPage implements OnDestroy {
         color: 'danger'
       });
       await toast.present();
+    } finally {
+      this.isUploading = false;
+      this.cdr.detectChanges();
     }
   }
 
