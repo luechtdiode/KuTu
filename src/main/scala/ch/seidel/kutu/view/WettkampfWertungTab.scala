@@ -1364,7 +1364,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
   }
 
   private def persistStructuredImportRows(rows: Seq[ImportRow]): Unit = {
-    wettkampfImportService.applyStructuredImportSelection(rows, wertungIdsByAthletEasyprint)
+    wettkampfImportService.applyStructuredImportSelection(rows, wertungIdsByAthletEasyprint, publishWS=true)
     reloadData()
   }
 

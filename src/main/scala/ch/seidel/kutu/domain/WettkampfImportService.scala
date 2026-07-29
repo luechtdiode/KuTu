@@ -246,7 +246,8 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
 
   def applyStructuredImportSelection(
       athletList: Seq[ImportRow],
-      wertungIdsByAthletEasyprint: Map[String, Set[Long]]): Unit = {
+      wertungIdsByAthletEasyprint: Map[String, Set[Long]],
+      publishWS: Boolean = true): Unit = {
     insertImportedAthletListToCompetition(athletList)
     athletList
       .filter(_.progId > 0L)
@@ -257,7 +258,7 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
     athletList
       .filter(_.progId == 0L)
       .foreach { row =>
-        service.unassignAthletFromWettkampf(wertungIdsByAthletEasyprint.getOrElse(row.athletView.easyprint, Set.empty))
+        service.unassignAthletFromWettkampf(wertungIdsByAthletEasyprint.getOrElse(row.athletView.easyprint, Set.empty), publishWS)
       }
   }
 
