@@ -44,6 +44,7 @@ case class GetPlaybookState(override val wettkampfUUID: String) extends KutuAppA
 case class GetRiegenEinteilungState(override val wettkampfUUID: String) extends KutuAppAction
 case class Delete(override val wettkampfUUID: String) extends KutuAppAction
 case class PublishScores(override val wettkampfUUID: String, title: String, query: String, published: Boolean) extends KutuAppAction
+case class NotifyRegistrationSyncUpdated(override val wettkampfUUID: String) extends KutuAppAction
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
 case class BulkEvent(wettkampfUUID: String, events: List[? <: KutuAppEvent]) extends KutuAppEvent
@@ -87,4 +88,5 @@ case class MessageAck(msg: String) extends KutuAppEvent
 case class ResponseMessage(data: Object) extends KutuAppEvent
 case class PlaybookStateUpdated(wettkampfUUID: String, playbookState: PlaybookState) extends KutuAppEvent
 case class RiegenEinteilungStateUpdated(wettkampfUUID: String, state: RiegenEinteilungState) extends KutuAppEvent
+case class RegistrationSyncUpdated(wettkampfUUID: String) extends KutuAppEvent
 case class Err(e: Exception) extends KutuAppEvent

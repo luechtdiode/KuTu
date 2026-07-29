@@ -3,8 +3,9 @@ import { AlertController, ToastController } from '@ionic/angular';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
-import { ClubRegistration, SyncAction, SyncActionKey, Verein, RiegeItem, JudgeRegistration } from '../backend-types';
-import { firstValueFrom } from 'rxjs';
+import { AdminWebsocketService } from '../services/admin-websocket.service';
+import { ClubRegistration, SyncAction, SyncActionKey, Verein, RiegeItem, JudgeRegistration, RegistrationSyncUpdated } from '../backend-types';
+import { firstValueFrom, Subscription } from 'rxjs';
 
 export interface JudgeWithClub extends JudgeRegistration {
   vereinname: string;
@@ -35,6 +36,8 @@ export class AdminRegistrationsPage implements OnDestroy {
   private backend = inject(AdminBackendService);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
+  private ws: AdminWebsocketService | null = null;
+  private wsSubscriptions: Subscription[] = [];
 
   async ionViewWillEnter() {
     this.uuid = this.route.snapshot.paramMap.get('uuid') || '';
@@ -45,10 +48,25 @@ export class AdminRegistrationsPage implements OnDestroy {
     }
     this.registrationUrl = window.location.origin + '/registration/' + this.uuid;
     await this.loadData();
+    this.initWebSocket();
   }
 
   ngOnDestroy() {
     if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+    this.wsSubscriptions.forEach(s => s.unsubscribe());
+    this.ws?.disconnectWS?.();
+    this.ws = null;
+  }
+
+  private initWebSocket() {
+    if (this.ws) return;
+    this.ws = new AdminWebsocketService(this.uuid, this.secret);
+    this.wsSubscriptions.push(
+      this.ws.registrationSyncUpdated.subscribe(() => {
+        this.loadData();
+      })
+    );
+    this.ws.initWebsocket();
   }
 
   async loadData() {
