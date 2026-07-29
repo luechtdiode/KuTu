@@ -20,6 +20,8 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   logoUrl: string | null = null;
   overviewLinks: OverviewLinks | null = null;
   loading = true;
+  isDownloading = false;
+  isUploading = false;
   private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
@@ -112,6 +114,7 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   }
 
   async downloadZip() {
+    this.isDownloading = true;
     try {
       const blob = await firstValueFrom(this.backend.downloadCompetitionZip(this.uuid, this.secret));
       downloadBlob(blob, this.titel + '.zip');
@@ -122,6 +125,9 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
         color: 'danger'
       });
       await toast.present();
+    } finally {
+      this.isDownloading = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -152,6 +158,7 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   }
 
   private async uploadZip(file: File) {
+    this.isUploading = true;
     try {
       await firstValueFrom(this.backend.uploadCompetitionZip(this.uuid, this.secret, file));
       const toast = await this.toastCtrl.create({
@@ -168,6 +175,9 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
         color: 'danger'
       });
       await toast.present();
+    } finally {
+      this.isUploading = false;
+      this.cdr.detectChanges();
     }
   }
 
