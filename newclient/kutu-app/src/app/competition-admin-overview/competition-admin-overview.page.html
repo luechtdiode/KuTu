@@ -65,6 +65,9 @@
         <p>Öffnet die öffentliche Anmeldeseite</p>
         <p><a [attr.href]="registrationUrl" target="_blank">{{ registrationUrl }}</a></p>
       </ion-label>
+      <ion-button slot="end" fill="clear" (click)="copyUrl(registrationUrl); $event.stopPropagation()">
+        <ion-icon name="copy-outline" slot="icon-only"></ion-icon>
+      </ion-button>
     </ion-item>
     @if (overviewLinks?.registrationQr) {
     <div class="ion-text-center ion-padding">
@@ -78,6 +81,9 @@
         <p>Öffnet die Live-Ansicht</p>
         <p><a [attr.href]="liveResultsUrl" target="_blank">{{ liveResultsUrl }}</a></p>
       </ion-label>
+      <ion-button slot="end" fill="clear" (click)="copyUrl(liveResultsUrl); $event.stopPropagation()">
+        <ion-icon name="copy-outline" slot="icon-only"></ion-icon>
+      </ion-button>
     </ion-item>
     @if (overviewLinks?.liveResultsQr) {
     <div class="ion-text-center ion-padding">
