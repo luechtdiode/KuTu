@@ -6,7 +6,9 @@
     <ion-title>Wettkampf</ion-title>
   </ion-toolbar>
 </ion-header>
-<ion-progress-bar type="indeterminate" [hidden]="!isDownloading && !isUploading"></ion-progress-bar>
+@if (isDownloading || isUploading) {
+<ion-progress-bar type="indeterminate" ></ion-progress-bar>
+}
 <ion-content class="ion-padding">
   @if (loading) {
   <div class="ion-padding">
