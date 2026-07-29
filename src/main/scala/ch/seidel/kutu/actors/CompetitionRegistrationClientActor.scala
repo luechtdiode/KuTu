@@ -51,6 +51,7 @@ case class RegistrationActionWithContext(action: RegistrationAction, context: St
 
 case class ApplySyncActions(override val wettkampfUUID: String, actions: List[SyncActionKey]) extends RegistrationAction
 case class ApplySyncActionsResponse(processed: Int, messages: List[String]) extends RegistrationEvent
+case class ApplySyncActionsComplete(replyTo: ActorRef, count: Int, messages: List[String], actions: List[SyncAction])
 
 class CompetitionRegistrationClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with JwtSupport with KutuService {
   def shortName: String = self.toString().split("/").last.split("#").head + "/" + clientId()
@@ -206,17 +207,23 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       Future {
         val msgs = RegistrationAdmin.processSyncActionsLocally(wettkampfInfo, this, matched)
         (matched.size, msgs)
+      }.flatMap { case (count, msgs) =>
+        RegistrationAdmin.computeSyncActions(wettkampfInfo, this).map { actions =>
+          ApplySyncActionsComplete(replyTo, count, msgs, actions)
+        }
       }.onComplete {
-        case Success((count, messages)) =>
-          replyTo ! ApplySyncActionsResponse(count, messages)
-          RegistrationAdmin.computeSyncActions(wettkampfInfo, this).onComplete {
-            case Success(actions) => self ! RegistrationSyncActions(actions)
-            case _ => self ! RegistrationSyncActions(List.empty)
-          }
+        case Success(result) => self ! result
         case Failure(e) =>
           log.error("Error applying sync actions", e)
           replyTo ! ApplySyncActionsResponse(0, List(s"Error: ${e.getMessage}"))
       }
+
+    case ApplySyncActionsComplete(replyTo, count, messages, actions) =>
+      this.syncState = syncState.resynced(actions, loadAllJudgesOfCompetition(UUID.fromString(wettkampf.uuid.get)).flatMap(_._2).toList)
+      this.syncActions = Some(syncState)
+      rescheduleSyncActionNotifier()
+      CompetitionCoordinatorClientActor.publish(NotifyRegistrationSyncUpdated(wettkampfUUID), "Registration")
+      replyTo ! ApplySyncActionsResponse(count, messages)
 
     case CheckSyncChangedForNotifier =>
       notifyChangesToEMail()
