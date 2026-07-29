@@ -1,8 +1,9 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Wettkampf, ClubRegistration, SyncAction } from '../backend-types';
 import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
-import { BehaviorSubject, Subject, of, Observable } from 'rxjs';
+import { RegistrationWebsocketService } from '../services/registration-ws.service';
+import { BehaviorSubject, Subject, of, Observable, Subscription } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, share, take, tap } from 'rxjs/operators';
 
@@ -13,12 +14,14 @@ import { debounceTime, distinctUntilChanged, map, filter, switchMap, share, take
     changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
-export class RegistrationPage implements OnInit {
+export class RegistrationPage implements OnInit, OnDestroy {
   navCtrl = inject(NavController);
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
   toastController = inject(ToastController);
   private alertCtrl = inject(AlertController);
+  private ws: RegistrationWebsocketService | null = null;
+  private wsSubscriptions: Subscription[] = [];
 
 
 
@@ -54,6 +57,24 @@ export class RegistrationPage implements OnInit {
 
   ionViewWillEnter() {
     this.getSyncActions();
+    this.initWebSocket();
+  }
+
+  ngOnDestroy() {
+    this.wsSubscriptions.forEach(s => s.unsubscribe());
+    this.ws?.disconnectWS?.();
+    this.ws = null;
+  }
+
+  private initWebSocket() {
+    if (this.ws) return;
+    this.ws = new RegistrationWebsocketService(this.backendService.competition || '');
+    this.wsSubscriptions.push(
+      this.ws.registrationSyncUpdated.subscribe(() => {
+        this.getSyncActions();
+      })
+    );
+    this.ws.initWebsocket();
   }
 
   get stationFreezed(): boolean {

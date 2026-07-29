@@ -1,13 +1,15 @@
-import { Component, OnInit, NgZone, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ClubRegistration, NewClubRegistration, Verein } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
+import { RegistrationWebsocketService } from 'src/app/services/registration-ws.service';
 import { NavController, AlertController, ActionSheetController } from '@ionic/angular';
 import { take } from 'rxjs/operators';
 import { toDateString } from 'src/app/utils';
 import { RegistrationResetPW } from '../../backend-types';
 import { NgForm } from '@angular/forms';
 import { TypeAheadItem } from 'src/app/component/typeahead/typeahead.component';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-clubreg-editor',
@@ -16,7 +18,7 @@ import { TypeAheadItem } from 'src/app/component/typeahead/typeahead.component';
     changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
-export class ClubregEditorPage implements OnInit {
+export class ClubregEditorPage implements OnInit, OnDestroy {
   navCtrl = inject(NavController);
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
@@ -60,6 +62,8 @@ export class ClubregEditorPage implements OnInit {
   regId: number;
   wkId: string;
   wettkampfId: number;
+  private ws: RegistrationWebsocketService | null = null;
+  private wsSubscriptions: Subscription[] = [];
 
   ngOnInit() {
     this.waiting = true;
@@ -178,6 +182,24 @@ export class ClubregEditorPage implements OnInit {
 
   ionViewWillEnter() {
     this.getSyncActions();
+    this.initWebSocket();
+  }
+
+  ngOnDestroy() {
+    this.wsSubscriptions.forEach(s => s.unsubscribe());
+    this.ws?.disconnectWS?.();
+    this.ws = null;
+  }
+
+  private initWebSocket() {
+    if (this.ws) return;
+    this.ws = new RegistrationWebsocketService(this.wkId);
+    this.wsSubscriptions.push(
+      this.ws.registrationSyncUpdated.subscribe(() => {
+        this.getSyncActions();
+      })
+    );
+    this.ws.initWebsocket();
   }
 
   getSyncActions() {
