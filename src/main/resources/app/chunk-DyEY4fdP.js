@@ -1,0 +1,1 @@
+import {k,C}from'./main-AKGPXWII.js';var o=class extends k{show(i){return C(this,null,function*(){})}hide(i){return C(this,null,function*(){})}};export{o as SplashScreenWeb};
