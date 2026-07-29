@@ -68,6 +68,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private var wsSend: Map[Option[String], List[ActorRef]] = Map.empty
   private var deviceWebsocketRefs: Map[String, ActorRef] = Map.empty
   private var adminClients: Set[ActorRef] = Set.empty
+  private var registrationSyncClients: Set[ActorRef] = Set.empty
   private var pendingKeepAliveAck: Option[Int] = None
   private var openDurchgangJournal: Map[Option[String], List[AthletWertungUpdatedSequenced]] = Map.empty
   private var state: CompetitionState = CompetitionState()
@@ -428,56 +429,61 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     case NotifyRegistrationSyncUpdated(_) =>
       notifyAdminClients(RegistrationSyncUpdated(wettkampfUUID))
+      registrationSyncClients.foreach(_ ! RegistrationSyncUpdated(wettkampfUUID))
       sender() ! MessageAck("OK")
 
-    case Subscribe(ref, deviceId, durchgang, lastSequenceIdOption, isAdmin) =>
-      val durchgangNormalized = durchgang.map(encodeURIComponent)
-      val durchgangClients = wsSend.getOrElse(durchgangNormalized, List.empty) :+ ref
-      context.watch(ref)
-      wsSend = wsSend + (durchgangNormalized -> durchgangClients)
-      deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
-      if isAdmin then adminClients = adminClients + ref
-      competitionWebsocketConnectionsActive
-        .labelValues(wettkampf.easyprint, durchgangNormalized.getOrElse("all"))
-        .set(durchgangClients.size)
+    case Subscribe(ref, deviceId, durchgang, lastSequenceIdOption, isAdmin, isRegistrationSync) =>
+      if isRegistrationSync then
+        registrationSyncClients = registrationSyncClients + ref
+        context.watch(ref)
+        deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
+        ref ! TextMessage("Connection established." + s"$deviceId@".split("@")(1))
+      else
+        val durchgangNormalized = durchgang.map(encodeURIComponent)
+        val durchgangClients = wsSend.getOrElse(durchgangNormalized, List.empty) :+ ref
+        context.watch(ref)
+        wsSend = wsSend + (durchgangNormalized -> durchgangClients)
+        deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
+        if isAdmin then adminClients = adminClients + ref
+        competitionWebsocketConnectionsActive
+          .labelValues(wettkampf.easyprint, durchgangNormalized.getOrElse("all"))
+          .set(durchgangClients.size)
 
-      ref ! TextMessage("Connection established." + s"$deviceId@".split("@")(1))
+        ref ! TextMessage("Connection established." + s"$deviceId@".split("@")(1))
 
-      Future {
-        lastSequenceIdOption match {
-          case Some(sid) =>
-            openDurchgangJournal.get(durchgang) match {
-              case Some(messages) =>
-                val lastResults = LastResults(
-                  messages.filter(_.sequenceId >= sid)
-                )
-                ref ! lastResults
-              case None =>
-            }
-          case _ =>
+        Future {
+          lastSequenceIdOption match {
+            case Some(sid) =>
+              openDurchgangJournal.get(durchgang) match {
+                case Some(messages) =>
+                  val lastResults = LastResults(
+                    messages.filter(_.sequenceId >= sid)
+                  )
+                  ref ! lastResults
+                case None =>
+              }
+            case _ =>
+          }
         }
-      }
-      ref ! BulkEvent(wettkampfUUID, squashDurchgangEvents(durchgangNormalized))
-      //      squashDurchgangEvents(durchgangNormalized).foreach { d =>
-      //        ref ! d
-      //      }
-      ref ! NewLastResults(
-      state.lastWertungenPerWKDisz(durchgang.getOrElse("")),
-      state.lastWertungenPerDisz(durchgang.getOrElse("")),
-      state.lastBestenResults)
-      currentPlayer.foreach{
-        case (ws, playerEvent) =>
-          ref ! MediaPlayerIsReady(playerEvent.context)
-      }
-      lastMediaEvent.foreach(ref ! _)
-      if isAdmin then playbookState.foreach(ps => ref ! PlaybookStateUpdated(wettkampfUUID, ps))
-      if isAdmin then riegenEinteilungState.foreach(s => ref ! RiegenEinteilungStateUpdated(wettkampfUUID, s))
+        ref ! BulkEvent(wettkampfUUID, squashDurchgangEvents(durchgangNormalized))
+        ref ! NewLastResults(
+        state.lastWertungenPerWKDisz(durchgang.getOrElse("")),
+        state.lastWertungenPerDisz(durchgang.getOrElse("")),
+        state.lastBestenResults)
+        currentPlayer.foreach{
+          case (ws, playerEvent) =>
+            ref ! MediaPlayerIsReady(playerEvent.context)
+        }
+        lastMediaEvent.foreach(ref ! _)
+        if isAdmin then playbookState.foreach(ps => ref ! PlaybookStateUpdated(wettkampfUUID, ps))
+        if isAdmin then riegenEinteilungState.foreach(s => ref ! RiegenEinteilungStateUpdated(wettkampfUUID, s))
 
 
 
     // system actions
     case KeepAlive =>
       wsSend.flatMap(_._2).foreach(ws => ws ! TextMessage("keepAlive"))
+      registrationSyncClients.foreach(ws => ws ! TextMessage("keepAlive"))
       checkDonation()
 
     case MessageAck(txt) => if txt.equals("keepAlive") then handleKeepAliveAck() else println(txt)
@@ -520,6 +526,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       deviceWebsocketRefs = Map.empty
       wsSend = Map.empty
       adminClients = Set.empty
+      registrationSyncClients = Set.empty
       openDurchgangJournal = Map.empty
       pendingKeepAliveAck = None
       state = CompetitionState()
@@ -595,6 +602,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private def cleanupWebsocketRefs(stoppedWebsocket: ActorRef): Unit = {
     deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)
     adminClients = adminClients.filter(_ != stoppedWebsocket)
+    registrationSyncClients = registrationSyncClients.filter(_ != stoppedWebsocket)
     val durchgaenge = wsSend
       .filter { x => x._2.exists(_.equals(stoppedWebsocket)) }
       .keys
@@ -991,6 +999,30 @@ object CompetitionCoordinatorClientActor extends JsonSupport with EnrichedJson {
           clientActor ! Subscribe(wsSource, deviceId, durchgang, lastSequenceId, isAdmin)
           wsSource
         }.named(deviceId))
+
+    Flow.fromSinkAndSourceCoupled(sink, source).log(name = deviceId)
+  }
+
+  // public registration sync streaming (oneway/readonly)
+  def createRegistrationSyncActorSource(deviceId: String, wettkampfUUID: String): Flow[Message, Message, Any] = {
+    implicit val timeout: Timeout = Timeout(5000, TimeUnit.MILLISECONDS)
+    val clientActor = Await.result(
+      ask(supervisor, CreateClient(deviceId, wettkampfUUID)).mapTo[ActorRef]
+      , timeout.duration
+    )
+
+    val sink = fromWebsocketToActorFlow.filter {
+      case MessageAck(msg) if msg.equalsIgnoreCase("keepAlive") => true
+      case _ => false
+    }.to(Sink.actorRef(clientActor, StopDevice(deviceId), _ => StopDevice(deviceId)).named(deviceId))
+
+    val source = fromCoordinatorActorToWebsocketFlow(None,
+      Source.actorRef(completionMatcher, failureMatcher,
+        256,
+        OverflowStrategy.dropHead).mapMaterializedValue { wsSource =>
+        clientActor ! Subscribe(wsSource, deviceId, None, None, isRegistrationSync = true)
+        wsSource
+      }.named(deviceId))
 
     Flow.fromSinkAndSourceCoupled(sink, source).log(name = deviceId)
   }

@@ -1,8 +1,9 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
-import { BehaviorSubject, Subject, of } from 'rxjs';
+import { RegistrationWebsocketService } from 'src/app/services/registration-ws.service';
+import { BehaviorSubject, Subject, of, Subscription } from 'rxjs';
 import { filter, map, debounceTime, distinctUntilChanged, share, switchMap, take, tap } from 'rxjs/operators';
 import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncAction, TeamItem } from '../../backend-types';
 
@@ -13,11 +14,13 @@ import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncActio
     changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
-export class RegAthletlistPage implements OnInit {
+export class RegAthletlistPage implements OnInit, OnDestroy {
   navCtrl = inject(NavController);
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
+  private ws: RegistrationWebsocketService | null = null;
+  private wsSubscriptions: Subscription[] = [];
 
   busy = new BehaviorSubject(false);
   currentRegistration: ClubRegistration;
@@ -55,6 +58,24 @@ export class RegAthletlistPage implements OnInit {
 
   ionViewWillEnter() {
     this.refreshList();
+    this.initWebSocket();
+  }
+
+  ngOnDestroy() {
+    this.wsSubscriptions.forEach(s => s.unsubscribe());
+    this.ws?.disconnectWS?.();
+    this.ws = null;
+  }
+
+  private initWebSocket() {
+    if (this.ws) return;
+    this.ws = new RegistrationWebsocketService(this.competition);
+    this.wsSubscriptions.push(
+      this.ws.registrationSyncUpdated.subscribe(() => {
+        this.getSyncActions();
+      })
+    );
+    this.ws.initWebsocket();
   }
 
   getSyncActions() {
