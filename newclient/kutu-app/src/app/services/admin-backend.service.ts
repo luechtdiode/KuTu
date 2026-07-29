@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks, TeamItem } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -120,6 +120,11 @@ export class AdminBackendService {
   getProgramList(uuid: string, secret: string): Observable<ProgrammRaw[]> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.get<ProgrammRaw[]>(this.api + 'registrations/' + uuid + '/programmlist', { headers });
+  }
+
+  getTeams(uuid: string, regId: number, secret: string): Observable<TeamItem[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<TeamItem[]>(this.api + 'registrations/' + uuid + '/' + regId + '/teams', { headers });
   }
 
   uploadLogo(uuid: string, secret: string, file: File): Observable<any> {

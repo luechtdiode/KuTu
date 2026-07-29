@@ -75,7 +75,7 @@
               <ion-item>
                 <ion-label class="ion-text-wrap">
                   <h3>{{ ath.name }}, {{ ath.vorname }}</h3>
-                  <p>{{ ath.geschlecht }} | {{ ath.gebdat | date:'dd.MM.yyyy' }}</p>
+                  <p>{{ ath.geschlecht }} | {{ ath.gebdat | date:'dd.MM.yyyy' }}{{ ath.team ? ' | ' + getTeamName(ath.team) : '' }}{{ ath.reserve ? ' | Reserve' : '' }}</p>
                 </ion-label>
                 @if (getAthleteSyncStatusSimple(ath)) {
                   <ion-badge slot="end" [color]="getAthleteSyncStatusSimple(ath) === 'in sync' ? 'success' : 'warning'">

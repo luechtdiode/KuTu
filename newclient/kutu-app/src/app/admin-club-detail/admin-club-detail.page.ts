@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
 import { AdminWebsocketService } from '../services/admin-websocket.service';
-import { ClubRegistration, AthletRegistration, ProgrammRaw, SyncAction, JudgeRegistration, RegistrationSyncUpdated } from '../backend-types';
+import { ClubRegistration, AthletRegistration, ProgrammRaw, SyncAction, JudgeRegistration, RegistrationSyncUpdated, TeamItem } from '../backend-types';
 import { firstValueFrom, Subscription } from 'rxjs';
 
 @Component({
@@ -21,6 +21,7 @@ export class AdminClubDetailPage implements OnDestroy {
   programs: ProgrammRaw[] = [];
   syncActions: SyncAction[] = [];
   judgeRegistrations: JudgeRegistration[] = [];
+  teams: TeamItem[] = [];
   loading = false;
 
   private cdr = inject(ChangeDetectorRef);
@@ -61,24 +62,27 @@ export class AdminClubDetailPage implements OnDestroy {
   async loadData() {
     this.loading = true;
     try {
-      const [registration, athletes, programs, syncActions, judges] = await Promise.all([
+      const [registration, athletes, programs, syncActions, judges, teams] = await Promise.all([
         firstValueFrom(this.backend.getRegistration(this.uuid, this.regId, this.secret)),
         firstValueFrom(this.backend.getAthletRegistrations(this.uuid, this.regId, this.secret)),
         firstValueFrom(this.backend.getProgramList(this.uuid, this.secret)),
         firstValueFrom(this.backend.getSyncActions(this.uuid, this.secret)).catch(() => [] as SyncAction[]),
-        firstValueFrom(this.backend.getJudgeRegistrations(this.uuid, this.regId, this.secret)).catch(() => [] as JudgeRegistration[])
+        firstValueFrom(this.backend.getJudgeRegistrations(this.uuid, this.regId, this.secret)).catch(() => [] as JudgeRegistration[]),
+        firstValueFrom(this.backend.getTeams(this.uuid, this.regId, this.secret)).catch(() => [] as TeamItem[])
       ]);
       this.registration = registration;
       this.athletRegistrations = athletes;
       this.programs = programs;
       this.syncActions = syncActions;
       this.judgeRegistrations = judges;
+      this.teams = teams;
     } catch {
       this.registration = null;
       this.athletRegistrations = [];
       this.programs = [];
       this.syncActions = [];
       this.judgeRegistrations = [];
+      this.teams = [];
     } finally {
       this.loading = false;
       this.cdr.detectChanges();
@@ -125,6 +129,11 @@ export class AdminClubDetailPage implements OnDestroy {
       byProgram.get(ath.programId)!.athletes.push(ath);
     }
     return Array.from(byProgram.values());
+  }
+
+  getTeamName(index: number): string {
+    const team = this.teams.find(t => t.index === index);
+    return team ? team.name : 'Team ' + index;
   }
 
   get isApproved(): boolean {
