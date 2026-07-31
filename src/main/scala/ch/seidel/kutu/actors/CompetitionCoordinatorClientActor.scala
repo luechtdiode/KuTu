@@ -113,6 +113,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     val dgStates = grouped.map { t =>
       val dgName = t._1
       val dgData = t._2
+      val diszOrder = dgData.flatMap(_.disziplin).zipWithIndex.map { case (d, idx) => d.id -> idx }.toMap
       val dg = durchgaenge.getOrElse(dgName, Durchgang(wettkampf.id, dgName))
       val dgEvents = state.startStopEvents.filter {
         case DurchgangStarted(_, dgName2, _) => dgName2 == dgName
@@ -159,7 +160,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           steps = steps,
           overallPct = pct
         )
-      }.toList.sortBy(s => disziplinOrdinals.getOrElse(Math.abs(s.disziplinId), Int.MaxValue))
+      }.toList.sortBy(s => diszOrder.getOrElse(s.disziplinId, Int.MaxValue))
       val athleteCount = dgData.flatMap(_.kandidaten).map(_.id).distinct.size
       PlaybookDurchgang(
         name = dgName,
