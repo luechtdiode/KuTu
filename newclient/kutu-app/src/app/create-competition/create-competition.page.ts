@@ -257,7 +257,7 @@ export class CreateCompetitionPage {
     modal.onDidDismiss().then(result => {
       this.ngZone.run(() => {
         if (result !== null && result !== undefined) {
-          this.form.termsAccepted = true;
+          this.form.termsAccepted = result.data;
           this.cdr.detectChanges();
         }
       });
