@@ -115,7 +115,6 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     val dgStates = grouped.map { t =>
       val dgName = t._1
       val dgData = t._2
-      val diszOrder = dgData.flatMap(_.disziplin).zipWithIndex.map { case (d, idx) => d.id -> idx }.toMap
       val dg = durchgaenge.getOrElse(dgName, Durchgang(wettkampf.id, dgName))
       val dgEvents = state.startStopEvents.filter {
         case DurchgangStarted(_, dgName2, _) => dgName2 == dgName
@@ -162,7 +161,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
           steps = steps,
           overallPct = pct
         )
-      }.toList.sortBy(s => diszOrder.getOrElse(s.disziplinId, Int.MaxValue))
+      }.toList
       val athleteCount = dgData.flatMap(_.kandidaten).map(_.id).distinct.size
       PlaybookDurchgang(
         name = dgName,
@@ -185,7 +184,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       )
     }.toList.sortBy(_.name)
     val activeList = dgStates.filter(_.isRunning).map(_.name)
-    playbookState = Some(PlaybookState(wettkampfUUID, dgStates, activeList))
+    playbookState = Some(PlaybookState(wettkampfUUID, dgStates, activeList, disziplinOrdinals.toList.sortBy(_._2).map(_._1)))
   }
 
   private def publishPlaybookState(): Unit = {
@@ -423,7 +422,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case GetPlaybookState(_) =>
       if playbookState.isEmpty then recomputePlaybookState()
       sender() ! PlaybookStateUpdated(wettkampfUUID, playbookState.getOrElse(
-        PlaybookState(wettkampfUUID, List.empty, List.empty)
+        PlaybookState(wettkampfUUID, List.empty, List.empty, List.empty)
       ))
 
     case GetRiegenEinteilungState(_) =>
