@@ -4,14 +4,12 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor.{PublishAction, competitionWebsocketConnectionsActive, competitionsActive}
 import ch.seidel.kutu.calc.ScoreCalcTemplate
 import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.data.ResourceExchanger.listWettkampfDisziplineViews
 import ch.seidel.kutu.domain.{given_Conversion_Date_LocalDate, *}
 import ch.seidel.kutu.http.Core.system
 import ch.seidel.kutu.http.{EnrichedJson, JsonSupport, MetricsController}
 import ch.seidel.kutu.renderer.{MailTemplates, RiegenBuilder}
-import io.prometheus.metrics.config.PrometheusProperties
 import io.prometheus.metrics.core.metrics.Gauge
-import io.prometheus.metrics.model.snapshots.{Labels, PrometheusNaming}
+import io.prometheus.metrics.model.snapshots.PrometheusNaming
 import org.apache.pekko.actor.SupervisorStrategy.{Restart, Stop}
 import org.apache.pekko.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, PoisonPill, Props, Terminated}
 import org.apache.pekko.event.{Logging, LoggingAdapter}
@@ -29,7 +27,7 @@ import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
 import scala.util.Failure
 import scala.util.control.NonFatal
@@ -57,7 +55,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private val wettkampf = readWettkampf(wettkampfUUID)
   private val websocketProcessor = ResourceExchanger.processWSMessage(wettkampf, handleWebsocketMessages)
   private val cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]] = scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]]()
-  private var wkDiszs = listWettkampfDisziplineViews(wettkampf).map(d => d.id -> d).toMap
+  private var wkDiszs = listWettkampfDisziplineViews(wettkampf)//.map(d => d.id -> d).toMap
   private val wkPgmId = wettkampf.programmId
   private val isDNoteUsed = wkPgmId != 20 && wkPgmId != 1
   private val snapShotInterval = 100
@@ -88,8 +86,12 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     geraeteRigeListe = RiegenBuilder.mapToGeraeteRiegen(
       getAllKandidatenWertungen(wkUUID)
         .toList)
-    wkDiszs = listWettkampfDisziplineViews(wettkampf).map(d => d.id -> d).toMap
-    disziplinOrdinals = wkDiszs.map(d => d._2.disziplin.id -> d._2.ord)
+    wkDiszs = listWettkampfDisziplineViews(wettkampf)//.map(d => d.id -> d).toMap
+    disziplinOrdinals = wkDiszs.foldLeft(List[Disziplin]()) { (acc, dv) =>
+      if !acc.contains(dv.disziplin) then acc :+ dv.disziplin else acc
+    }.zipWithIndex.map { case (d, idx) => d.id -> idx }.toMap
+
+
     durchgaenge = selectDurchgaenge(wkUUID).map(d => d.name -> d).toMap
     //recomputePlaybookState()
     //recomputeRiegenEinteilungState()
@@ -215,7 +217,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       athletCount = athleteCountsByDurchgang.getOrElse(Some(d.name), 0)
     )).toList.sortBy(_.name)
 
-    val disziplinen = wkDiszs.values.map(wd => (wd.ord, wd.disziplin)).toList.sortBy(_._1).map(_._2).distinct
+    val disziplinen = wkDiszs.map(wd => (wd.ord, wd.disziplin)).toList.sortBy(_._1).map(_._2).distinct
 
     riegenEinteilungState = Some(RiegenEinteilungState(riegen = riegeItems, duration = durationItems, disziplinen = disziplinen))
   }
@@ -345,7 +347,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       } else if !state.startedDurchgaenge.exists(d => encodeURIComponent(d) == encodeURIComponent(durchgang)) then {
         sender() ! MessageAck("Dieser Durchgang ist noch nicht für die Resultaterfassung freigegeben.")
       } else try {
-        val disz = wkDiszs.get(wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${wertung.wettkampfdisziplinId}")
+        val disz = wkDiszs.filter(wd => wd._1 == wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).headOption.getOrElse(s"Disz${wertung.wettkampfdisziplinId}")
         log.debug(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: $wertung")
         val verifiedWertung = updateWertungSimple(wertung, cache2)
         val updated = AthletWertungUpdated(athlet, verifiedWertung, wettkampfUUID, durchgang, geraet, programm)
