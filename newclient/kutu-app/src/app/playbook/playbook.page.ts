@@ -158,8 +158,15 @@ export class PlaybookPage implements OnInit, OnDestroy {
         }
       }
     }
+    const ordinals = state.disziplinOrdinals || [];
+    const ordinalIndex = new Map(ordinals.map((id, i) => [id, i]));
     this.disziplinen = Array.from(disziplinMap.entries())
-      .map(([id, name]) => ({ id, name }));
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => {
+        const ia = ordinalIndex.has(a.id) ? ordinalIndex.get(a.id)! : ordinals.length;
+        const ib = ordinalIndex.has(b.id) ? ordinalIndex.get(b.id)! : ordinals.length;
+        return ia - ib;
+      });
 
     const prevExpanded = new Set(this.expandedGroups);
     const groupMap = new Map<string, PlaybookDurchgang[]>();
