@@ -24,6 +24,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
   with LoginRoutes
   with WertungenRoutes
   with WettkampfRoutes
+  with ScoreCalcRoutes
   with ScoreRoutes
   with ReportRoutes
   with RegistrationRoutes
@@ -52,6 +53,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
       pathPrefixLabeled("api", "api") {
         login(userLookup, userIdLookup) ~
           wertungenRoutes ~
+          scoreCalcRoutes ~
           wettkampfRoutes ~
           scoresRoutes ~
           reportRoutes ~
