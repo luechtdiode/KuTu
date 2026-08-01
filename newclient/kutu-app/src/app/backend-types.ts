@@ -525,6 +525,7 @@ export interface PlaybookState {
   wettkampfUUID: string;
   durchgaenge: PlaybookDurchgang[];
   activeDurchgaenge: string[];
+  disziplinOrdinals: number[];
 }
 
 export interface JudgeLink {
