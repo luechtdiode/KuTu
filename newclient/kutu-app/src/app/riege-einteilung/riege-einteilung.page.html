@@ -1,0 +1,321 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button [defaultHref]="'/admin/competitions/' + uuid"></ion-back-button>
+      <ion-icon name="git-network" style="margin-left: 8px"></ion-icon>
+    </ion-buttons>
+    <ion-title>Riegeneinteilung</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="goToPlaybook()" title="Zum Drehbuch">
+        <ion-icon name="play" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-refresher slot="fixed" (ionRefresh)="loadData(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <ion-card>
+    <ion-card-header>
+      <ion-item lines="none" class="ion-no-padding">
+        <div style="display: flex; align-items: center; gap: 12px">
+          @if (logoUrl) {
+          <img class="wk-logo" [src]="logoUrl" alt="Logo" />
+          }
+          <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+        </div>
+        <span class="color-legend" slot="end">
+          <span class="legend-title">Farblegende</span>
+          <span class="legend-item"><span class="legend-swatch athlet-max"></span>grösste Startgruppe</span>
+          <span class="legend-item"><span class="legend-swatch athlet-min"></span>kleinste Startgruppe</span>
+          <span class="print-only print-timestamp">Stand: {{ getPrintTimestamp() }}</span>
+          <ion-toggle class="no-print"
+            [checked]="showAssignedOnly"
+            (ionChange)="toggleAssignedOnly()"
+            labelPlacement="start"
+            justify="start">
+            Nur belegte Geräte anzeigen
+          </ion-toggle>
+        </span>
+      </ion-item>
+      <ion-button fill="clear" class="no-print" (click)="printRiegen()" slot="end" title="Drucken">
+        <ion-icon size="large" name="print-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-card-header>
+    <ion-card-content>
+      <ion-button (click)="showGeneratePanel = !showGeneratePanel" fill="outline" class="ion-margin-end" size="small">
+        <ion-icon slot="start" name="settings-outline"></ion-icon>
+        Optionen
+      </ion-button>
+      <ion-button (click)="generate()" [disabled]="loading" color="primary" size="small">
+        <ion-icon slot="start" name="flash-outline"></ion-icon>
+        Generieren
+      </ion-button>
+      <ion-button (click)="resetRiegen()" [disabled]="loading" color="danger" fill="outline" size="small" class="ion-margin-start">
+        <ion-icon slot="start" name="trash-outline"></ion-icon>
+        Zurücksetzen
+      </ion-button>
+
+      @if (selectedDgs.size > 0) {
+        <div class="selection-bar">
+          <span class="selection-count">{{ selectedDgs.size }} Durchgang ausgewählt</span>
+          <ion-button size="small" fill="clear" (click)="regenerateSelected()">
+            <ion-icon slot="start" name="refresh-outline"></ion-icon>
+            Neu generieren
+          </ion-button>
+          <ion-button size="small" fill="clear" (click)="renameSelected()" [disabled]="selectedDgs.size !== 1">
+            <ion-icon slot="start" name="pencil-outline"></ion-icon>
+            Umbenennen
+          </ion-button>
+          @if (selectedDgs.size >= 2) {
+          <ion-button size="small" fill="clear" (click)="mergeSelected()">
+              <ion-icon slot="start" name="git-merge-outline"></ion-icon>
+              Zusammenführen
+            </ion-button>
+          <ion-button size="small" fill="clear" (click)="aggregateSelected()">
+              <ion-icon slot="start" name="layers-outline"></ion-icon>
+              Gruppe bilden
+            </ion-button>
+          }
+          <ion-button size="small" fill="clear" (click)="switchGroupSelected()">
+            <ion-icon slot="start" name="swap-horizontal-outline"></ion-icon>
+            Gruppe wechseln
+          </ion-button>
+          @if (hasGroupedSelection) {
+          <ion-button size="small" fill="clear" (click)="ungroupSelected()">
+              <ion-icon slot="start" name="expand-outline"></ion-icon>
+              Gruppe auflösen
+            </ion-button>
+          }
+          @if (canSetStartOffset) {
+            <ion-button size="small" fill="clear" (click)="setStartOffsetSelected()">
+              <ion-icon slot="start" name="time-outline"></ion-icon>
+              Startzeit
+            </ion-button>
+          }
+          <ion-button size="small" fill="clear" color="medium" (click)="selectedDgs.clear()">
+            <ion-icon name="close-outline"></ion-icon>
+          </ion-button>
+        </div>
+      }
+
+      @if (showGeneratePanel) {
+        <ion-list class="ion-margin-top">
+          @if (filterDurchgaenge.length > 0) {
+            <ion-item color="warning">
+              <ion-icon name="refresh-outline" slot="start"></ion-icon>
+              <ion-label>
+                <h2>{{ filterDurchgaenge.length > 1 ? 'Durchgänge' : 'Durchgang' }}
+                  "{{ filterDurchgaenge.join('", "') }}" neu generieren</h2>
+                <p>Bestehende Riegeneinteilungen werden zurückgesetzt und neu generiert.</p>
+              </ion-label>
+              <ion-button slot="end" fill="clear" size="small" (click)="filterDurchgaenge = []">Auswahl aufheben</ion-button>
+            </ion-item>
+          }
+          <ion-item>
+            <ion-label position="stacked">Max. Riegengrösse</ion-label>
+            <ion-input type="number" [(ngModel)]="generateParams.maxRiegenSize" placeholder="0 = automatisch, keine Aufteilung in mehrere Durchgänge"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Max. Anzahl parallel geführter Durchgänge in einer Abteilung</ion-label>
+            <ion-input type="number" [(ngModel)]="generateParams.maxParallelDg" placeholder="0 = Keine Gruppierung"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Geschlechter-Trennung</ion-label>
+            <ion-select [(ngModel)]="generateParams.splitSexOption" placeholder="Keine">
+              <ion-select-option value="">Automatisch</ion-select-option>
+              <ion-select-option value="GemischteRiegen">Gemischte Riegen</ion-select-option>
+              <ion-select-option value="GemischterDurchgang">Gemischter Durchgang</ion-select-option>
+              <ion-select-option value="GetrennteDurchgaenge">Getrennte Durchgänge</ion-select-option>
+            </ion-select>
+          </ion-item>
+          <ion-item>
+            <ion-checkbox slot="start" [(ngModel)]="generateParams.splitPgm"></ion-checkbox>
+            <ion-label>Nach Programm trennen</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-checkbox slot="start" [(ngModel)]="generateParams.separateRiegen2Durchgaenge"></ion-checkbox>
+            <ion-label>2. Riegen separat in Durchgänge</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Verteilung auf folgende Disziplinen</ion-label>
+          </ion-item>
+          <ion-item lines="none">
+            <ion-button size="small" fill="clear" (click)="selectAllDisziplinen()">Alle</ion-button>
+            <ion-button size="small" fill="clear" (click)="selectNoneDisziplinen()">Keine</ion-button>
+          </ion-item>
+          @for (d of disziplinen; track d.id) {
+            <ion-item>
+              <ion-checkbox slot="start"
+                [checked]="selectedDisziplinIds.has(d.id)"
+                (ionChange)="toggleDisziplin(d.id, $event)">
+              </ion-checkbox>
+              <ion-label>{{ d.name }}</ion-label>
+            </ion-item>
+          }
+        </ion-list>
+      }
+    </ion-card-content>
+  </ion-card>
+
+  @if (loading) {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+
+  @if (unassignedRiegen.length > 0) {
+    <ion-card class="unassigned-card">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="warning-outline" color="warning"></ion-icon>
+          Noch nicht eingeteilte Riegen ({{ unassignedRiegen.length }})
+        </ion-card-title>
+        <ion-card-subtitle>Ziehe eine Riege auf eine Zelle in der Tabelle, um sie einem Durchgang und Gerät zuzuweisen.</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content class="unassigned-chips">
+        @for (riege of unassignedRiegen; track riege.name) {
+          <div class="riege-chip unassigned"
+            [attr.draggable]="riege.kind !== 1"
+            (dragstart)="riege.kind !== 1 && onDragStart($event, riege.name, '', null)"
+               [title]="riege.kind === 1 ? 'Leere Riege – ' + riege.name + ' (' + riege.athletCount + ' Athleten)' : riege.name + ' (' + riege.athletCount + ' Athleten)'">
+            <span class="riege-name">{{ riege.kind === 1 ? 'Leere Riege' : riege.name }}</span>
+            <span class="riege-count">{{ riege.athletCount }}</span>
+          </div>
+        }
+      </ion-card-content>
+    </ion-card>
+  }
+
+  @if (groups.length > 0 && disziplinen.length > 0) {
+    <ion-card>
+      <ion-card-content class="ion-padding-0" style="overflow-x: auto;">
+        <table class="riege-table" [class.has-selection]="selectedDgs.size > 0">
+          <thead>
+            <tr>
+              <th class="col-select">
+                <ion-checkbox [checked]="allDgsSelected" (ionChange)="toggleAllDgs()"></ion-checkbox>
+              </th>
+              <th class="col-durchgang">Durchgang</th>
+              <th class="col-zeiten">Start / Ende</th>
+              @for (d of visibleDisziplinen; track d.id) {
+                <th class="col-geraet">{{ d.name }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (group of groups; track group.title) {
+              @if (hasGroupedRiegen) {
+                <tr class="group-header-row">
+                  <td class="col-select">
+                    <ion-checkbox [checked]="isGroupSelected(group)" (ionChange)="toggleGroupDgs(group)"></ion-checkbox>
+                  </td>
+                  <td class="col-durchgang">
+                    <strong>{{ group.title }}</strong>
+                    @if (group.duration) {
+                      <div class="duration-info group-duration">
+                        <span>Einturnen {{ formatMillis(group.duration.einturnenMillis) }} + Gerät {{ formatMillis(group.duration.geraetMillis) }} = Total {{ formatMillis(group.duration.totalMillis) }}</span>
+                        <br><small>{{ group.duration.athletCount }} Athleten, grösste Gruppe: {{ maxGroupAthletCount(group) }}</small>
+                      </div>
+                    }
+                  </td>
+                  <td class="col-zeiten">
+                    @if (group.duration && group.duration.offsetMillis > 0) {
+                      <div class="zeiten-info group-duration">
+                        <span>{{ formatTimestampFromOffset(group.duration.offsetMillis) }}</span>
+                        <br>
+                        <span>{{ formatTimestampFromOffset(group.duration.offsetMillis + group.duration.totalMillis) }}</span>
+                      </div>
+                    }
+                  </td>
+                  @for (d of visibleDisziplinen; track d.id) {
+                    <td class="col-geraet group-geraet-count"
+                      [class.athlet-max]="groupAthletCountForGeraet(group, d.id) === maxGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)"
+                      [class.athlet-min]="groupAthletCountForGeraet(group, d.id) === minGroupAthletCount(group) && maxGroupAthletCount(group) !== minGroupAthletCount(group)">
+                      @if (groupAthletCountForGeraet(group, d.id) > 0) {
+                        {{ groupAthletCountForGeraet(group, d.id) }} am Startgerät
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+              @for (row of group.rows; track row.durchgangName) {
+                <tr [class.selected]="selectedDgs.has(row.durchgangName)">
+                  <td class="col-select">
+                    <ion-checkbox [checked]="selectedDgs.has(row.durchgangName)" (ionChange)="toggleDg(row.durchgangName)"></ion-checkbox>
+                  </td>
+                  <td class="col-durchgang">
+                    <div class="dg-header">
+                      @if (hasGroupedRiegen || group.title === row.durchgangName) {
+                        <strong>{{ row.durchgangName }}</strong>
+                      } @else {
+                        <strong>{{ group.title }}</strong>
+                        <span class="dg-name">{{ row.durchgangName }}</span>
+                      }
+                    </div>
+                    @if (row.duration) {
+                      <div class="duration-info">
+                        <span>Einturnen {{ formatMillis(row.duration.einturnenMillis) }} + Gerät {{ formatMillis(row.duration.geraetMillis) }} = Total {{ formatMillis(row.duration.totalMillis) }}</span>
+                        <br><small>{{ row.duration.athletCount }} Athleten, grösste Gruppe: {{ maxRowAthletCount(row) }}</small>
+                      </div>
+                    }
+                  </td>
+                  <td class="col-zeiten">
+                    @if (row.duration && row.duration.offsetMillis > 0) {
+                      <div class="zeiten-info">
+                        <span>{{ formatTimestampFromOffset(row.duration.offsetMillis) }}</span>
+                        <br>
+                        <span>{{ formatTimestampFromOffset(row.duration.offsetMillis + row.duration.totalMillis) }}</span>
+                      </div>
+                    }
+                    @if (canSetStartOffsetForRow(row)) {
+                      <ion-button size="small" fill="clear" class="set-starttime-btn" (click)="setStartOffsetForRow(row)" title="Startzeit setzen">
+                        <ion-icon slot="icon-only" size="large" name="time-outline"></ion-icon>
+                      </ion-button>
+                    }
+                  </td>
+                  @for (d of visibleDisziplinen; track d.id) {
+                    <td class="col-geraet"
+                      [class.athlet-max]="rowAthletCount(row, d.id) === maxRowAthletCount(row) && maxRowAthletCount(row) !== minRowAthletCount(row)"
+                      [class.athlet-min]="rowAthletCount(row, d.id) === minRowAthletCount(row) && maxRowAthletCount(row) !== minRowAthletCount(row)"
+                      (dragover)="onDragOver($event)"
+                      (drop)="onDrop($event, row.durchgangName, d.id)"
+                      (dragleave)="onDragLeave($event)">
+                      @for (riege of row.cells[d.id]; track riege.name) {
+                        <div class="riege-chip"
+                          [attr.draggable]="riege.kind !== 1"
+                          (dragstart)="riege.kind !== 1 && onDragStart($event, riege.name, row.durchgangName, d.id)"
+                          [title]="riege.kind === 1 ? 'Leere Riege – ' + riege.name + ' (' + riege.athletCount + ' Athleten)' : riege.name + ' (' + riege.athletCount + ' Athleten)'"
+                          (click)="editRiege(riege, row.durchgangName, d.id)"
+                          [class.empty-riege]="riege.kind === 1">
+                          <span class="riege-name">{{ riege.kind === 1 ? 'Leere Riege' : riege.name }}</span>
+                          <span class="riege-count">{{ riege.athletCount }}</span>
+                        </div>
+                      }
+                      @if (!row.cells[d.id]?.length) {
+                        <ion-button size="small" fill="clear" class="add-empty-btn"
+                          (click)="addEmptyRiege(row.durchgangName, d.id, d.name)"
+                          title="Leere Riege zuweisen – Gerät wird im Turnus verwendet">
+                          <ion-icon slot="icon-only" size="large" name="add-outline"></ion-icon>
+                        </ion-button>
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </ion-card-content>
+    </ion-card>
+  } @else if (!loading) {
+    <ion-card>
+      <ion-card-content>
+        <ion-text color="medium">
+          <p class="ion-text-center">Keine Riegen vorhanden. Erstelle eine neue Einteilung.</p>
+        </ion-text>
+      </ion-card-content>
+    </ion-card>
+  }
+</ion-content>

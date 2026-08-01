@@ -173,7 +173,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                 authenticateWith(Some(jwt), true) { id =>
                   if id == competitionId.toString then {
                     if durchgang.equalsIgnoreCase("all") then {
-                      handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, None, lastSequenceIdOption))
+                      handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, None, lastSequenceIdOption, true))
                     } else {
                       handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption))
                     }
@@ -184,7 +184,7 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
               } ~
                 authenticated(true) { id =>
                   if id == competitionId.toString then {
-                    handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption))
+                    handleWebSocketMessages(CompetitionCoordinatorClientActor.createActorSinkSource(clientId, competitionId.toString, Some(durchgang), lastSequenceIdOption, true))
                   } else {
                     complete(StatusCodes.Unauthorized)
                   }
@@ -212,7 +212,10 @@ trait WertungenRoutes extends SprayJsonSupport with JsonSupport with JwtSupport 
                   complete(StatusCodes.NotFound)
                 } else
                   complete {
-                    listDisziplinZuWettkampf(readWettkampf(competitionId.toString)).map(_.toList).map(items => items.toJson(using listFormat(using disziplinFormat)))
+                    CompetitionCoordinatorClientActor.publish(
+                      GetRiegenEinteilungState(competitionId.toString), clientId
+                    ).mapTo[RiegenEinteilungStateUpdated].map(_.state.disziplinen)
+                      .map(items => items.toJson(using listFormat(using disziplinFormat)))
                   }
               }
             } ~

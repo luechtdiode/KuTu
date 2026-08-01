@@ -1,0 +1,52 @@
+ion-card {
+  margin-bottom: 16px;
+}
+
+ion-item-divider {
+  font-weight: bold;
+  font-size: 1.1em;
+  padding: 8px 16px;
+}
+
+ion-checkbox {
+  --size: 20px;
+  --padding-start: 0;
+}
+
+.score-item-label {
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .score-badge {
+    font-size: 0.65em;
+    flex-shrink: 0;
+  }
+
+  .score-query {
+    font-size: 0.75em;
+    color: var(--ion-color-medium-shade);
+    word-break: break-word;
+  }
+
+  .score-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+  }
+}
+
+.score-query {
+  display: none;
+}
+
+@media (min-width: 600px) {
+  .score-query {
+    display: block;
+  }
+}

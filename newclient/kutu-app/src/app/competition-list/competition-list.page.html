@@ -1,0 +1,63 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Meine Wettkämpfe (admin)</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="triggerZipImport()" title="ZIP Backup importieren" [disabled]="isUploading">
+        <ion-icon name="cloud-upload" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+@if (isUploading) {
+<ion-progress-bar type="indeterminate" ></ion-progress-bar>
+}
+
+<ion-content class="ion-padding">
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+      <ion-fab-button routerLink="/admin/competitions/create" [disabled]="isUploading">
+      <ion-icon name="add"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
+  @if (competitions.length > 0) {
+    <ion-list>
+      @for (c of competitions; track c.uuid) {
+        <ion-item button (click)="openOverview(c)">
+          @if (c.logoUrl) {
+            <ion-avatar slot="start">
+              <img [src]="c.logoUrl" alt="Logo" />
+            </ion-avatar>
+          } @else {
+            <ion-avatar slot="start">
+              <img src="assets/imgs/wettkampf.png">
+            </ion-avatar>
+          }
+          <ion-label>
+            @if (c.loading) {
+              <ion-skeleton-text animated style="width: 60%"></ion-skeleton-text>
+              <ion-skeleton-text animated style="width: 40%"></ion-skeleton-text>
+            } @else {
+              <h2>{{ c.titel }}</h2>
+              <p>{{ formatDate(c.datum) }}</p>
+              @if (c.error) {
+                <p class="ion-text-wrap" style="font-size: 0.7em; color: var(--ion-color-danger);">Fehler beim Laden</p>
+              }
+            }
+          </ion-label>
+          <ion-icon name="chevron-forward" slot="end" color="medium"></ion-icon>
+        </ion-item>
+      }
+    </ion-list>
+  } @else {
+    <ion-text color="medium">
+      <p class="ion-text-center ion-padding">Noch keine Wettkämpfe angelegt.</p>
+      <ion-button expand="block" routerLink="/admin/competitions/create" class="ion-padding">
+        Neuen Wettkampf anlegen
+      </ion-button>
+    </ion-text>
+  }
+  <input #zipFileInput type="file" accept=".zip" hidden (change)="onZipFileSelected($event)">
+</ion-content>

@@ -1,0 +1,30 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Sicherheit</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  @if (secrets.length > 0) {
+    <ion-list>
+      @for (s of secrets; track s.uuid) {
+        <ion-item>
+          <ion-label>
+            <h2>{{ s.titel }}</h2>
+            <p>{{ s.datum | date: 'dd.MM.yyyy' }}</p>
+            <p class="ion-text-wrap" style="font-size: 0.7em; opacity: 0.6;">UUID: {{ s.uuid }}</p>
+          </ion-label>
+          <ion-button slot="end" color="danger" fill="outline" (click)="confirmDelete(s)">
+            <ion-icon slot="icon-only" name="trash"></ion-icon>
+          </ion-button>
+        </ion-item>
+      }
+    </ion-list>
+  } @else {
+    <ion-text color="medium">
+      <p class="ion-text-center ion-padding">Keine gespeicherten Wettkampf-Geheimnisse.</p>
+    </ion-text>
+  }
+</ion-content>

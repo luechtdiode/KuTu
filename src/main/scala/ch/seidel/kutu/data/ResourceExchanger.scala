@@ -1,3 +1,4 @@
+
 package ch.seidel.kutu.data
 
 import ch.seidel.kutu.actors.*
@@ -242,7 +243,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       val maxSize = java.text.NumberFormat.getInstance().format(Config.mediafileMaxSize / 1024)
       val currentSize = java.text.NumberFormat.getInstance().format(uploadedOriginalFile.length() / 1024)
       uploadedOriginalFile.delete()
-      throw new RuntimeException(s"Die Datei ${media.name} ist mit $currentSize Kilobytes zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+      throw new ValidationException(s"Die Datei ${media.name} ist mit $currentSize Kilobytes zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
     }
 
     val hash = digestStream.getMessageDigest.digest()
@@ -315,7 +316,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
   }
 
-  def importWettkampf(file: InputStream): Wettkampf = {
+  def importWettkampf(file: InputStream, expectedUuid: String = "", validateEmail: Boolean = false): Wettkampf = {
     val buffer = new BufferedInputStream(file)
     buffer.mark(1024 * 1024 * 1024) // max 1GB
 
@@ -336,6 +337,27 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         }).flatMap(DBService.parseLine).zipWithIndex.toMap
         acc + (entry._1.getName -> (csv.drop(1), header))
       } else acc
+    }
+
+    if expectedUuid.nonEmpty && collection.contains("wettkampf.csv") then {
+      val (wettkampfCsvLines, wettkampfHeader) = collection("wettkampf.csv")
+
+      // check if the uuid in the import file matches the expected uuid of the wettkampf
+      val fetchedUuid = wettkampfHeader.get("uuid").map(idx => DBService.parseLine(wettkampfCsvLines.head)(idx)).getOrElse("(leer)")
+      if (fetchedUuid eq null) || fetchedUuid.isEmpty || fetchedUuid != expectedUuid then
+        throw new ValidationException(
+          s"Die UUID (${if fetchedUuid == null || fetchedUuid.isEmpty then "(leer)" else fetchedUuid}) in der importierten Datei stimmt nicht mit der UUID ($expectedUuid) des Wettkampfs überein."
+        )
+    }
+    if (validateEmail) && collection.contains("wettkampf.csv") then {
+      val (wettkampfCsvLines, wettkampfHeader) = collection("wettkampf.csv")
+
+      // check if the email field is filled in the import file, if not throw an exception
+      val fetchedEmail = wettkampfHeader.get("notificationEMail").map(idx => DBService.parseLine(wettkampfCsvLines.head)(idx)).getOrElse("(leer)")
+      if (fetchedEmail eq null) || fetchedEmail.isEmpty then
+        throw new ValidationException(
+          s"Die EMail-Adresse für die Notifikation von Online-Registrierungen ist noch nicht erfasst."
+        )
     }
 
     def getValue(header: Map[String, Int], fields: IndexedSeq[String], key: String, default: String): String = {
@@ -711,7 +733,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           if entry._1.getSize > Config.logoFileMaxSize then {
             val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024d)
             val currentSize = java.text.NumberFormat.getInstance().format(entry._1.getSize / 1024d)
-            throw new RuntimeException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+            throw new ValidationException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
           }
           val logodir = wettkampf.prepareFilePath(Config.homedir)
           if !logodir.exists() then {
@@ -746,7 +768,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           /*if (entry._1.getSize > Config.mediafileMaxSize) {
             val maxSize = java.text.NumberFormat.getInstance().format(Config.mediafileMaxSize / 1024d)
             val currentSize = java.text.NumberFormat.getInstance().format(entry._1.getSize / 1024d)
-            throw new RuntimeException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+            throw new ValidationException(s"Die Datei $filename ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
           }*/
           saveMediaFile(entry._2, wettkampf, media)
         }
@@ -794,7 +816,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           if mp3File.length() > Config.mediafileMaxSize then {
             val maxSize = java.text.NumberFormat.getInstance().format(Config.mediafileMaxSize / 1024d)
             val currentSize = java.text.NumberFormat.getInstance().format(mp3File.length() / 1024d)
-            throw new RuntimeException(s"Die Datei ${mp3File.getName} ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+            throw new ValidationException(s"Die Datei ${mp3File.getName} ist mit $currentSize zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
           }
           val name = s"${media.filename}@${media.id}@${media.extension}"
           val fis = new FileInputStream(mp3File)
@@ -821,7 +843,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     exportWettkampfToStream(wettkampf, new FileOutputStream(filename), withSecret = true, withMediaFiles = true)
   }
 
-  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false, withMediaFiles: Boolean = false): Unit = {
+  def exportWettkampfToStream(wettkampf: Wettkampf, os: OutputStream, withSecret: Boolean = false, withMediaFiles: Boolean = false, adminJwt: Option[String] = None, adminOrigin: Option[String] = None): Unit = {
     val zip = new ZipOutputStream(os)
     zip.putNextEntry(new ZipEntry("wettkampf.csv"))
     zip.write((getHeader[Wettkampf] + "\n" + getValues(wettkampf)).getBytes("utf-8"))
@@ -908,7 +930,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       if logofile.length() > Config.logoFileMaxSize then {
         val maxSize = java.text.NumberFormat.getInstance().format(Config.logoFileMaxSize / 1024)
         val currentSize = java.text.NumberFormat.getInstance().format(logofile.length() / 1024)
-        throw new RuntimeException(s"Die Datei ${logofile.getName} ist mit $currentSize Kilobytes zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
+        throw new ValidationException(s"Die Datei ${logofile.getName} ist mit $currentSize Kilobytes zu gross. Sie darf nicht grösser als $maxSize Kilobytes sein.")
       }
 
       zip.putNextEntry(new ZipEntry(logofile.getName))
@@ -939,29 +961,37 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           logger.info("scoredef-file was taken " + scoredefFile.getName)
         }
     }
-    if withSecret && wettkampf.hasSecred(Config.homedir, Config.remoteHostOrigin) then {
-      val secretfile = wettkampf.filePath(Config.homedir, Config.remoteHostOrigin).toFile
-      zip.putNextEntry(new ZipEntry(secretfile.getName))
-      val fis = new FileInputStream(secretfile)
-      val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-      Iterator
-        .continually(fis.read(bytes))
-        .takeWhile(b => -1 != b)
-        .foreach(read => zip.write(bytes, 0, read))
-      zip.closeEntry()
-      logger.info("secret was taken " + secretfile.getName)
-    }
-    if withSecret && wettkampf.hasRemote(Config.homedir, Config.remoteHostOrigin) then {
-      val secretfile = wettkampf.fromOriginFilePath(Config.homedir, Config.remoteHostOrigin).toFile
-      zip.putNextEntry(new ZipEntry(secretfile.getName))
-      val fis = new FileInputStream(secretfile)
-      val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
-      Iterator
-        .continually(fis.read(bytes))
-        .takeWhile(b => -1 != b)
-        .foreach(read => zip.write(bytes, 0, read))
-      zip.closeEntry()
-      logger.info("remote-info was taken " + secretfile.getName)
+    if withSecret then {
+      val origin = adminOrigin match {
+        case Some(origin) => origin
+        case None => Config.remoteHostOrigin
+      }
+      val secretfile = wettkampf.filePath(Config.homedir, origin).toFile
+      val secretContent = adminJwt match {
+        case None if wettkampf.hasSecred(Config.homedir, origin) =>
+          logger.info(s"remote-info was taken from ${secretfile.getName}")
+          Some(new FileInputStream(secretfile))
+        case Some(sc) =>
+          logger.info(s"remote-info for ${secretfile.getName} was taken from adminJwt ")
+          Some(new ByteArrayInputStream(sc.getBytes("utf-8")))
+        case _ => None
+      }
+      secretContent match {
+        case Some(sc) =>
+          try {
+            zip.putNextEntry(new ZipEntry(secretfile.getName))
+            val bytes = new Array[Byte](1024) //1024 bytes - Buffer size
+            Iterator
+              .continually(sc.read(bytes))
+              .takeWhile(b => -1 != b)
+              .foreach(read => zip.write(bytes, 0, read))
+            zip.closeEntry()
+          } finally {
+            sc.close()
+          }
+        case None =>
+          logger.warn(s"no secret-content for ${secretfile.getName} was found, skipping secret-file in export")
+      }
     }
     if withMediaFiles then {
       zipMediaFiles(wettkampf, List.empty, zip)
