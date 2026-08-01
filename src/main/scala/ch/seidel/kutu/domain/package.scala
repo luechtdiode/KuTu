@@ -2108,7 +2108,8 @@ package object domain {
   case class PlaybookState(
                             wettkampfUUID: String,
                             durchgaenge: List[PlaybookDurchgang],
-                            activeDurchgaenge: List[String]
+                            activeDurchgaenge: List[String],
+                            disziplinOrdinals: List[Long]
                           )
 
   case class RiegenEinteilungState(
