@@ -1,0 +1,1 @@
+import {cq as n$1}from'./main-RRT563O2.js';var n=()=>{if(n$1!==void 0)return n$1.Capacitor};export{n};
