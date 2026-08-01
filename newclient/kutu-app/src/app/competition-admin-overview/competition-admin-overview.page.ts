@@ -128,6 +128,10 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
     this.nav.navigateRoot('/admin/rankings/' + this.uuid);
   }
 
+  openScoreCalc() {
+    this.nav.navigateRoot('/admin/scorecalc/' + this.uuid);
+  }
+
   async downloadZip() {
     this.isDownloading = true;
     try {

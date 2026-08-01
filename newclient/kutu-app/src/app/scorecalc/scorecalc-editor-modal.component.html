@@ -1,0 +1,156 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>{{ template ? 'Formular bearbeiten' : 'Neues Formular' }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">Abbrechen</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-list>
+    <ion-item>
+      <ion-label position="stacked">Gilt auf Ebene Kategorie-Disziplin</ion-label>
+      <ion-select [(ngModel)]="selectedWkdId" placeholder="(Allgemein)" (ionChange)="onWkdChange()">
+        <ion-select-option [value]="null">(Allgemein)</ion-select-option>
+        @for (w of options.wettkampfdisziplinen; track w.id) {
+        <ion-select-option [value]="w.id">{{ w.easyprint }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-label position="stacked">Gilt auf Ebene Disziplin (alle Kategorien)</ion-label>
+      <ion-select [(ngModel)]="selectedDisziplinId" placeholder="(Allgemein)" (ionChange)="onDisziplinChange()">
+        <ion-select-option [value]="null">(Allgemein)</ion-select-option>
+        @for (d of options.disziplinen; track d.id) {
+        <ion-select-option [value]="d.id">{{ d.name }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-label position="stacked">Aggregat Funktion bei zwei Übungen</ion-label>
+      <ion-select [(ngModel)]="aggregateFn" (ngModelChange)="schedulePreview()">
+        <ion-select-option [value]="null">—</ion-select-option>
+        <ion-select-option value="Min">Minimum</ion-select-option>
+        <ion-select-option value="Max">Maximum</ion-select-option>
+        <ion-select-option value="Avg">Durchschnitt</ion-select-option>
+        <ion-select-option value="Sum">Summe</ion-select-option>
+      </ion-select>
+    </ion-item>
+
+    @if (isDNoteUsed) {
+    <ion-item>
+      <ion-label position="stacked">Formel für die D-Note/A-Note</ion-label>
+      <ion-input [(ngModel)]="dFormula" (ngModelChange)="schedulePreview()"
+        placeholder="z.B. {{ dNoteLabel }}{{ dNoteLabel }} Wert 1.2"></ion-input>
+    </ion-item>
+    <ion-item lines="none">
+      <ion-button size="small" fill="outline" (click)="insertDVariable()">
+        <ion-icon name="add" slot="start"></ion-icon>
+        Variable einfügen
+      </ion-button>
+    </ion-item>
+    }
+
+    <ion-item>
+      <ion-label position="stacked">Formel für die E-Note/B-Note</ion-label>
+      <ion-input [(ngModel)]="eFormula" (ngModelChange)="schedulePreview()"
+        placeholder="z.B. {{ eNoteLabel }}{{ eNoteLabel }} Wert 1.2"></ion-input>
+    </ion-item>
+    <ion-item lines="none">
+      <ion-button size="small" fill="outline" (click)="insertEVariable()">
+        <ion-icon name="add" slot="start"></ion-icon>
+        Variable einfügen
+      </ion-button>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Formel Penalty</ion-label>
+      <ion-input [(ngModel)]="pFormula" (ngModelChange)="schedulePreview()"
+        placeholder="z.B. $PPenalty 1.2"></ion-input>
+    </ion-item>
+    <ion-item lines="none">
+      <ion-button size="small" fill="outline" (click)="insertPVariable()">
+        <ion-icon name="add" slot="start"></ion-icon>
+        Variable einfügen
+      </ion-button>
+    </ion-item>
+  </ion-list>
+
+  <ion-list-header>
+    <ion-label>Vorschau</ion-label>
+    @if (previewStale) {
+    <ion-spinner slot="end" style="width: 18px; height: 18px"></ion-spinner>
+    }
+  </ion-list-header>
+
+  @if (preview) {
+  @if (previewError) {
+  <div class="ion-padding">
+    <ion-text color="danger" class="sc-valid">{{ previewError }}</ion-text>
+  </div>
+  }
+  @if (preview.exercises.length > 0) {
+  <ion-list>
+    @for (ex of preview.exercises; track $index) {
+    <ion-item-group>
+      <ion-item-divider>Übung {{ $index + 1 }}</ion-item-divider>
+      @for (v of ex; track v.prefix + v.name + v.index) {
+      <ion-item class="preview-variable-item">
+        <ion-label>{{ v.name }}</ion-label>
+        <ion-input type="number" [value]="overrideValue(v)" (ionInput)="onValueChange(v, $event.detail.value)"></ion-input>
+      </ion-item>
+      }
+    </ion-item-group>
+    }
+  </ion-list>
+  }
+
+  <ion-list>
+    @if (isDNoteUsed) {
+    <ion-item>
+      <ion-label>{{ dNoteLabel }}-Note</ion-label>
+      <ion-text slot="end" class="sc-result">{{ preview.noteD != null ? preview.noteD : '—' }}</ion-text>
+    </ion-item>
+    }
+    <ion-item>
+      <ion-label>{{ eNoteLabel }}-Note</ion-label>
+      <ion-text slot="end" class="sc-result">{{ preview.noteE != null ? preview.noteE : '—' }}</ion-text>
+    </ion-item>
+    <ion-item>
+      <ion-label>Endnote</ion-label>
+      <ion-text slot="end" class="sc-result sc-endnote">{{ preview.endnote != null ? preview.endnote : '—' }}</ion-text>
+    </ion-item>
+  </ion-list>
+
+  <ion-list>
+    @if (isDNoteUsed) {
+    <ion-item lines="none">
+      <ion-text [color]="okState(preview.dValidState) ? 'success' : 'danger'" class="sc-valid">
+        {{ preview.dValidState }}
+      </ion-text>
+    </ion-item>
+    }
+    <ion-item lines="none">
+      <ion-text [color]="okState(preview.eValidState) ? 'success' : 'danger'" class="sc-valid">
+        {{ preview.eValidState }}
+      </ion-text>
+    </ion-item>
+    <ion-item lines="none">
+      <ion-text [color]="okState(preview.pValidState) ? 'success' : 'danger'" class="sc-valid">
+        {{ preview.pValidState }}
+      </ion-text>
+    </ion-item>
+  </ion-list>
+  } @else if (previewError) {
+  <div class="ion-padding ion-text-center">
+    <ion-text color="danger" class="sc-valid">{{ previewError }}</ion-text>
+  </div>
+  }
+</ion-content>
+<ion-footer>
+  <ion-toolbar>
+    <ion-button expand="block" [disabled]="savingDisabled" (click)="confirm()">
+      Speichern
+    </ion-button>
+  </ion-toolbar>
+</ion-footer>
