@@ -39,6 +39,10 @@
     <ion-label>Verwaltung</ion-label>
   </ion-list-header>
   <ion-list>
+    <ion-item button (click)="openScoreCalc()">
+      <ion-icon name="calculator" slot="start"></ion-icon>
+      <ion-label>Formulare (Notenerfassung)</ion-label>
+    </ion-item>
     <ion-item button (click)="openRegistrations()">
       <ion-icon name="people" slot="start"></ion-icon>
       <ion-label>Anmeldungen</ion-label>

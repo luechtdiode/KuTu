@@ -330,60 +330,62 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
           }
         } ~
         pathPrefixLabeled(JavaUUID, ":uuid") { wkuuid =>
-          get {
-            authenticatedAdmin() { userId =>
-              if userId.equals(wkuuid.toString) then {
-                onSuccess(readWettkampfAsync(wkuuid.toString)) { wettkampf =>
-                  complete(AdminGetCompetitionResponse(
-                    id = wettkampf.id,
-                    uuid = wettkampf.uuid.get,
-                    datum = wettkampf.datum,
-                    titel = wettkampf.titel,
-                    programmId = wettkampf.programmId,
-                    auszeichnung = wettkampf.auszeichnung,
-                    auszeichnungendnote = wettkampf.auszeichnungendnote,
-                    notificationEMail = wettkampf.notificationEMail,
-                    altersklassen = wettkampf.altersklassen.getOrElse(""),
-                    jahrgangsklassen = wettkampf.jahrgangsklassen.getOrElse(""),
-                    punktegleichstandsregel = wettkampf.punktegleichstandsregel.getOrElse(""),
-                    rotation = wettkampf.rotation.getOrElse(""),
-                    teamrule = wettkampf.teamrule.getOrElse("")
-                  ).toJson)
-                }
-              } else {
-                complete(StatusCodes.Conflict)
-              }
-            }
-          } ~
-          put {
-            authenticatedAdmin() { userId =>
-              if userId.equals(wkuuid.toString) then {
-                entity(as[AdminUpdateCompetitionRequest]) { request =>
-                  onComplete(Future {
-                    saveWettkampf(
-                      id = request.id,
-                      datum = request.datum,
-                      titel = request.titel,
-                      programmId = Set(request.programmId),
-                      notificationEMail = request.notificationEMail,
-                      auszeichnung = request.auszeichnung,
-                      auszeichnungendnote = request.auszeichnungendnote,
-                      uuidOption = Some(wkuuid.toString),
-                      altersklassen = request.altersklassen,
-                      jahrgangsklassen = request.jahrgangsklassen,
-                      punktegleichstandsregel = request.punktegleichstandsregel,
-                      rotation = request.rotation,
-                      teamrule = request.teamrule
-                    )
-                  }) {
-                    case Success(wk) => complete(JsObject("status" -> JsString("ok"), "easyprint" -> JsString(wk.easyprint)))
-                    case Failure(e) =>
-                      log.error(e, "Failed to update competition")
-                      complete(StatusCodes.InternalServerError, s"Failed to update competition: ${e.getMessage}")
+          pathEnd {
+            get {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  onSuccess(readWettkampfAsync(wkuuid.toString)) { wettkampf =>
+                    complete(AdminGetCompetitionResponse(
+                      id = wettkampf.id,
+                      uuid = wettkampf.uuid.get,
+                      datum = wettkampf.datum,
+                      titel = wettkampf.titel,
+                      programmId = wettkampf.programmId,
+                      auszeichnung = wettkampf.auszeichnung,
+                      auszeichnungendnote = wettkampf.auszeichnungendnote,
+                      notificationEMail = wettkampf.notificationEMail,
+                      altersklassen = wettkampf.altersklassen.getOrElse(""),
+                      jahrgangsklassen = wettkampf.jahrgangsklassen.getOrElse(""),
+                      punktegleichstandsregel = wettkampf.punktegleichstandsregel.getOrElse(""),
+                      rotation = wettkampf.rotation.getOrElse(""),
+                      teamrule = wettkampf.teamrule.getOrElse("")
+                    ).toJson)
                   }
+                } else {
+                  complete(StatusCodes.Conflict)
                 }
-              } else {
-                complete(StatusCodes.Conflict)
+              }
+            } ~
+            put {
+              authenticatedAdmin() { userId =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[AdminUpdateCompetitionRequest]) { request =>
+                    onComplete(Future {
+                      saveWettkampf(
+                        id = request.id,
+                        datum = request.datum,
+                        titel = request.titel,
+                        programmId = Set(request.programmId),
+                        notificationEMail = request.notificationEMail,
+                        auszeichnung = request.auszeichnung,
+                        auszeichnungendnote = request.auszeichnungendnote,
+                        uuidOption = Some(wkuuid.toString),
+                        altersklassen = request.altersklassen,
+                        jahrgangsklassen = request.jahrgangsklassen,
+                        punktegleichstandsregel = request.punktegleichstandsregel,
+                        rotation = request.rotation,
+                        teamrule = request.teamrule
+                      )
+                    }) {
+                      case Success(wk) => complete(JsObject("status" -> JsString("ok"), "easyprint" -> JsString(wk.easyprint)))
+                      case Failure(e) =>
+                        log.error(e, "Failed to update competition")
+                        complete(StatusCodes.InternalServerError, s"Failed to update competition: ${e.getMessage}")
+                    }
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
               }
             }
           }

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks, TeamItem } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks, TeamItem, ScoreCalcTemplate, ScoreCalcOptions, ScoreCalcPreviewRequest, ScoreCalcPreviewResponse } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -271,6 +271,36 @@ export class AdminBackendService {
 
   getAvailableFilters(uuid: string, groupby: string): Observable<string[]> {
     return this.http.get<string[]>(this.api + 'scores/' + uuid + '/filter?groupby=' + encodeURIComponent(groupby));
+  }
+
+  getScoreCalcTemplates(uuid: string, secret: string): Observable<ScoreCalcTemplate[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ScoreCalcTemplate[]>(this.api + 'admin/competition/' + uuid + '/scorecalc', { headers });
+  }
+
+  createScoreCalcTemplate(uuid: string, template: ScoreCalcTemplate, secret: string): Observable<ScoreCalcTemplate> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<ScoreCalcTemplate>(this.api + 'admin/competition/' + uuid + '/scorecalc', template, { headers });
+  }
+
+  updateScoreCalcTemplate(uuid: string, id: number, template: ScoreCalcTemplate, secret: string): Observable<ScoreCalcTemplate> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put<ScoreCalcTemplate>(this.api + 'admin/competition/' + uuid + '/scorecalc/' + id, template, { headers });
+  }
+
+  deleteScoreCalcTemplate(uuid: string, id: number, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete(this.api + 'admin/competition/' + uuid + '/scorecalc/' + id, { headers });
+  }
+
+  getScoreCalcOptions(uuid: string, secret: string): Observable<ScoreCalcOptions> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ScoreCalcOptions>(this.api + 'admin/competition/' + uuid + '/scorecalc/options', { headers });
+  }
+
+  previewScoreCalc(uuid: string, request: ScoreCalcPreviewRequest, secret: string): Observable<ScoreCalcPreviewResponse> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<ScoreCalcPreviewResponse>(this.api + 'admin/competition/' + uuid + '/scorecalc/preview', request, { headers });
   }
 
 }

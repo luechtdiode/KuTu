@@ -474,6 +474,13 @@ trait WettkampfService extends DBService
   }
 
   def updateScoreCalcTemplate(template: ScoreCalcTemplate): Unit = {
+    val whereFilter = template.wettkampfdisziplinId match {
+      case Some(wkd) => s"wettkampfdisziplin_Id = $wkd"
+      case None => template.disziplinId match  {
+        case Some(did) => s"wettkampfdisziplin_Id in (select id from wettkampfdisziplin where disziplin_id = $did)"
+        case None => "true"
+      }
+    }
     Await.result(database.run(
       sqlu"""
                     update scoretemplate
@@ -486,6 +493,16 @@ trait WettkampfService extends DBService
                             aggregateFn = ${template.aggregateFn.map(_.toString)}
                     where id = ${template.id}
                       and wettkampf_id = ${template.wettkampfId}
+      """ >>
+      sqlu"""
+                    update wertung
+                        set
+                            note_d = null,
+                            note_e = null,
+                            endnote = null,
+                            variables = null
+                     where wettkampf_Id=${template.wettkampfId}
+                       and #$whereFilter
       """), Duration.Inf)
   }
 
