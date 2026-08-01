@@ -968,7 +968,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
       val secretfile = wettkampf.filePath(Config.homedir, origin).toFile
       val secretContent = adminJwt match {
-        case None if wettkampf.hasRemote(Config.homedir, origin) =>
+        case None if wettkampf.hasSecred(Config.homedir, origin) =>
           logger.info(s"remote-info was taken from ${secretfile.getName}")
           Some(new FileInputStream(secretfile))
         case Some(sc) =>

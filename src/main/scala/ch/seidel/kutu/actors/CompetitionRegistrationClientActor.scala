@@ -147,8 +147,10 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
             val adminJwt = Some(JsonWebToken(Config.jwtHeader, setClaims(wk.uuid.toString, Int.MaxValue, isAdmin = true), Config.jwtSecretKey))
             val bos = new java.io.ByteArrayOutputStream()
             ResourceExchanger.exportWettkampfToStream(wk, bos, withSecret = true, adminJwt = adminJwt, adminOrigin = None)
+            val data = bos.toByteArray
+            // for debug reasons: new BufferedOutputStream(new FileOutputStream("./exported.zip")).write(data)
             KuTuMailerActor.send(
-              MailTemplates.createBackupMail(wk, bos.toByteArray)
+              MailTemplates.createBackupMail(wk, data)
             )
             log.info(s"EMail approved $mail: Backup EMail sent")
           } catch {
