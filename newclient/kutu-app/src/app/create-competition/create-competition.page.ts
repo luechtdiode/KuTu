@@ -14,7 +14,7 @@ import { TermsModalComponent } from './terms-modal.component';
 
 const PRESETS_ALTERSKLASSEN = [
   { label: 'Ohne', value: '' },
-  { label: 'Turn10®', value: 'AK7-18,AK24,AK30-100/5' },
+  { label: 'Turn10®', value: 'AK(BS)9-10,AK(BS)11-16,AK(OS)11-16/2,AK(BS+OS)17,AK(BS+OS)20,AK(BS+OS)25,AK(BS+OS)35,AK(BS+OS)50,AK(BS+OS)70' },
   { label: 'DTB', value: 'AK6,AK18,AK22,AK25' },
   { label: 'DTB Pflicht', value: 'AK8-9,AK11-19/2' },
   { label: 'DTB Kür', value: 'AK13-19/2' },
