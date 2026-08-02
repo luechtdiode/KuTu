@@ -647,24 +647,18 @@ package object domain {
     val qualifierPattern: Regex = "(.*)\\(([\\D\\s]+)\\)".r
 
     // file:///C:/Users/Roland/Downloads/Turn10-2018_Allgemeine%20Bestimmungen.pdf
-    val akExpressionTurn10: String = "AK7-18,AK24,AK30-100/5"
-    val altersklassenTurn10: Seq[(String, Seq[Nothing], Int)] = Seq(
-      6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100
-    ).map(i => ("AK", Seq(), i))
+    //val akExpressionTurn10: String = "AK7-18,AK24,AK30-100/5"
+    // https://www.turn10.eu/media/doc/6a0e740d2a085d7bb5da6fdf099c8ac5/wettkampf-ordnung-vereine-oesterreich-vorlaeufige-version-vom-2.1.2025-.pdf
+    val akExpressionTurn10: String = "AK(BS)9-10,AK(BS)11-16,AK(OS)11-16/2,AK(BS+OS)17,AK(BS+OS)20,AK(BS+OS)25,AK(BS+OS)35,AK(BS+OS)50,AK(BS+OS)70"
+    val altersklassenTurn10: Seq[(String, Seq[String], Int)] = parseGrenzen(akExpressionTurn10)
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/Passwesen/Wettkampfordnung_DTB_2021.pdf
     val akDTBExpression: String = "AK6,AK18,AK22,AK25"
-    val altersklassenDTB: Seq[(String, Seq[Nothing], Int)] = Seq(
-      6, 18, 22, 25
-    ).map(i => ("AK", Seq(), i))
+    val altersklassenDTB: Seq[(String, Seq[String], Int)] = parseGrenzen(akDTBExpression)
     // see https://www.dtb.de/fileadmin/user_upload/dtb.de/TURNEN/Standards/PDFs/Rahmentrainingskonzeption-GTm_inklAnlagen_19.11.2020.pdf
     val akDTBPflichtExpression: String = "AK8-9,AK11-19/2"
-    val altersklassenDTBPflicht: Seq[(String, Seq[Nothing], Int)] = Seq(
-      7, 8, 9, 11, 13, 15, 17, 19
-    ).map(i => ("AK", Seq(), i))
+    val altersklassenDTBPflicht: Seq[(String, Seq[String], Int)] = parseGrenzen(akDTBPflichtExpression)
     val akDTBKuerExpression: String = "AK13-19/2"
-    val altersklassenDTBKuer: Seq[(String, Seq[Nothing], Int)] = Seq(
-      12, 13, 15, 17, 19
-    ).map(i => ("AK", Seq(), i))
+    val altersklassenDTBKuer: Seq[(String, Seq[String], Int)] = parseGrenzen(akDTBKuerExpression)
 
     val predefinedAKs: Map[String, String] = Map(
       "Ohne" -> ""
