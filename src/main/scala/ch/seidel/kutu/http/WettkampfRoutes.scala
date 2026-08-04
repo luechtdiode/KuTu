@@ -6,8 +6,8 @@ import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.actors.*
 import ch.seidel.kutu.data.{*, given}
 import ch.seidel.kutu.domain.*
-import ch.seidel.kutu.renderer.{RiegenBuilder, ServerPrintUtil}
-import ch.seidel.kutu.squad.{DurchgangBuilder, DurchgangGrouper}
+import ch.seidel.kutu.renderer.ServerPrintUtil
+import ch.seidel.kutu.squad.DurchgangBuilder
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.*
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
@@ -607,7 +607,12 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                     val registrationQr = ServerPrintUtil.toQRCodeImage(registrationUrl)
                     val liveResultsUrl = s"$remoteBaseUrl/?" + new String(enc.encodeToString(s"last&c=$wkuuid".getBytes))
                     val liveResultsQr = ServerPrintUtil.toQRCodeImage(liveResultsUrl)
-                    OverviewLinks(registrationUrl, registrationQr, liveResultsUrl, liveResultsQr)
+                    val wettkampf = readWettkampf(wkuuid.toString)
+                    val adminJwt = JsonWebToken(jwtHeader, setClaims(wkuuid.toString, Int.MaxValue, isAdmin = true), jwtSecretKey)
+                    val adminPayload = s"admin&uuid=$wkuuid&secret=${java.net.URLEncoder.encode(adminJwt, "UTF-8")}&titel=${java.net.URLEncoder.encode(wettkampf.titel, "UTF-8")}&datum=${java.net.URLEncoder.encode(wettkampf.datum.toString, "UTF-8")}"
+                    val adminAccessUrl = s"$remoteBaseUrl/?" + new String(enc.encodeToString(adminPayload.getBytes("UTF-8")))
+                    val adminAccessQr = ServerPrintUtil.toQRCodeImage(adminAccessUrl)
+                    OverviewLinks(registrationUrl, registrationQr, liveResultsUrl, liveResultsQr, adminAccessUrl, adminAccessQr)
                   }
                 }
               } else {
