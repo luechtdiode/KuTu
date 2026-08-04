@@ -2118,7 +2118,9 @@ package object domain {
     registrationUrl: String,
     registrationQr: String,
     liveResultsUrl: String,
-    liveResultsQr: String
+    liveResultsQr: String,
+    adminAccessUrl: String,
+    adminAccessQr: String
   )
 
   class ValidationException(message: String) extends RuntimeException(message) {}

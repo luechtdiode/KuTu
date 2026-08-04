@@ -586,4 +586,6 @@ export interface OverviewLinks {
   registrationQr: string;
   liveResultsUrl: string;
   liveResultsQr: string;
+  adminAccessUrl: string;
+  adminAccessQr: string;
 }
