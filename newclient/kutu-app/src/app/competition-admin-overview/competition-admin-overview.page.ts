@@ -1,11 +1,13 @@
 import { Component, OnDestroy, inject, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { AlertController, ToastController, NavController } from '@ionic/angular';
+import { AlertController, ToastController, NavController, ModalController } from '@ionic/angular';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
 import { downloadBlob, formatDisplayDate } from '../utils';
 import { firstValueFrom } from 'rxjs';
 import { OverviewLinks } from '../backend-types';
+import { AdminAccessLinkModalComponent } from './admin-access-link-modal.component';
+import {StandardLinkModalComponent} from "./standard-link-modal.component";
 
 @Component({
   templateUrl: 'competition-admin-overview.page.html',
@@ -29,6 +31,7 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
   private nav = inject(NavController);
+  private modalCtrl = inject(ModalController);
 
   ngOnDestroy() {
     if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
@@ -96,16 +99,44 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
     }
   }
 
-  get registrationUrl(): string {
-    const base = window.location.origin;
-    const payload = btoa(`registration&c=${this.uuid}`);
-    return `${base}/?${payload}`;
+  async openRegistratinoLinkModal() {
+    if (!this.overviewLinks?.registrationUrl) return;
+    const modal = await this.modalCtrl.create({
+      component: StandardLinkModalComponent,
+      componentProps: {
+        title: 'Link zur Online Vereinsanmeldung',
+        description: 'Scanne den QR-Code mit einem anderen Gerät oder öffne den Link, um dort Online Vereinsanmeldung zu öffnen.',
+        link: this.overviewLinks.registrationUrl,
+        qrUrl: this.overviewLinks.registrationQr
+      }
+    });
+    await modal.present();
   }
 
-  get liveResultsUrl(): string {
-    const base = window.location.origin;
-    const payload = btoa(`last&c=${this.uuid}`);
-    return `${base}/?${payload}`;
+  async openLiveViewLinkModal() {
+    if (!this.overviewLinks?.liveResultsUrl) return;
+    const modal = await this.modalCtrl.create({
+      component: StandardLinkModalComponent,
+      componentProps: {
+        title: 'Link zu den Live-Ergebnissen',
+        description: 'Scanne den QR-Code mit einem anderen Gerät oder öffne den Link, um die Live-Ergebnisse zu sehen.',
+        link: this.overviewLinks.liveResultsUrl,
+        qrUrl: this.overviewLinks.liveResultsQr
+      }
+    });
+    await modal.present();
+  }
+
+  async openAdminAccess() {
+    if (!this.overviewLinks?.adminAccessUrl) return;
+    const modal = await this.modalCtrl.create({
+      component: AdminAccessLinkModalComponent,
+      componentProps: {
+        link: this.overviewLinks.adminAccessUrl,
+        qrUrl: this.overviewLinks.adminAccessQr
+      }
+    });
+    await modal.present();
   }
 
   openEdit() {
