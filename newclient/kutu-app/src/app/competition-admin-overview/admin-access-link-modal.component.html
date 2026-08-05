@@ -1,0 +1,22 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Admin-Zugang übertragen</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">Schliessen</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <div style="text-align:center">
+    <p>Scanne den QR-Code mit einem anderen Gerät oder öffne den Link, um dort die Admin-Zugriffe auf diesen Wettkampf zu erlauben.</p>
+    <p><strong>ACHTUNG</strong> Die Herausgabe dieser Berechtigung kann nicht rückgängig gemacht werden. Nur an autorisierte Personen übergeben!</p>
+    @if (qrUrl) {
+      <img [src]="qrUrl" style="max-width:300px" />
+    }
+    <p style="word-break:break-all; font-size:0.70em; margin-top:12px">{{ link }}</p>
+    <ion-button fill="outline" (click)="copyLink()">
+      <ion-icon name="copy-outline" slot="start"></ion-icon>
+      Link kopieren
+    </ion-button>
+  </div>
+</ion-content>

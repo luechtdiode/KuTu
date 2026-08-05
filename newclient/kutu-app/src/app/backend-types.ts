@@ -182,6 +182,54 @@ export interface JudgeRegistrationProgramItem {
   pExpression: string;
   pVariables: ScoreCalcVariable[];
  }
+
+ export interface ScoreCalcTemplate {
+  id: number;
+  wettkampfId: number | null;
+  disziplinId: number | null;
+  wettkampfdisziplinId: number | null;
+  dFormula: string;
+  eFormula: string;
+  pFormula: string;
+  aggregateFn: string | null;
+ }
+
+ export interface Disziplin {
+  id: number;
+  name: string;
+ }
+
+ export interface WettkampfdisziplinOption {
+  id: number;
+  easyprint: string;
+  disziplinId: number;
+  disziplinName: string;
+  isDNoteUsed: boolean;
+  dNoteLabel: string;
+  eNoteLabel: string;
+ }
+
+ export interface ScoreCalcOptions {
+  disziplinen: Disziplin[];
+  wettkampfdisziplinen: WettkampfdisziplinOption[];
+ }
+
+ export interface ScoreCalcPreviewRequest {
+  wettkampfdisziplinId: number;
+  template: ScoreCalcTemplate;
+  values: ScoreCalcVariable[];
+ }
+
+ export interface ScoreCalcPreviewResponse {
+  exercises: ScoreCalcVariable[][];
+  noteD: number | null;
+  noteE: number | null;
+  endnote: number | null;
+  dValidState: string;
+  eValidState: string;
+  pValidState: string;
+  valid: boolean;
+ }
 export interface Wertung {
   id: number;
   wettkampfId: number;
@@ -538,4 +586,6 @@ export interface OverviewLinks {
   registrationQr: string;
   liveResultsUrl: string;
   liveResultsQr: string;
+  adminAccessUrl: string;
+  adminAccessQr: string;
 }

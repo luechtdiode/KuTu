@@ -57,6 +57,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given scoreCalcTemplateFormat: RootJsonFormat[ScoreCalcTemplate] = jsonFormat(ScoreCalcTemplate.apply,
     "id", "wettkampfId", "disziplinId", "wettkampfdisziplinId", "dFormula", "eFormula", "pFormula", "aggregateFn")
   given scoreCalcTemplateViewFormat: RootJsonFormat[ScoreCalcTemplateView] = jsonFormat10(ScoreCalcTemplateView.apply)
+  given scoreCalcPreviewRequestFormat: RootJsonFormat[ScoreCalcPreviewRequest] = jsonFormat3(ScoreCalcPreviewRequest.apply)
+  given scoreCalcPreviewResponseFormat: RootJsonFormat[ScoreCalcPreviewResponse] = jsonFormat8(ScoreCalcPreviewResponse.apply)
   given mediaFormat: RootJsonFormat[Media] = jsonFormat3(Media.apply)
   given mediaAdminFormat: RootJsonFormat[MediaAdmin] = jsonFormat7(MediaAdmin.apply)
 
@@ -233,7 +235,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given playbookDurchgangFormat: RootJsonFormat[PlaybookDurchgang] = jsonFormat17(PlaybookDurchgang.apply)
   given playbookStateFormat: RootJsonFormat[PlaybookState] = jsonFormat4(PlaybookState.apply)
   given judgeLinkFormat: RootJsonFormat[JudgeLink] = jsonFormat2(JudgeLink.apply)
-  given overviewLinksFormat: RootJsonFormat[OverviewLinks] = jsonFormat4(OverviewLinks.apply)
+  given overviewLinksFormat: RootJsonFormat[OverviewLinks] = jsonFormat6(OverviewLinks.apply)
   given playbookStateUpdatedFormat: RootJsonFormat[PlaybookStateUpdated] = jsonFormat2(PlaybookStateUpdated.apply)
   given riegenEinteilungStateFormat: RootJsonFormat[RiegenEinteilungState] = jsonFormat3(RiegenEinteilungState.apply)
   given riegenEinteilungStateUpdatedFormat: RootJsonFormat[RiegenEinteilungStateUpdated] = jsonFormat2(RiegenEinteilungStateUpdated.apply)
