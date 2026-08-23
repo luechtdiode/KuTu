@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { BackendService } from '../services/backend.service';
 import { NavController } from '@ionic/angular';
 import { Subject, distinctUntilChanged, map, of, share, switchMap } from 'rxjs';
@@ -14,6 +14,7 @@ import { Wettkampf } from '../backend-types';
 export class CompetitionsPage implements OnInit {
   private navCtrl = inject(NavController);
   private backendService = inject(BackendService);
+  private cdr = inject(ChangeDetectorRef);
 
   pgmList;
 
@@ -34,11 +35,13 @@ export class CompetitionsPage implements OnInit {
         return map;
       }, {}
       )
+      this.cdr.markForCheck();
     });
 
     this.backendService.competitionSubject.subscribe(wks => {
       this.sFilteredWettkampfList = wks;
       this.sMyQuery = '';
+      this.cdr.markForCheck();
       const pipeBeforeAction = this.tMyQueryStream.pipe(
         map(event => event?.target?.value || ''),
         distinctUntilChanged(),
@@ -48,6 +51,7 @@ export class CompetitionsPage implements OnInit {
 
       pipeBeforeAction.subscribe(filteredList => {
         this.sFilteredWettkampfList = filteredList;
+        this.cdr.markForCheck();
       });
     });
 

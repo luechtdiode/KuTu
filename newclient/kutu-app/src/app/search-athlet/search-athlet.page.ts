@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { StartList, Wettkampf, Teilnehmer, ProgrammItem } from '../backend-types';
 import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -25,6 +25,7 @@ export class SearchAthletPage implements OnInit {
   private secretService = inject(SecretService);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
+  private cdr = inject(ChangeDetectorRef);
 
 
   sStartList: StartList;
@@ -91,7 +92,8 @@ export class SearchAthletPage implements OnInit {
         ).subscribe(filteredList => {
           this.sFilteredStartList = filteredList;
           this.busy.next(false);
-          this.syncPath(this.sMyQuery)
+          this.syncPath(this.sMyQuery);
+          this.cdr.detectChanges();
         });
         this.startlist = startlist;
       });
@@ -234,6 +236,7 @@ export class SearchAthletPage implements OnInit {
       next: startlist => {
         this.busy.next(false);
         this.startlist = startlist;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.busy.next(false);

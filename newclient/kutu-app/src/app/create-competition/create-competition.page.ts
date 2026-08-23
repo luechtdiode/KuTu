@@ -1,4 +1,4 @@
-import { Component, inject, NgZone, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ToastController, NavController, ModalController } from '@ionic/angular';
 import { AdminBackendService } from '../services/admin-backend.service';
@@ -111,7 +111,6 @@ export class CreateCompetitionPage {
   rotationPreset = 'Einfach';
   teamrulePreset = '';
 
-  private ngZone = inject(NgZone);
   private cdr = inject(ChangeDetectorRef);
   private backend = inject(AdminBackendService);
   private secretService = inject(SecretService);
@@ -255,12 +254,10 @@ export class CreateCompetitionPage {
       component: TermsModalComponent
     });
     modal.onDidDismiss().then(result => {
-      this.ngZone.run(() => {
-        if (result !== null && result !== undefined) {
-          this.form.termsAccepted = result.data;
-          this.cdr.detectChanges();
-        }
-      });
+      if (result !== null && result !== undefined) {
+        this.form.termsAccepted = result.data;
+        this.cdr.detectChanges();
+      }
     });
     await modal.present();
   }
@@ -274,12 +271,10 @@ export class CreateCompetitionPage {
       }
     });
     modal.onDidDismiss().then(result => {
-      this.ngZone.run(() => {
-        if (result.data !== null && result.data !== undefined) {
-          this.form[field] = result.data;
-          this.cdr.detectChanges();
-        }
-      });
+      if (result.data !== null && result.data !== undefined) {
+        this.form[field] = result.data;
+        this.cdr.detectChanges();
+      }
     });
     await modal.present();
   }
@@ -293,12 +288,10 @@ export class CreateCompetitionPage {
       }
     });
     modal.onDidDismiss().then(result => {
-      this.ngZone.run(() => {
-        if (result.data !== null && result.data !== undefined) {
-          this.form.punktegleichstandsregel = result.data;
-          this.cdr.detectChanges();
-        }
-      });
+      if (result.data !== null && result.data !== undefined) {
+        this.form.punktegleichstandsregel = result.data;
+        this.cdr.detectChanges();
+      }
     });
     await modal.present();
   }
@@ -311,12 +304,10 @@ export class CreateCompetitionPage {
       }
     });
     modal.onDidDismiss().then(result => {
-      this.ngZone.run(() => {
-        if (result.data !== null && result.data !== undefined) {
-          this.form.rotation = result.data;
-          this.cdr.detectChanges();
-        }
-      });
+      if (result.data !== null && result.data !== undefined) {
+        this.form.rotation = result.data;
+        this.cdr.detectChanges();
+      }
     });
     await modal.present();
   }
@@ -330,12 +321,10 @@ export class CreateCompetitionPage {
       }
     });
     modal.onDidDismiss().then(result => {
-      this.ngZone.run(() => {
-        if (result.data !== null && result.data !== undefined) {
-          this.form.teamrule = result.data;
-          this.cdr.detectChanges();
-        }
-      });
+      if (result.data !== null && result.data !== undefined) {
+        this.form.teamrule = result.data;
+        this.cdr.detectChanges();
+      }
     });
     await modal.present();
   }

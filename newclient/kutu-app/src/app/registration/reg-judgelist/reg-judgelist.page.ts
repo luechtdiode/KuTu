@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BehaviorSubject, Subject, of } from 'rxjs';
@@ -18,6 +18,7 @@ export class RegJudgelistPage  implements OnInit {
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
+  private cdr = inject(ChangeDetectorRef);
 
   busy = new BehaviorSubject(false);
 
@@ -82,6 +83,7 @@ export class RegJudgelistPage  implements OnInit {
         pipeBeforeAction.subscribe(filteredList => {
           this.sFilteredRegistrationList = filteredList;
           this.busy.next(false);
+          this.cdr.detectChanges();
         });
       });
     });
@@ -91,6 +93,7 @@ export class RegJudgelistPage  implements OnInit {
     if (!this.currentRegistration || competitionId !== this.backendService.competition) {
       this.backendService.loadJudgeProgramDisziplinList(this.competition).subscribe(pgms => {
         this.wkPgms = pgms;
+        this.cdr.detectChanges();
       });
     }
   }

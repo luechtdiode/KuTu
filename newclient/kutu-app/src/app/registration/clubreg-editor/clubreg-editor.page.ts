@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, NgZone, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ClubRegistration, NewClubRegistration, Verein } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -24,7 +24,7 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
   actionSheetController = inject(ActionSheetController);
-  private zone = inject(NgZone);
+  private cdr = inject(ChangeDetectorRef);
   private wsState = inject(WsStateService);
 
   /** Inserted by Angular inject() migration for backwards compatibility */
@@ -218,26 +218,25 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
   }
 
   updateUI(registration: ClubRegistration | NewClubRegistration) {
-    this.zone.run(() => {
-      this.waiting = false;
-      this.wettkampf = this.backendService.competitionName;
-      this.registration = registration;
-      if (!!registration) {
-        if (this.regId === 0) {
-          this.newRegistration = registration as NewClubRegistration;
-        } else {
-          this.changePassword = {
-            id: this.regId,
-            wettkampfId: registration.wettkampfId || this.wettkampfId,
-            secret: '',
-            verification: ''
-          } as RegistrationResetPW;
-        }
-        if (!!this.registration.mail && this.registration.mail.length > 1) {
-          this.backendService.currentUserName = this.registration.mail;
-        }
+    this.waiting = false;
+    this.wettkampf = this.backendService.competitionName;
+    this.registration = registration;
+    if (!!registration) {
+      if (this.regId === 0) {
+        this.newRegistration = registration as NewClubRegistration;
+      } else {
+        this.changePassword = {
+          id: this.regId,
+          wettkampfId: registration.wettkampfId || this.wettkampfId,
+          secret: '',
+          verification: ''
+        } as RegistrationResetPW;
       }
-    });
+      if (!!this.registration.mail && this.registration.mail.length > 1) {
+        this.backendService.currentUserName = this.registration.mail;
+      }
+    }
+    this.cdr.detectChanges();
   }
 
   savePWChange() {

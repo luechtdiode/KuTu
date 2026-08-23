@@ -1,4 +1,4 @@
-import { Component, NgZone, inject, viewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, inject, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables, AthletMediaIsAtStart, AthletMediaIsFree, AthletMediaIsPaused, AthletMediaIsRunning } from '../backend-types';
 import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
@@ -24,7 +24,7 @@ export class WertungEditorPage {
   toastController = inject(ToastController);
   backendService = inject(BackendService);
   platform = inject(Platform);
-  private zone = inject(NgZone);
+  private cdr = inject(ChangeDetectorRef);
 
   constructor() {
     const backendService = this.backendService;
@@ -35,16 +35,17 @@ export class WertungEditorPage {
     this.geraetId = backendService.geraet;
     // tslint:disable-next-line:radix
     const itemId = parseInt(this.route.snapshot.paramMap.get('itemId'));
-    this.updateUI(backendService.wertungen.find(w => w.id === itemId));
+    this.updateUI((backendService.wertungen || []).find(w => w.id === itemId));
     this.installLazyAction();
     this.backendService.durchgangStarted.pipe(
       map(dgl =>
       dgl.filter(dg =>
         encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.durchgang)
         && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
-    )).subscribe(dg => {
+    )    ).subscribe(dg => {
       this.durchgangopen = dg;
-      this.mediaButtonDisabled = !this.backendService.isWebsocketConnected() || !dg
+      this.mediaButtonDisabled = !this.backendService.isWebsocketConnected() || !dg;
+      this.cdr.markForCheck();
     });
   }
   private itemOriginal: WertungContainer;
@@ -178,19 +179,18 @@ export class WertungEditorPage {
         }
       }),
       tap(wertung => {
-        this.zone.run(() => {
-          if (this.wertung.variables) {
-            this.wertung.noteD = null;
-            this.wertung.noteE = null;
-          }
-          this.wertung.endnote = null;
-        })}),
+        if (this.wertung.variables) {
+          this.wertung.noteD = null;
+          this.wertung.noteE = null;
+        }
+        this.wertung.endnote = null;
+        this.cdr.markForCheck();
+      }),
       debounceTime(1500),
       share()
     ).subscribe(wertung => {
-      this.zone.run(() => {
-        this.calculateEndnote(wertung);
-      });
+      this.calculateEndnote(wertung);
+      this.cdr.markForCheck();
     });
   }
 
@@ -209,14 +209,13 @@ export class WertungEditorPage {
       this.wertung.endnote = null;
       this.backendService.validateWertung(toValidate).subscribe({
         next: (w) => {
-          this.zone.run(() => {
-            if (w.athletId === this.wertung.athletId && w.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId) {
-              this.lastValidatedWertung = toValidate;
-              this.wertung.noteD = w.noteD;
-              this.wertung.noteE = w.noteE;
-              this.wertung.endnote = w.endnote;
-            }
-          });
+          if (w.athletId === this.wertung.athletId && w.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId) {
+            this.lastValidatedWertung = toValidate;
+            this.wertung.noteD = w.noteD;
+            this.wertung.noteE = w.noteE;
+            this.wertung.endnote = w.endnote;
+          }
+          this.cdr.markForCheck();
         },
         error: (err) => {
           console.log(err);
@@ -246,24 +245,22 @@ export class WertungEditorPage {
       this.mediasubscription = undefined;
     }
     this.mediasubscription = this.backendService.mediaStateChanged.subscribe(ms => {
-      this.zone.run(() => {
-        this.mediaStateChanged(ms);
-      });
+      this.mediaStateChanged(ms);
+      this.cdr.markForCheck();
     });
     this.subscription = this.backendService.wertungUpdated.subscribe(wc => {
-      this.zone.run(() => {
-        if (wc.wertung.athletId === this.wertung.athletId
-          && wc.wertung.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId
-          && wc.wertung.endnote !== this.wertung.endnote) {
-          this.item.wertung = Object.assign({}, wc.wertung);
-          this.itemOriginal.wertung = Object.assign({}, wc.wertung);
-          this.wertung = Object.assign({
-            noteD: 0.00,
-            noteE: 0.00,
-            endnote: 0.00
-          }, this.item.wertung);
-        }
-      });
+      if (wc.wertung.athletId === this.wertung.athletId
+        && wc.wertung.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId
+        && wc.wertung.endnote !== this.wertung.endnote) {
+        this.item.wertung = Object.assign({}, wc.wertung);
+        this.itemOriginal.wertung = Object.assign({}, wc.wertung);
+        this.wertung = Object.assign({
+          noteD: 0.00,
+          noteE: 0.00,
+          endnote: 0.00
+        }, this.item.wertung);
+      }
+      this.cdr.markForCheck();
     });
     if (this.editable()) {
       this.backendService.ensureWebsocketConnection();
@@ -304,28 +301,27 @@ export class WertungEditorPage {
 
   updateUI(wc: WertungContainer) {
 
-    this.zone.run(() => {
-      this.mediaStateChanged(this.backendService.mediaStateChanged.value);
-      this.waiting = false;
-      this.item = Object.assign({}, wc);
-      this.isDNoteUsed = this.item.isDNoteUsed;
-      this.itemOriginal = Object.assign({}, wc);
-      this.wertung = Object.assign({
-        noteD: 0.00,
-        noteE: 0.00,
-        endnote: 0.00
-      }, this.itemOriginal.wertung);
+    this.mediaStateChanged(this.backendService.mediaStateChanged.value);
+    this.waiting = false;
+    this.item = Object.assign({}, wc);
+    this.isDNoteUsed = this.item.isDNoteUsed;
+    this.itemOriginal = Object.assign({}, wc);
+    this.wertung = Object.assign({
+      noteD: 0.00,
+      noteE: 0.00,
+      endnote: 0.00
+    }, this.itemOriginal.wertung);
 
-      const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === wc.wertung.id);
-      let nextItemIndex = currentItemIndex + 1;
-      if (currentItemIndex < 0 || currentItemIndex >= this.backendService.wertungen.length - 1) {
-        this.nextItem = undefined;
-      } else {
-        this.nextItem = this.backendService.wertungen[nextItemIndex];
-      }
+    const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === wc.wertung.id);
+    let nextItemIndex = currentItemIndex + 1;
+    if (currentItemIndex < 0 || currentItemIndex >= this.backendService.wertungen.length - 1) {
+      this.nextItem = undefined;
+    } else {
+      this.nextItem = this.backendService.wertungen[nextItemIndex];
+    }
 
-      this.ionViewWillEnter();
-    });
+    this.ionViewWillEnter();
+    this.cdr.markForCheck();
   }
 
   ensureInitialValues(wertung: Wertung): Wertung {

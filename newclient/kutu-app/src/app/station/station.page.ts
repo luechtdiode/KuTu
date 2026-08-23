@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectionStrategy, NgZone, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { Wettkampf, Geraet, WertungContainer } from '../backend-types';
@@ -13,15 +13,18 @@ import { gearMapping, encodeURIComponent2 } from '../utils';
     changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
-export class StationPage implements OnInit  {
+export class StationPage {
   navCtrl = inject(NavController);
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
-  private zone = inject(NgZone);
 
+  /** signal views for zoneless template bindings */
+  readonly competitionsList = this.backendService.competitionsList;
+  readonly durchgaengeList = this.backendService.durchgaengeList;
+  readonly geraeteList = this.backendService.geraeteList;
+  readonly stepsList = this.backendService.stepsList;
 
-  durchgangopen = false;
-  geraete: Geraet[] = [];
+  durchgangopen = signal(false);
 
   /** Inserted by Angular inject() migration for backwards compatibility */
   constructor(...args: unknown[]);
@@ -33,31 +36,24 @@ export class StationPage implements OnInit  {
         encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.backendService.durchgang)
         && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
     )).subscribe(dg => {
-      this.durchgangopen = dg;
+      this.durchgangopen.set(dg);
     });
   }
 
   ionViewWillEnter() {
-    if (this.geraete.length > 0 && !this.backendService.captionmode) {
+    if (this.geraeteList().length > 0 && !this.backendService.captionmode) {
       this.backendService.activateCaptionMode();
     }
   }
-  ngOnInit(): void {
-    this.backendService.geraeteSubject.subscribe(geraete => {
-      if (this.backendService.captionmode) {
-        this.geraete = geraete;
-      }
-    });
-  }
 
   durchgangstate() {
-    const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen ? 'gestartet' : 'gesperrt') : 'offline';
+    const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen() ? 'gestartet' : 'gesperrt') : 'offline';
     return connected;
   }
   get durchgangstateClass() {
     const classes = {
-      open: this.backendService.isWebsocketConnected() && this.durchgangopen,
-      closed: this.backendService.isWebsocketConnected() && !this.durchgangopen,
+      open: this.backendService.isWebsocketConnected() && this.durchgangopen(),
+      closed: this.backendService.isWebsocketConnected() && !this.durchgangopen(),
       offline: !this.backendService.isWebsocketConnected()
     };
     return classes;
@@ -174,20 +170,18 @@ export class StationPage implements OnInit  {
         {text: 'Abbrechen', role: 'cancel', handler: () => {}},
         {text: 'OKAY', handler: () => {
           const navTransition = alert.then(a => a.dismiss());
-          this.zone.run(() => {
-            this.backendService.finishStation(this.competition, this.durchgang, this.geraet, this.step)
-            .subscribe(nextSteps => {
-              if (nextSteps.length === 0) {
-                navTransition.then(() => {
-                  this.navCtrl.pop();
-                });
-              }
-            });
+          this.backendService.finishStation(this.competition, this.durchgang, this.geraet, this.step)
+          .subscribe(nextSteps => {
+            if (nextSteps.length === 0) {
+              navTransition.then(() => {
+                this.navCtrl.pop();
+              });
+            }
           });
           return false;
         }
-      },
-    ]
+        }
+      ]
     });
     alert.then(a => a.present());
   }
@@ -239,11 +233,11 @@ export class StationPage implements OnInit  {
   }
 
   getCompetitions(): Wettkampf[] {
-    return this.backendService.competitions;
+    return this.competitionsList();
   }
   competitionName() {
-    if (!this.backendService.competitions) { return ''; }
-    const candidate = this.backendService.competitions
+    if (!this.competitionsList()) { return ''; }
+    const candidate = this.competitionsList()
       .filter(c => c.uuid === this.backendService.competition)
       .map(c => c.titel + '<br>' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
 
@@ -255,8 +249,7 @@ export class StationPage implements OnInit  {
   }
 
   geraetName(): string {
-    if (!this.geraete || this.geraete.length === 0) { return ''; }
-    const candidate = this.geraete
+    const candidate = this.geraeteList()
       .filter(c => c.id === this.backendService.geraet)
       .map(c => c.name);
 
@@ -267,22 +260,15 @@ export class StationPage implements OnInit  {
     }
   }
   getDurchgaenge(): string[] {
-    return this.backendService.durchgaenge;
+    return this.durchgaengeList();
   }
 
   getGeraete(): Geraet[] {
-    return this.geraete || [];
+    return this.geraeteList();
   }
 
   getSteps(): number[] {
-    // if (! this.backendService.steps && this.backendService.geraet) {
-    //   this.backendService.getSteps(this.competition, this.durchgang, this.geraet);
-    //   /*.subscribe(steps => {
-    //     this.backendService.getWertungen(this.competition, this.durchgang, this.geraet, 1);
-    //   })
-    //   */
-    // }
-    return this.backendService.steps;
+    return this.stepsList();
   }
 
   getWertungen(): Observable<WertungContainer[]> {

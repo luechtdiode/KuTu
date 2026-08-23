@@ -88,6 +88,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
     this.backend.getCompetitionDetails(this.uuid, this.secret).subscribe(details => {
       this.wettkampfTitle = details.titel;
       this.wettkampfDatum = details.datum.substring(0, 10);
+      this.cdr.detectChanges();
     });
     this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
       next: blob => {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Wettkampf, ClubRegistration, SyncAction } from '../backend-types';
 import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -21,6 +21,7 @@ export class RegistrationPage implements OnInit, OnDestroy {
   toastController = inject(ToastController);
   private alertCtrl = inject(AlertController);
   private wsState = inject(WsStateService);
+  private cdr = inject(ChangeDetectorRef);
   private wsAcquired = false;
   private wsSubscriptions: Subscription[] = [];
 
@@ -109,6 +110,7 @@ export class RegistrationPage implements OnInit, OnDestroy {
         pipeBeforeAction.subscribe(filteredList => {
           this.sFilteredRegistrationList = filteredList;
           this.busy.next(false);
+          this.cdr.detectChanges();
         });
       });
     }
@@ -137,6 +139,7 @@ export class RegistrationPage implements OnInit, OnDestroy {
       take(1)
     ).subscribe(sa => {
       this.sSyncActions = sa;
+      this.cdr.detectChanges();
     });
   }
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf } from '../backend-types';
 import { BackendService } from '../services/backend.service';
 import { filter } from 'rxjs/operators';
@@ -13,6 +13,10 @@ import { GroupBy } from '../component/result-display/result-display.component';
 })
 export class LastTopResultsPage implements OnInit {
   backendService = inject(BackendService);
+  private cdr = inject(ChangeDetectorRef);
+
+  /** signal views for zoneless template bindings */
+  readonly competitionsList = this.backendService.competitionsList;
 
   groupBy = GroupBy; 
   items: WertungContainer[] = [];
@@ -24,6 +28,7 @@ export class LastTopResultsPage implements OnInit {
       this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
         this.geraete = geraete || [];
         this.sortItems();
+        this.cdr.detectChanges();
       });
       this.backendService.newLastResults.pipe(
         filter(r => !!r && !!r.lastTopResults)
@@ -44,6 +49,7 @@ export class LastTopResultsPage implements OnInit {
           this.items.push(top);
         });
         this.sortItems();
+        this.cdr.detectChanges();
       });
     });
   }
@@ -80,6 +86,7 @@ export class LastTopResultsPage implements OnInit {
       this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
         this.geraete = geraete || [];
         this.sortItems();
+        this.cdr.detectChanges();
       });
     }
   }
@@ -87,11 +94,11 @@ export class LastTopResultsPage implements OnInit {
     return this.backendService.competition || '';
   }
   getCompetitions(): Wettkampf[] {
-    return this.backendService.competitions || [];
+    return this.competitionsList() || [];
   }
   competitionName(): string {
-    if (!this.backendService.competitions) { return ''; }
-    const candidate = this.backendService.competitions
+    if (!this.competitionsList()) { return ''; }
+    const candidate = this.competitionsList()
       .filter(c => c.uuid === this.backendService.competition)
       .map(c => c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
 

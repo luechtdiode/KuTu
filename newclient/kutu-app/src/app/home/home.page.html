@@ -25,24 +25,24 @@
       </ion-item>
       <ion-item-sliding #slidingStepItem>
         <ion-item (click)='itemTapped(slidingStepItem)'>
-          <ion-label>{{(geraet && getSteps()) ? "Riege (" + getSteps()[0] + " bis " + getSteps()[getSteps().length-1] + ")" : "Keine Daten"}}</ion-label>
-          @if ((geraet && getSteps() && getSteps().length > 0)) {
+          <ion-label>{{(geraet && stepsList()) ? "Riege (" + stepsList()[0] + " bis " + stepsList()[stepsList().length-1] + ")" : "Keine Daten"}}</ion-label>
+          @if ((geraet && stepsList() && stepsList().length > 0)) {
             <ion-note slot="end">
               {{"Riege " + step}}
             </ion-note>
           }
-          @if ((geraet && getSteps())) {
+          @if ((geraet && stepsList())) {
             <ion-icon slot="end" name="arrow-forward-circle-outline" />
           }
         </ion-item>
         <ion-item-options side="start">
-          <ion-item-option color="secondary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+          <ion-item-option color="secondary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !stepsList()">
             <ion-icon name="arrow-back-circle-outline" />
             Vorherige Riege
           </ion-item-option>
         </ion-item-options>
         <ion-item-options side="end">
-          <ion-item-option color="secondary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+          <ion-item-option color="secondary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !stepsList()">
             <ion-icon name="arrow-forward-circle-outline" />
             Nächste Riege
           </ion-item-option>
@@ -53,9 +53,9 @@
   @if (!isLocked) {
     <ion-list>
       <ion-item>
-        @if (getCompetitions()) {
+        @if (competitionsList()) {
           <ion-select label="Wettkampf" placeholder='Bitte auswählen' [(ngModel)]='competition' okText='Okay' cancelText='Abbrechen'>
-            @for (comp of getCompetitions(); track comp) {
+            @for (comp of competitionsList(); track comp) {
               <ion-select-option [value]='comp.uuid'>
               {{comp.titel + ' ' + (comp.datum | date:'dd-MM-yy')}}</ion-select-option>
             }
@@ -63,20 +63,20 @@
         }
       </ion-item>
       <ion-item>
-        @if (competition && getDurchgaenge() && getDurchgaenge().length > 0) {
+        @if (competition && durchgaengeList() && durchgaengeList().length > 0) {
           <ion-select label='Durchgang' placeholder='Bitte auswählen' [(ngModel)]='durchgang'
             okText='Okay' cancelText='Abbrechen'>
-            @for (d of getDurchgaenge(); track d) {
+            @for (d of durchgaengeList(); track d) {
               <ion-select-option [value]='d'>{{d}}</ion-select-option>
             }
           </ion-select>
         }
       </ion-item>
       <ion-item>
-        @if (durchgang && getGeraete() && getGeraete().length > 0) {
+        @if (durchgang && geraeteList() && geraeteList().length > 0) {
           <ion-select label='Gerät' placeholder='Bitte auswählen' [(ngModel)]='geraet' okText='Okay'
             cancelText='Abbrechen'>
-            @for (g of getGeraete(); track g) {
+            @for (g of geraeteList(); track g) {
               <ion-select-option [value]='g.id'>{{g.name}}</ion-select-option>
             }
           </ion-select>
@@ -84,30 +84,30 @@
       </ion-item>
       <ion-item-sliding #slidingStepItem>
         <!-- <ion-item>
-        <ion-range *ngIf="geraet && getSteps()" [(ngModel)]="step" pin="true" [min]="1" [max]="getSteps().length"
+        <ion-range *ngIf="geraet && stepsList()" [(ngModel)]="step" pin="true" [min]="1" [max]="stepsList().length"
           [step]="1" [snaps]="true" color="secondary">
           <ion-label slot="start" class="small-text">Riege 1</ion-label>
-          <ion-label slot="end" class="small-text">{{getSteps().length}}</ion-label>
+          <ion-label slot="end" class="small-text">{{stepsList().length}}</ion-label>
         </ion-range>Riege {{step}}
       </ion-item> -->
       <ion-item (click)='itemTapped(slidingStepItem)'>
-        <ion-label>{{(geraet && getSteps()) ? "Riege (" + getSteps()[0] + " bis " + getSteps()[getSteps().length-1] + ")" : "Keine Daten"}}</ion-label>
-        @if ((geraet && getSteps() && getSteps().length > 0)) {
+        <ion-label>{{(geraet && stepsList()) ? "Riege (" + stepsList()[0] + " bis " + stepsList()[stepsList().length-1] + ")" : "Keine Daten"}}</ion-label>
+        @if ((geraet && stepsList() && stepsList().length > 0)) {
           <ion-note slot="end">
             {{"Riege " + step}}
           </ion-note>
         }
-        @if ((geraet && getSteps())) {
+        @if ((geraet && stepsList())) {
           <ion-icon slot="end" name="arrow-forward-circle-outline" />
         }
       </ion-item>
       <ion-item-options side="start">
-        <ion-item-option color="secondary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+        <ion-item-option color="secondary" (click)="prevStep(slidingStepItem)" [disabled]="!geraet || !stepsList()">
           Vorherige Riege
         </ion-item-option>
       </ion-item-options>
       <ion-item-options side="end">
-        <ion-item-option color="secondary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !getSteps()">
+        <ion-item-option color="secondary" (click)="nextStep(slidingStepItem)" [disabled]="!geraet || !stepsList()">
           Nächste Riege
         </ion-item-option>
       </ion-item-options>
@@ -117,14 +117,14 @@
 <ion-list>
   @if (!isLoggedIn) {
     <ion-button size="large" expand="block" color="primary" (click)="navToStation()"
-      [disabled]="!(geraet && getSteps())">
+      [disabled]="!(geraet && stepsList())">
       <ion-icon slot="start" name="list" />
       Resultate
     </ion-button>
   }
   @if (isLoggedIn) {
     <ion-button size="large" expand="block" color="primary" (click)="navToStation()"
-      [disabled]="!(geraet && getSteps())">
+      [disabled]="!(geraet && stepsList())">
       <ion-icon slot="start" name="create" />
       Resultate
     </ion-button>
@@ -144,7 +144,7 @@
     @if (isLoggedIn) {
       <ion-list>
         <!-- <ion-button *ngIf="isLoggedIn && isOpenAndActive" size="large" expand="block" color="success" (click)="finish()"
-        [disabled]="!(geraet && getSteps())">
+        [disabled]="!(geraet && stepsList())">
         <ion-icon slot="start" name="git-commit"></ion-icon>Eingaben abschliessen
       </ion-button> -->
       <ion-button size="large" expand="block" color="danger" (click)="logout()">

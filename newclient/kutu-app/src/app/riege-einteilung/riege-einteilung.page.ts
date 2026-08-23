@@ -84,6 +84,7 @@ export class RiegeEinteilungPage implements OnDestroy {
       this.wettkampfTitle = details.titel;
       this.wettkampfDatum = details.datum.substring(0, 10);
       this.secretService.updateStoredSecretTitelDatum(this.uuid, details.titel, details.datum);
+      this.cdr.detectChanges();
     });
     await this.loadData();
     this.initWebSocket();

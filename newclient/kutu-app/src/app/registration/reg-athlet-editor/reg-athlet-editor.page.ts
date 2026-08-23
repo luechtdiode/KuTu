@@ -1,4 +1,4 @@
-import { Component, OnInit, NgZone, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { NavController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -18,7 +18,7 @@ export class RegAthletEditorPage implements OnInit {
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
-  private zone = inject(NgZone);
+  private cdr = inject(ChangeDetectorRef);
 
   /** Inserted by Angular inject() migration for backwards compatibility */
   constructor(...args: unknown[]);
@@ -154,17 +154,16 @@ export class RegAthletEditorPage implements OnInit {
   }
 
   updateUI(registration: AthletRegistration) {
-    this.zone.run(() => {
-      this.waiting = false;
-      this.wettkampf = this.backendService.competitionName;
-      this.wettkampfFull = this.backendService.currentCompetition();
-      this.registration = Object.assign({}, registration);
-      this.registration.gebdat = toDateString(this.registration.gebdat);
-      if (!this.registration.team) {
-        this.registration.team = 0;
-        this.registration.reserve = 0;
-      }
-    });
+    this.waiting = false;
+    this.wettkampf = this.backendService.competitionName;
+    this.wettkampfFull = this.backendService.currentCompetition();
+    this.registration = Object.assign({}, registration);
+    this.registration.gebdat = toDateString(this.registration.gebdat);
+    if (!this.registration.team) {
+      this.registration.team = 0;
+      this.registration.reserve = 0;
+    }
+    this.cdr.detectChanges();
   }
 
   isFormValid(): boolean {
