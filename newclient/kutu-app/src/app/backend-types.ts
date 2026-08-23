@@ -433,6 +433,7 @@ export interface AthletWertungUpdated {
   wettkampfUUID: string;
   durchgang: string;
   geraet: number;
+  programm?: string;
   type: string;
   sequenceId: number;
 }
