@@ -930,8 +930,9 @@ export class BackendService {
       request.subscribe({
         next: (data) => {
           this.geraete = data;
+          this.wsState.registerGeraetLabels(data);
           this.geraeteSubject.next(this.geraete);
-        }, 
+        },
         error: this.standardErrorHandler
       });
       return request;
