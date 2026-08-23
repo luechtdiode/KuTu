@@ -1,4 +1,4 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { Wettkampf, Geraet } from '../../app/backend-types';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -18,8 +18,14 @@ export class HomePage implements OnInit {
   private alertCtrl = inject(AlertController);
 
 
-  durchgangstate: string;
-  durchgangopen = false;
+  durchgangstate = signal<string>(undefined);
+  durchgangopen = signal(false);
+
+  /** signal views for zoneless template bindings */
+  readonly competitionsList = this.backendService.competitionsList;
+  readonly durchgaengeList = this.backendService.durchgaengeList;
+  readonly geraeteList = this.backendService.geraeteList;
+  readonly stepsList = this.backendService.stepsList;
 
   /** Inserted by Angular inject() migration for backwards compatibility */
   constructor(...args: unknown[]);
@@ -30,8 +36,8 @@ export class HomePage implements OnInit {
       dgl.filter(dg => encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.backendService.durchgang)
                        && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
     )).subscribe(dg => {
-      this.durchgangstate = dg ? 'gestartet' : 'gesperrt';
-      this.durchgangopen = dg;
+      this.durchgangstate.set(dg ? 'gestartet' : 'gesperrt');
+      this.durchgangopen.set(dg);
     });
   }
 
@@ -45,7 +51,7 @@ export class HomePage implements OnInit {
     return this.backendService.stationFreezed;
   }
   get isOpenAndActive() {
-    return this.durchgangopen && this.backendService.isWebsocketConnected();
+    return this.durchgangopen() && this.backendService.isWebsocketConnected();
   }
   get isLoggedIn() {
     return this.backendService.loggedIn;
@@ -106,7 +112,7 @@ export class HomePage implements OnInit {
   }
 
   getCompetitions(): Wettkampf[] {
-    return this.backendService.competitions;
+    return this.competitionsList();
   }
   competitionName(): string {
     if (!this.backendService.competitions) { return ''; }
@@ -122,8 +128,7 @@ export class HomePage implements OnInit {
   }
 
   geraetName(): string {
-    if (!this.backendService.geraete) { return ''; }
-    const candidate = this.backendService.geraete
+    const candidate = this.geraeteList()
       .filter(c => c.id === this.backendService.geraet)
       .map(c => c.name);
 
@@ -134,18 +139,18 @@ export class HomePage implements OnInit {
     }
   }
   getDurchgaenge(): string[] {
-    return this.backendService.durchgaenge;
+    return this.durchgaengeList();
   }
 
   getGeraete(): Geraet[] {
-    return this.backendService.geraete;
+    return this.geraeteList();
   }
 
   getSteps(): number[] {
-    if (! this.backendService.steps && this.backendService.geraet) {
+    if (!this.backendService.steps && this.backendService.geraet) {
       this.backendService.getSteps(this.competition, this.durchgang, this.geraet);
     }
-    return this.backendService.steps;
+    return this.stepsList();
   }
 
   navToStation() {

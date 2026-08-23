@@ -1,4 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Subject, Subscription, interval } from 'rxjs';
 import { takeWhile } from 'rxjs/operators';
 import {
@@ -286,6 +287,13 @@ export class WsStateService {
 
   mediaStateChanged = new BehaviorSubject<AthletMediaIsAtStart | AthletMediaIsRunning | AthletMediaIsPaused | AthletMediaIsFree>({context: '', type: 'AthletMediaIsFree'} as AthletMediaIsFree);
   mediaPlayerAvailable = new BehaviorSubject<boolean>(false);
+
+  //// signal views of the state subjects - safe to read in zoneless templates
+
+  readonly durchgangStartedList = toSignal(this.durchgangStarted, {initialValue: [] as DurchgangStarted[]});
+  readonly lastResults = toSignal(this.newLastResults, {initialValue: undefined as NewLastResults | undefined});
+  readonly mediaState = toSignal(this.mediaStateChanged, {initialValue: {context: '', type: 'AthletMediaIsFree'} as AthletMediaIsAtStart | AthletMediaIsRunning | AthletMediaIsPaused | AthletMediaIsFree});
+  readonly playerAvailable = toSignal(this.mediaPlayerAvailable, {initialValue: false});
 
   /** global message bus for MessageAcks (websocket + http error handling) */
   showMessage = new Subject<MessageAck>();

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf, Wertung } from '../backend-types';
 import { NavController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -19,6 +19,10 @@ export class AthletViewPage  implements OnInit {
   navCtrl = inject(NavController);
   private readonly route = inject(ActivatedRoute);
   backendService = inject(BackendService);
+  private cdr = inject(ChangeDetectorRef);
+
+  /** signal views for zoneless template bindings */
+  readonly competitionsList = this.backendService.competitionsList;
 
   groupBy = GroupBy;
 
@@ -52,10 +56,12 @@ export class AthletViewPage  implements OnInit {
     ).subscribe(athletWertungen => {
       this.items = athletWertungen;
       this.sortItems(this.athletId);
+      this.cdr.markForCheck();
     });
     this.backendService.geraeteSubject.subscribe(geraete => {
       if (!this.backendService.captionmode) {
         this.geraete = geraete;
+        this.cdr.markForCheck();
       }
     });
     const changeHandler = (wcs: {string: WertungContainer}) => {
@@ -68,6 +74,7 @@ export class AthletViewPage  implements OnInit {
           return item;
         }
       });
+      this.cdr.markForCheck();
     };
     this.backendService.newLastResults.pipe(
       filter(r => !!r),
@@ -118,7 +125,7 @@ export class AthletViewPage  implements OnInit {
     return this.backendService.competition || '';
   }
   getCompetitions(): Wettkampf[] {
-    return this.backendService.competitions || [];
+    return this.competitionsList() || [];
   }
 
   competitionContainer(): Wettkampf {
@@ -133,8 +140,8 @@ export class AthletViewPage  implements OnInit {
       programmId: 0
     };
 
-    if (!this.backendService.competitions) { return emptyCandidate; }
-    const candidate = this.backendService.competitions
+    if (!this.competitionsList()) { return emptyCandidate; }
+    const candidate = this.competitionsList()
       .filter(c => c.uuid === this.backendService.competition);
 
     if (candidate.length === 1) {
