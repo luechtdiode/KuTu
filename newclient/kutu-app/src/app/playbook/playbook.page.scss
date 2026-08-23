@@ -3,6 +3,28 @@
   overflow-x: auto;
 }
 
+.ws-log-card {
+  ion-card-title {
+    font-size: 15px;
+  }
+
+  ion-segment {
+    margin-bottom: 8px;
+  }
+}
+
+.ws-log {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.ws-log-empty {
+  opacity: 0.6;
+}
+
 .stepper {
   display: flex;
   align-items: center;

@@ -35,6 +35,10 @@ export function channelKeyId(key: WsChannelKey): string {
 
 const RECONNECT_INTERVAL = 30000; // pause between connections
 const RECONNECT_ATTEMPTS = 480;   // number of connection attempts
+const EVENT_BUFFER_SIZE = 50;     // routed server events kept per channel
+
+/** high-frequency state syncs - routed to subjects, but kept out of the event log */
+const UNLOGGED_EVENTS = new Set(['RegistrationSyncUpdated', 'RiegenEinteilungStateUpdated', 'PlaybookStateUpdated', 'NewLastResults']);
 
 /**
  * Manages a single websocket connection including reconnection and keep-alive watchdog.
@@ -238,6 +242,7 @@ interface ChannelEntry {
   focusDurchgang?: string;
   connection?: WsConnection;
   lastMessages: string[];
+  lastEvents: string[];
 }
 
 /**
@@ -284,7 +289,14 @@ export class WsStateService {
   /** global message bus for MessageAcks (websocket + http error handling) */
   showMessage = new Subject<MessageAck>();
 
+  /** per-line connection log (dial/close/reconnect/unknown messages), tagged by channel */
+  connectionLog = new Subject<{keyId: string; message: string}>();
+
+  /** routed server events (one line per event, BulkEvents per child), tagged by channel */
+  eventLog = new Subject<{keyId: string; message: string}>();
+
   private channels = new Map<string, ChannelEntry>();
+  private geraetLabels = new Map<number, string>();
   private _activeDurchgangList: DurchgangStarted[] = [];
 
   get activeDurchgangList(): DurchgangStarted[] {
@@ -339,6 +351,24 @@ export class WsStateService {
     return this.channels.get(channelKeyId(key))?.connection?.isConnected() || false;
   }
 
+  /** current connection log of the channel, chronological (oldest first) */
+  getChannelLog(key: WsChannelKey): string[] {
+    return [...(this.channels.get(channelKeyId(key))?.lastMessages || [])];
+  }
+
+  /** current event log of the channel, chronological (oldest first) */
+  getEventLog(key: WsChannelKey): string[] {
+    return [...(this.channels.get(channelKeyId(key))?.lastEvents || [])];
+  }
+
+  /**
+   * Registers geraet labels (id -> name) used to render human readable
+   * summaries of wertung events. BackendService pushes its loaded geraete here.
+   */
+  registerGeraetLabels(geraete: {id: number; name: string}[]) {
+    geraete.forEach(g => this.geraetLabels.set(g.id, g.name));
+  }
+
   /**
    * Sets the durchgang focus for a competition channel (caption mode).
    * A change triggers a redial so the server sends only events of that durchgang.
@@ -370,7 +400,8 @@ export class WsStateService {
       entry = {
         key,
         refs: 0,
-        lastMessages: []
+        lastMessages: [],
+        lastEvents: []
       };
       this.channels.set(id, entry);
     }
@@ -389,8 +420,10 @@ export class WsStateService {
   }
 
   private pushLog(entry: ChannelEntry, msg: string) {
-    entry.lastMessages.push(formatCurrentMoment(true) + ` - ${msg}`);
+    const line = formatCurrentMoment(true) + ` - ${msg}`;
+    entry.lastMessages.push(line);
     entry.lastMessages = entry.lastMessages.slice(Math.max(entry.lastMessages.length - 50, 0));
+    this.connectionLog.next({keyId: channelKeyId(entry.key), message: line});
   }
 
   private buildWebsocketUrl(entry: ChannelEntry): string {
@@ -426,8 +459,69 @@ export class WsStateService {
     return host + apiPath + '?' + params.join('&');
   }
 
+  private harvestGeraetLabels(message: any) {
+    switch (message?.type) {
+      case 'PlaybookStateUpdated': {
+        const stations = (message.playbookState?.durchgaenge || []).reduce(
+          (acc, dg) => acc.concat(dg.stations || []), [] as any[]);
+        this.registerGeraetLabels(stations
+          .filter(s => s.disziplinId > 0 && s.disziplinName)
+          .map(s => ({id: s.disziplinId, name: s.disziplinName})));
+        return;
+      }
+      case 'RiegenEinteilungStateUpdated': {
+        this.registerGeraetLabels((message.state?.disziplinen || [])
+          .filter(d => d.id > 0 && d.name));
+        return;
+      }
+      default:
+        return;
+    }
+  }
+
+  private recordEvent(entry: ChannelEntry, message: any) {
+    const line = formatCurrentMoment(true) + ' - ' + this.summarizeEvent(message);
+    entry.lastEvents.push(line);
+    entry.lastEvents = entry.lastEvents.slice(Math.max(entry.lastEvents.length - EVENT_BUFFER_SIZE, 0));
+    this.eventLog.next({keyId: channelKeyId(entry.key), message: line});
+  }
+
+  private summarizeEvent(message: any): string {
+    const type = message?.type;
+    switch (type) {
+      case 'AthletWertungUpdatedSequenced':
+      case 'AthletWertungUpdated': {
+        const ev = message as AthletWertungUpdated;
+        const name = [ev.athlet?.vorname, ev.athlet?.name].filter(Boolean).join(' ')
+          || '#' + ev.wertung?.athletId
+          || '?';
+        const gear = (ev.geraet != null && this.geraetLabels.get(ev.geraet)) || (ev.geraet != null ? 'Gerät #' + ev.geraet : '?');
+        const prog = ev.programm ? ` · ${ev.programm}` : '';
+        const note = ev.wertung?.endnote ?? '-';
+        return `${type} · ${name} · ${gear}${prog} · ${note}`;
+      }
+      case 'DurchgangStarted':
+      case 'DurchgangFinished':
+      case 'DurchgangResetted':
+        return `${type} · ${message.durchgang}`;
+      case 'MessageAck':
+        return `MessageAck · ${(message as MessageAck).msg}`;
+      default:
+        if (typeof type === 'string' && type.startsWith('AthletMediaIs')) {
+          return `${type} · ${message.context || ''}`;
+        }
+        let json = '';
+        try { json = JSON.stringify(message) || ''; } catch {}
+        return json.length > 120 ? json.substring(0, 120) + '…' : json;
+    }
+  }
+
   private routeMessage(message: any, entry: ChannelEntry): void {
     const type = message.type;
+    if (type !== 'BulkEvent' && !UNLOGGED_EVENTS.has(type)) {
+      this.recordEvent(entry, message);
+    }
+    this.harvestGeraetLabels(message);
     switch (type) {
       case 'BulkEvent':
         (message as BulkEvent).events.forEach(e => this.routeMessage(e, entry));
@@ -440,6 +534,7 @@ export class WsStateService {
 
       case 'DurchgangStarted': {
         const started = message as DurchgangStarted;
+        // TODO: check effective change to notify only on change
         this._activeDurchgangList = [...this._activeDurchgangList, started]
           .filter((value, index, self) => self.findIndex(ds => ds.durchgang === value.durchgang) === index);
         this.durchgangStarted.next(this._activeDurchgangList);
@@ -449,6 +544,7 @@ export class WsStateService {
 
       case 'DurchgangFinished': {
         const finished = message as DurchgangFinished;
+        // TODO: check effective change to notify only on change
         this._activeDurchgangList = this._activeDurchgangList
           .filter(d => d.durchgang !== finished.durchgang || d.wettkampfUUID !== finished.wettkampfUUID);
         this.durchgangStarted.next(this._activeDurchgangList);
@@ -458,6 +554,7 @@ export class WsStateService {
 
       case 'DurchgangResetted': {
         const resetted = message as DurchgangResetted;
+        // TODO: check effective change to notify only on change
         this._activeDurchgangList = this._activeDurchgangList
           .filter(d => d.durchgang !== resetted.durchgang || d.wettkampfUUID !== resetted.wettkampfUUID);
         this.durchgangStarted.next(this._activeDurchgangList);
@@ -499,10 +596,12 @@ export class WsStateService {
         return;
 
       case 'DurchgangStepFinished':
+        // TODO: check effective change to notify only on change
         this.stepFinished.next();
         return;
 
       case 'DurchgangStationFinished':
+        // TODO: check effective change to notify only on change
         this.stationFinished.next();
         return;
 

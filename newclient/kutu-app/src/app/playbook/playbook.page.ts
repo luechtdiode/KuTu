@@ -59,6 +59,11 @@ export class PlaybookPage implements OnInit, OnDestroy {
   private autoFinishedHalts = new Set<string>();
   markedHalts = new Set<string>();
 
+  wsLog: string[] = [];
+  wsEvents: string[] = [];
+  logExpanded = false;
+  activeLogTab: 'events' | 'connection' = 'events';
+
   private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
@@ -615,7 +620,36 @@ export class PlaybookPage implements OnInit, OnDestroy {
       })
     );
 
+    this.wsLog = this.wsState.getChannelLog({kind: 'competition', competitionId: this.uuid}).reverse();
+    this.wsEvents = this.wsState.getEventLog({kind: 'competition', competitionId: this.uuid}).reverse();
+    this.subscriptions.push(
+      this.wsState.connectionLog.subscribe(e => {
+        if (e.keyId !== 'competition:' + this.uuid) {
+          return;
+        }
+        this.wsLog = [e.message, ...this.wsLog].slice(0, 50);
+        this.cdr.detectChanges();
+      })
+    );
+    this.subscriptions.push(
+      this.wsState.eventLog.subscribe(e => {
+        if (e.keyId !== 'competition:' + this.uuid) {
+          return;
+        }
+        this.wsEvents = [e.message, ...this.wsEvents].slice(0, 50);
+        this.cdr.detectChanges();
+      })
+    );
+
     this.wsState.acquire({kind: 'competition', competitionId: this.uuid});
+  }
+
+  toggleWsLog() {
+    this.logExpanded = !this.logExpanded;
+  }
+
+  segmentChanged(ev: CustomEvent) {
+    this.activeLogTab = ev.detail.value as 'events' | 'connection';
   }
 
   async showJudgeLink() {
