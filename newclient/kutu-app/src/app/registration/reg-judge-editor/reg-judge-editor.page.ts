@@ -1,4 +1,4 @@
-import { Component, NgZone, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NavController, AlertController } from '@ionic/angular';
 import { JudgeRegistration, ProgrammRaw } from 'src/app/backend-types';
@@ -18,7 +18,7 @@ export class RegJudgeEditorPage  implements OnInit {
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
-  private zone = inject(NgZone);
+  private cdr = inject(ChangeDetectorRef);
 
   /** Inserted by Angular inject() migration for backwards compatibility */
   constructor(...args: unknown[]);
@@ -77,11 +77,10 @@ export class RegJudgeEditorPage  implements OnInit {
   }
 
   updateUI(registration: JudgeRegistration) {
-    this.zone.run(() => {
-      this.waiting = false;
-      this.wettkampf = this.backendService.competitionName;
-      this.registration = registration;
-    });
+    this.waiting = false;
+    this.wettkampf = this.backendService.competitionName;
+    this.registration = registration;
+    this.cdr.detectChanges();
   }
 
   save(form: NgForm) {

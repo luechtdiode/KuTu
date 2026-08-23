@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient, HttpHeaders, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { LoadingController } from '@ionic/angular';
 import { of, Subscription, BehaviorSubject, Subject, Observable } from 'rxjs';
@@ -192,10 +193,12 @@ export class BackendService {
     competitions: Wettkampf[];
     competitionSubject = new BehaviorSubject<Wettkampf[]>([]);
     durchgaenge: string[];
+    durchgaengeSubject = new BehaviorSubject<string[]>([]);
 
     geraete: Geraet[];
     geraeteSubject = new BehaviorSubject<Geraet[]>([]);
     steps: number[];
+    stepsSubject = new BehaviorSubject<number[]>([]);
     wertungen: WertungContainer[];
     wertungenSubject = new BehaviorSubject<WertungContainer[]>([]);
     _clubregistrations = [];
@@ -214,6 +217,15 @@ export class BackendService {
 
     wertungenLoading = false;
     isInitializing = false;
+
+    //// signal views of the list subjects - safe to read in zoneless templates
+
+    readonly competitionsList = toSignal(this.competitionSubject, {initialValue: [] as Wettkampf[]});
+    readonly durchgaengeList = toSignal(this.durchgaengeSubject, {initialValue: [] as string[]});
+    readonly geraeteList = toSignal(this.geraeteSubject, {initialValue: [] as Geraet[]});
+    readonly stepsList = toSignal(this.stepsSubject, {initialValue: [] as number[]});
+    readonly wertungenList = toSignal(this.wertungenSubject, {initialValue: [] as WertungContainer[]});
+    readonly clubRegistrationsList = toSignal(this.clubRegistrations, {initialValue: [] as ClubRegistration[]});
 
     getCurrentStation(): string {
       return localStorage.getItem('current_station')
@@ -788,11 +800,14 @@ export class BackendService {
         return this.loadClubRegistrations();
       }
       this.durchgaenge = [];
+      this.durchgaengeSubject.next([]);
       this.clubTeams = {};
       this._clubregistrations = [];
       this.geraete = undefined;
       this.steps = undefined;
+      this.stepsSubject.next([]);
       this.wertungen = undefined;
+      this.wertungenSubject.next([]);
 
       this._competition = competitionId;
       this._durchgang = undefined;
@@ -837,12 +852,14 @@ export class BackendService {
     resetCompetition(competitionId) {
       console.log('reset data');
       this.durchgaenge = [];
+      this.durchgaengeSubject.next([]);
       this.clubTeams = {};
       this._clubregistrations = [];
       this.clubRegistrations.next([]);
       this.geraete = undefined;
       this.geraeteSubject.next([]);
       this.steps = undefined;
+      this.stepsSubject.next([]);
       this.wertungen = undefined;
       this.wertungenSubject.next([]);
 
@@ -875,6 +892,7 @@ export class BackendService {
         next: (data) => {
           localStorage.setItem('current_competition', this._competition);
           this.durchgaenge = data;
+          this.durchgaengeSubject.next(data);
           if (actualDg) {
             // const actualDgParts = actualDg.split('_');
             const candidates = this.durchgaenge.filter(dg => {
@@ -901,7 +919,9 @@ export class BackendService {
       }
       this.geraete = [];
       this.steps = undefined;
+      this.stepsSubject.next([]);
       this.wertungen = undefined;
+      this.wertungenSubject.next([]);
 
       this._competition = competitionId;
       this._durchgang = durchgang;
@@ -944,7 +964,9 @@ export class BackendService {
           return of(this.steps || []);
       }
       this.steps = [];
+      this.stepsSubject.next([]);
       this.wertungen = undefined;
+      this.wertungenSubject.next([]);
 
       this._competition = competitionId;
       this._durchgang = durchgang;
@@ -955,6 +977,7 @@ export class BackendService {
       stepsloader.subscribe({
         next: (data) => {
           this.steps = data.map(step => parseInt(step));
+          this.stepsSubject.next(this.steps);
           if (this._step === undefined || this.steps.indexOf(this._step) < 0) {
             this._step = this.steps[0];
             this.loadWertungen();
@@ -968,6 +991,7 @@ export class BackendService {
 
     loadSteps() {
       this.steps = [];
+      this.stepsSubject.next([]);
       if (!!!this._competition || this._competition === 'undefined' ||
           !!!this._durchgang || this._durchgang === 'undefined' ||
           this._geraet === undefined) {
@@ -980,6 +1004,7 @@ export class BackendService {
       request.subscribe({
         next: (data) => {
           this.steps = data;
+          this.stepsSubject.next(this.steps);
           if (this._step < data[0]) {
             this._step = data[0];
             this.loadWertungen();

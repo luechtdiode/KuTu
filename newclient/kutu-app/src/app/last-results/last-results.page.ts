@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnDestroy, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { ActionSheetController, IonItemSliding, NavController } from '@ionic/angular';
 import { Geraet, NewLastResults, ScoreBlock, ScoreLink, ScoreRow, Wertung, WertungContainer, Wettkampf } from '../backend-types';
 
@@ -23,6 +23,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   actionSheetController = inject(ActionSheetController);
+  private cdr = inject(ChangeDetectorRef);
 
   groupBy = GroupBy;
 
@@ -61,6 +62,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
       map(dgl => dgl.filter(dg => dg.wettkampfUUID === this.backendService.competition).length > 0
     )).subscribe(dg => {
       this.durchgangopen = dg;
+      this.cdr.markForCheck();
       //console.log('durchgang new assigned: ' + dg);
     });
   }
@@ -254,6 +256,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
       );
       this.backendService.getGeraete(this.backendService.competition, undefined).subscribe(geraete => {
         this.geraete = geraete ?? [];
+        this.cdr.markForCheck();
       });
       this.backendService.resyncWebsocket();
       this._durchgang = undefined;
@@ -268,6 +271,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
       );
       this.backendService.getGeraete(this.backendService.competition, durchgang).subscribe(geraete => {
         this.geraete = geraete ?? [];
+        this.cdr.markForCheck();
       });;
       this.backendService.resyncWebsocket();
       this._durchgang = durchgang;
@@ -393,6 +397,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
     } else {
       this.title = 'Aktuelle Resultate';
     }
+    this.cdr.markForCheck();
   }
 
   scorelistAvailable(): boolean {
@@ -440,6 +445,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
         const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
         this.refreshScoreList(publishedLists[0]);
       }
+      this.cdr.markForCheck();
     });
   }
 
@@ -473,6 +479,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
         this.scoreblocks = scoreblocks;
         this.sFilteredScoreList = scoreblocks;
         this.cleanScoreListSubscriptions();
+        this.cdr.markForCheck();
         const pipeBeforeAction = this.tMyQueryStream.pipe(
           filter(event => !!event && !!event.target && !!event.target.value),
           map(event => event.target.value),
@@ -489,6 +496,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
           //console.log('filteredList retrieved', filteredList);
           this.sFilteredScoreList = filteredList;
           this.busy.next(false);
+          this.cdr.markForCheck();
         }));
       }));
   }

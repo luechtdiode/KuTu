@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -20,6 +20,7 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
   private wsState = inject(WsStateService);
+  private cdr = inject(ChangeDetectorRef);
   private wsAcquired = false;
   private wsSubscriptions: Subscription[] = [];
 
@@ -86,6 +87,7 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
       take(1)
     ).subscribe(sa => {
       this.sSyncActions = sa;
+      this.cdr.detectChanges();
     });
   }
 
@@ -112,6 +114,7 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
       this.currentRegistration = regs.find(reg => reg.id === this.currentRegId);
       this.backendService.loadTeamsListForClub(this.competition, this.currentRegId).subscribe(teams => {
         this.teams = teams;
+        this.cdr.detectChanges();
       });
       console.log('ask athletes-list for registration');
       this.backendService.loadAthletRegistrations(this.competition, this.currentRegId).subscribe(athletRegs => {
@@ -130,6 +133,7 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
         pipeBeforeAction.subscribe(filteredList => {
           this.sFilteredRegistrationList = filteredList;
           this.busy.next(false);
+          this.cdr.detectChanges();
         });
       });
     });
@@ -139,6 +143,7 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
     if (!this.currentRegistration || competitionId !== this.backendService.competition) {
       this.backendService.loadProgramsForCompetition(this.competition).subscribe(pgms => {
         this.wkPgms = pgms;
+        this.cdr.detectChanges();
       });
     }
   }
