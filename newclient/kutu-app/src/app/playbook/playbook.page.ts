@@ -106,6 +106,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
     if (this.playbook) {
       this.loadPlaybook();
     }
+    this.wsState.setDurchgangFocus(this.uuid, undefined);
   }
 
   ngOnDestroy() {
@@ -612,12 +613,14 @@ export class PlaybookPage implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.wsState.durchgangStartedEvent.subscribe((event) => {
         this.clearMarkedHaltsForDurchgang(event.durchgang);
+        this.cdr.detectChanges();
       })
     );
 
     this.subscriptions.push(
       this.wsState.durchgangResetted.subscribe((event) => {
         this.clearMarkedHaltsForDurchgang(event.durchgang);
+        this.cdr.detectChanges();
       })
     );
 

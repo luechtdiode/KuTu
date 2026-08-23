@@ -64,7 +64,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   private val donationActiv = donationDonationBegin.isBefore(wettkampfdatum) && Config.donationLink.nonEmpty && Config.donationPrice.nonEmpty
 
   private var wsSend: Map[Option[String], List[ActorRef]] = Map.empty
-  private var deviceWebsocketRefs: Map[String, ActorRef] = Map.empty
+  private var deviceWebsocketRefs: Map[ActorRef, String] = Map.empty
   private var adminClients: Set[ActorRef] = Set.empty
   private var registrationSyncClients: Set[ActorRef] = Set.empty
   private var pendingKeepAliveAck: Option[Int] = None
@@ -228,10 +228,10 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     }
   }
 
-  private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.filter(_._2 == actor).keys
+  private def deviceIdOf(actor: ActorRef) = deviceWebsocketRefs.get(actor)
 
   private def actorWithSameDeviceIdOfSender(originSender: ActorRef = sender()): Iterable[ActorRef] =
-    deviceWebsocketRefs.filter(p => originSender.path.name.endsWith(p._1)).values
+    deviceWebsocketRefs.filter(p => originSender.path.name.endsWith(p._2)).keys
 
   // send keepalive messages to prevent closing the websocket connection
   private case object KeepAlive
@@ -379,7 +379,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case awu: ScoresPublished => websocketProcessor(Some(sender()), awu)
 
     case playerEvent: UseMyMediaPlayer =>
-      val ws: Option[ActorRef] = deviceWebsocketRefs.find(p => p._1.endsWith(playerEvent.context)).map(_._2)
+      val ws: Option[ActorRef] = deviceWebsocketRefs.find(p => p._2.endsWith(playerEvent.context)).map(_._1)
       currentPlayer.foreach(p => {
         sendMediaEjectedEvent()
         notifyWebSocketClients(None, MediaPlayerDisconnected(p._2.context), "")
@@ -440,14 +440,14 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       if isRegistrationSync then
         registrationSyncClients = registrationSyncClients + ref
         context.watch(ref)
-        deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
+        deviceWebsocketRefs = deviceWebsocketRefs + (ref -> deviceId)
         ref ! TextMessage("Connection established." + s"$deviceId@".split("@")(1))
       else
         val durchgangNormalized = durchgang.map(encodeURIComponent)
         val durchgangClients = wsSend.getOrElse(durchgangNormalized, List.empty) :+ ref
         context.watch(ref)
         wsSend = wsSend + (durchgangNormalized -> durchgangClients)
-        deviceWebsocketRefs = deviceWebsocketRefs + (deviceId -> ref)
+        deviceWebsocketRefs = deviceWebsocketRefs + (ref -> deviceId)
         if isAdmin then adminClients = adminClients + ref
         competitionWebsocketConnectionsActive
           .labelValues(wettkampf.easyprint, durchgangNormalized.getOrElse("all"))
@@ -495,9 +495,9 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     case Stop => handleStop()
 
     case StopDevice(deviceId) =>
-      log.debug(s"stopped device $deviceId")
-      deviceWebsocketRefs.get(deviceId).foreach { stoppedWebsocket =>
-        cleanupWebsocketRefs(stoppedWebsocket)
+      log.debug(s"stopped actor of device $deviceId")
+      deviceWebsocketRefs.filter(p => p._2 == deviceId).filter(p => p._1 == sender()).foreach { stoppedWebsocket =>
+        cleanupWebsocketRefs(stoppedWebsocket._1)
       }
       context.system.scheduler.scheduleOnce(30.second, self, TryStop)
 
@@ -509,7 +509,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
 
     case Terminated(stoppedWebsocket) =>
       context.unwatch(stoppedWebsocket)
-      val deviceId = deviceWebsocketRefs.filter(x => x._2 == stoppedWebsocket).keys.headOption
+      val deviceId = deviceWebsocketRefs.get(stoppedWebsocket)
       log.debug(s"terminated device $deviceId")
       cleanupWebsocketRefs(stoppedWebsocket)
 
@@ -604,7 +604,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   private def cleanupWebsocketRefs(stoppedWebsocket: ActorRef): Unit = {
-    deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._2 != stoppedWebsocket)
+    deviceWebsocketRefs = deviceWebsocketRefs.filter(x => x._1 != stoppedWebsocket)
     adminClients = adminClients.filter(_ != stoppedWebsocket)
     registrationSyncClients = registrationSyncClients.filter(_ != stoppedWebsocket)
     val durchgaenge = wsSend
@@ -614,7 +614,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     wsSend = wsSend.map { x =>
       (x._1, x._2
         .filter(_ != stoppedWebsocket)
-        .filter(socket => deviceWebsocketRefs.exists(_._2 == socket)))
+        .filter(socket => deviceWebsocketRefs.contains(socket)))
     }.filter(x => x._2.nonEmpty)
 
     durchgaenge.foreach(dg => {

@@ -1,4 +1,4 @@
-import { Injectable, NgZone, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Subject, Subscription, interval } from 'rxjs';
 import { takeWhile } from 'rxjs/operators';
@@ -262,7 +262,6 @@ interface ChannelEntry {
 })
 export class WsStateService {
   private secretService = inject(SecretService);
-  private zone = inject(NgZone);
 
   //// unified state exposed to the app
 
@@ -432,8 +431,7 @@ export class WsStateService {
     const line = formatCurrentMoment(true) + ` - ${msg}`;
     entry.lastMessages.push(line);
     entry.lastMessages = entry.lastMessages.slice(Math.max(entry.lastMessages.length - 50, 0));
-    // websocket callbacks may run outside the Angular zone - make subscribers render
-    this.zone.run(() => this.connectionLog.next({keyId: channelKeyId(entry.key), message: line}));
+    this.connectionLog.next({keyId: channelKeyId(entry.key), message: line});
   }
 
   private buildWebsocketUrl(entry: ChannelEntry): string {
@@ -493,8 +491,7 @@ export class WsStateService {
     const line = formatCurrentMoment(true) + ' - ' + this.summarizeEvent(message);
     entry.lastEvents.push(line);
     entry.lastEvents = entry.lastEvents.slice(Math.max(entry.lastEvents.length - EVENT_BUFFER_SIZE, 0));
-    // websocket callbacks may run outside the Angular zone - make subscribers render
-    this.zone.run(() => this.eventLog.next({keyId: channelKeyId(entry.key), message: line}));
+    this.eventLog.next({keyId: channelKeyId(entry.key), message: line});
   }
 
   private summarizeEvent(message: any): string {
