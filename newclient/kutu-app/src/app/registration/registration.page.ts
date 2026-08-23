@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@
 import { Wettkampf, ClubRegistration, SyncAction } from '../backend-types';
 import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
-import { RegistrationWebsocketService } from '../services/registration-ws.service';
+import { WsStateService } from '../services/ws-state.service';
 import { BehaviorSubject, Subject, of, Observable, Subscription } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, share, take, tap } from 'rxjs/operators';
@@ -20,7 +20,8 @@ export class RegistrationPage implements OnInit, OnDestroy {
   backendService = inject(BackendService);
   toastController = inject(ToastController);
   private alertCtrl = inject(AlertController);
-  private ws: RegistrationWebsocketService | null = null;
+  private wsState = inject(WsStateService);
+  private wsAcquired = false;
   private wsSubscriptions: Subscription[] = [];
 
 
@@ -62,19 +63,22 @@ export class RegistrationPage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.wsSubscriptions.forEach(s => s.unsubscribe());
-    this.ws?.disconnectWS?.();
-    this.ws = null;
+    if (this.wsAcquired) {
+      this.wsState.release({kind: 'registration', wettkampfUUID: this.backendService.competition || ''});
+      this.wsAcquired = false;
+    }
   }
 
   private initWebSocket() {
-    if (this.ws) return;
-    this.ws = new RegistrationWebsocketService(this.backendService.competition || '');
+    const wkId = this.backendService.competition;
+    if (this.wsAcquired || !wkId) return;
+    this.wsAcquired = true;
     this.wsSubscriptions.push(
-      this.ws.registrationSyncUpdated.subscribe(() => {
+      this.wsState.registrationSyncUpdated.subscribe(() => {
         this.getSyncActions();
       })
     );
-    this.ws.initWebsocket();
+    this.wsState.acquire({kind: 'registration', wettkampfUUID: wkId});
   }
 
   get stationFreezed(): boolean {

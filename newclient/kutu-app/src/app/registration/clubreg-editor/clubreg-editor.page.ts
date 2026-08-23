@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, NgZone, inject, ChangeDetectionStrategy }
 import { ClubRegistration, NewClubRegistration, Verein } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
-import { RegistrationWebsocketService } from 'src/app/services/registration-ws.service';
+import { WsStateService } from 'src/app/services/ws-state.service';
 import { NavController, AlertController, ActionSheetController } from '@ionic/angular';
 import { take } from 'rxjs/operators';
 import { toDateString } from 'src/app/utils';
@@ -25,6 +25,7 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
   private alertCtrl = inject(AlertController);
   actionSheetController = inject(ActionSheetController);
   private zone = inject(NgZone);
+  private wsState = inject(WsStateService);
 
   /** Inserted by Angular inject() migration for backwards compatibility */
   constructor(...args: unknown[]);
@@ -62,7 +63,7 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
   regId: number;
   wkId: string;
   wettkampfId: number;
-  private ws: RegistrationWebsocketService | null = null;
+  private wsAcquired = false;
   private wsSubscriptions: Subscription[] = [];
 
   ngOnInit() {
@@ -187,19 +188,21 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.wsSubscriptions.forEach(s => s.unsubscribe());
-    this.ws?.disconnectWS?.();
-    this.ws = null;
+    if (this.wsAcquired) {
+      this.wsState.release({kind: 'registration', wettkampfUUID: this.wkId});
+      this.wsAcquired = false;
+    }
   }
 
   private initWebSocket() {
-    if (this.ws) return;
-    this.ws = new RegistrationWebsocketService(this.wkId);
+    if (this.wsAcquired || !this.wkId) return;
+    this.wsAcquired = true;
     this.wsSubscriptions.push(
-      this.ws.registrationSyncUpdated.subscribe(() => {
+      this.wsState.registrationSyncUpdated.subscribe(() => {
         this.getSyncActions();
       })
     );
-    this.ws.initWebsocket();
+    this.wsState.acquire({kind: 'registration', wettkampfUUID: this.wkId});
   }
 
   getSyncActions() {

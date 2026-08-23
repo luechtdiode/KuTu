@@ -255,8 +255,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
       this.backendService.getGeraete(this.backendService.competition, undefined).subscribe(geraete => {
         this.geraete = geraete ?? [];
       });
-      this.backendService.disconnectWS(true);
-      this.backendService.initWebsocket();
+      this.backendService.resyncWebsocket();
       this._durchgang = undefined;
     } else {
       //console.log("navigate to durchgang defined: " + durchgang);
@@ -270,8 +269,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
       this.backendService.getGeraete(this.backendService.competition, durchgang).subscribe(geraete => {
         this.geraete = geraete ?? [];
       });;
-      this.backendService.disconnectWS(true);
-      this.backendService.initWebsocket();
+      this.backendService.resyncWebsocket();
       this._durchgang = durchgang;
     }
   }
