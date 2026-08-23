@@ -2,7 +2,7 @@ import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
-import { AdminWebsocketService } from '../services/admin-websocket.service';
+import { WsStateService } from '../services/ws-state.service';
 import { ClubRegistration, AthletRegistration, ProgrammRaw, SyncAction, JudgeRegistration, RegistrationSyncUpdated, TeamItem } from '../backend-types';
 import { firstValueFrom, Subscription } from 'rxjs';
 
@@ -28,7 +28,8 @@ export class AdminClubDetailPage implements OnDestroy {
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
-  private ws: AdminWebsocketService | null = null;
+  private wsState = inject(WsStateService);
+  private wsAcquired = false;
   private wsSubscriptions: Subscription[] = [];
 
   async ionViewWillEnter() {
@@ -44,19 +45,21 @@ export class AdminClubDetailPage implements OnDestroy {
 
   ngOnDestroy() {
     this.wsSubscriptions.forEach(s => s.unsubscribe());
-    this.ws?.disconnectWS?.();
-    this.ws = null;
+    if (this.wsAcquired) {
+      this.wsState.release({kind: 'competition', competitionId: this.uuid});
+      this.wsAcquired = false;
+    }
   }
 
   private initWebSocket() {
-    if (this.ws) return;
-    this.ws = new AdminWebsocketService(this.uuid, this.secret);
+    if (this.wsAcquired) return;
+    this.wsAcquired = true;
     this.wsSubscriptions.push(
-      this.ws.registrationSyncUpdated.subscribe(() => {
+      this.wsState.registrationSyncUpdated.subscribe(() => {
         this.loadData();
       })
     );
-    this.ws.initWebsocket();
+    this.wsState.acquire({kind: 'competition', competitionId: this.uuid});
   }
 
   async loadData() {

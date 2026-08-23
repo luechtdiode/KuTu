@@ -1,11 +1,10 @@
 import { Component, OnInit, ChangeDetectionStrategy, NgZone, inject } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
-import { encodeURIComponent2 } from '../services/websocket.service';
 import { Wettkampf, Geraet, WertungContainer } from '../backend-types';
 import { map, tap } from 'rxjs/operators';
 import { Observable } from 'rxjs';
-import { gearMapping } from '../utils';
+import { gearMapping, encodeURIComponent2 } from '../utils';
 
 @Component({
     selector: 'app-station',

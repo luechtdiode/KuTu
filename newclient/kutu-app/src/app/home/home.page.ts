@@ -2,7 +2,7 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit, inject, ChangeDetectionStrat
 import { Wettkampf, Geraet } from '../../app/backend-types';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
-import { encodeURIComponent2 } from '../services/websocket.service';
+import { encodeURIComponent2 } from '../utils';
 import { map } from 'rxjs/operators';
 
 

@@ -422,6 +422,11 @@ export interface DurchgangFinished {
   durchgang: string;
   type: string;
 }
+export interface DurchgangResetted {
+  wettkampfUUID: string;
+  durchgang: string;
+  type: string;
+}
 export interface AthletWertungUpdated {
   athlet: any;
   wertung: Wertung;

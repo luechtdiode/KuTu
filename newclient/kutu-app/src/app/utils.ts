@@ -82,6 +82,14 @@ export function clientID() {
   return localStorage.getItem('current_username') + ':' + clientid;
 }
 
+export function encodeURIComponent1(uri: string): string {
+  return !!uri ? uri.replace(/[,&.*+?/^${}()|[\]\\]/g, '_') : '';
+}
+
+export function encodeURIComponent2(uri: string): string {
+  return !!uri ? encodeURIComponent(encodeURIComponent1(uri)) : '';
+}
+
 export const gearMapping = {
   1: "boden.svg",
   2: "pferdpauschen.svg",

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
-import { RegistrationWebsocketService } from 'src/app/services/registration-ws.service';
+import { WsStateService } from 'src/app/services/ws-state.service';
 import { BehaviorSubject, Subject, of, Subscription } from 'rxjs';
 import { filter, map, debounceTime, distinctUntilChanged, share, switchMap, take, tap } from 'rxjs/operators';
 import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncAction, TeamItem } from '../../backend-types';
@@ -19,7 +19,8 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
-  private ws: RegistrationWebsocketService | null = null;
+  private wsState = inject(WsStateService);
+  private wsAcquired = false;
   private wsSubscriptions: Subscription[] = [];
 
   busy = new BehaviorSubject(false);
@@ -63,19 +64,21 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.wsSubscriptions.forEach(s => s.unsubscribe());
-    this.ws?.disconnectWS?.();
-    this.ws = null;
+    if (this.wsAcquired) {
+      this.wsState.release({kind: 'registration', wettkampfUUID: this.competition});
+      this.wsAcquired = false;
+    }
   }
 
   private initWebSocket() {
-    if (this.ws) return;
-    this.ws = new RegistrationWebsocketService(this.competition);
+    if (this.wsAcquired || !this.competition) return;
+    this.wsAcquired = true;
     this.wsSubscriptions.push(
-      this.ws.registrationSyncUpdated.subscribe(() => {
+      this.wsState.registrationSyncUpdated.subscribe(() => {
         this.getSyncActions();
       })
     );
-    this.ws.initWebsocket();
+    this.wsState.acquire({kind: 'registration', wettkampfUUID: this.competition});
   }
 
   getSyncActions() {
