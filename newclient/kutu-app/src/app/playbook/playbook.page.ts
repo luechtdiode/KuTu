@@ -5,7 +5,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
 import { BackendService } from '../services/backend.service';
-import { AdminWebsocketService, DurchgangResetted } from '../services/admin-websocket.service';
+import { WsStateService } from '../services/ws-state.service';
 import { PlaybookState, PlaybookDurchgang, PlaybookStation, PlaybookStep, Geraet, JudgeLink, PublishedScoreView, AdminScoreRequest } from '../backend-types';
 import { JudgeLinkModalComponent } from './judge-link-modal.component';
 import { Subscription, firstValueFrom } from 'rxjs';
@@ -54,7 +54,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
   loading = false;
   expandedGroups = new Set<string>();
 
-  private ws: AdminWebsocketService | null = null;
+  private wsAcquired = false;
   private subscriptions: Subscription[] = [];
   private autoFinishedHalts = new Set<string>();
   markedHalts = new Set<string>();
@@ -64,6 +64,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
   private bs = inject(BackendService);
+  private wsState = inject(WsStateService);
   private toastCtrl = inject(ToastController);
   private navCtrl = inject(NavController);
   private modalCtrl = inject(ModalController);
@@ -102,7 +103,10 @@ export class PlaybookPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    this.ws?.disconnectWS(true);
+    if (this.wsAcquired) {
+      this.wsState.release({kind: 'competition', competitionId: this.uuid});
+      this.wsAcquired = false;
+    }
     this.subscriptions.forEach(s => s.unsubscribe());
     if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
   }
@@ -587,10 +591,11 @@ export class PlaybookPage implements OnInit, OnDestroy {
   }
 
   private initWebSocket() {
-    this.ws = new AdminWebsocketService(this.uuid, this.secret);
+    if (this.wsAcquired) return;
+    this.wsAcquired = true;
 
     this.subscriptions.push(
-      this.ws.playbookStateUpdated.subscribe((event) => {
+      this.wsState.playbookStateUpdated.subscribe((event) => {
         this.playbook = event.playbookState;
         this.buildTable(event.playbookState);
         this.loading = false;
@@ -599,18 +604,18 @@ export class PlaybookPage implements OnInit, OnDestroy {
     );
 
     this.subscriptions.push(
-      this.ws.durchgangStartedEvent.subscribe((event) => {
+      this.wsState.durchgangStartedEvent.subscribe((event) => {
         this.clearMarkedHaltsForDurchgang(event.durchgang);
       })
     );
 
     this.subscriptions.push(
-      this.ws.durchgangResetted.subscribe((event) => {
+      this.wsState.durchgangResetted.subscribe((event) => {
         this.clearMarkedHaltsForDurchgang(event.durchgang);
       })
     );
 
-    this.ws.initWebsocket();
+    this.wsState.acquire({kind: 'competition', competitionId: this.uuid});
   }
 
   async showJudgeLink() {

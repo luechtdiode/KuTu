@@ -1,23 +1,19 @@
 import { Injectable, inject } from '@angular/core';
-import { WebsocketService, encodeURIComponent2, encodeURIComponent1 } from './websocket.service';
 import { HttpClient, HttpHeaders, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { LoadingController } from '@ionic/angular';
 import { of, Subscription, BehaviorSubject, Subject, Observable } from 'rxjs';
 import { share, map, switchMap} from 'rxjs/operators';
 import { DurchgangStarted, Wettkampf, Geraet, WertungContainer, NewLastResults, StartList,
          MessageAck, AthletWertungUpdated, Wertung, FinishDurchgangStation,
-         DurchgangFinished,
          ClubRegistration,
          NewClubRegistration,
          AthletRegistration,
          ProgrammRaw,
          RegistrationResetPW,
-         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, BulkEvent, Verein, Score, ScoreLink, TeamItem, TeamList,
-         AthletMediaIsFree,
-         AthletMediaIsRunning,
-         AthletMediaIsAtStart,
-         AthletMediaIsPaused} from '../backend-types';
-import { backendUrl, utf8_to_b64 } from '../utils';
+         SyncAction, JudgeRegistration, JudgeRegistrationProgramItem, Verein, Score, ScoreLink, TeamItem, TeamList
+        } from '../backend-types';
+import { backendUrl, utf8_to_b64, encodeURIComponent1, encodeURIComponent2 } from '../utils';
+import { WsStateService, CompetitionChannel, channelKeyId } from './ws-state.service';
 
 // tslint:disable:radix
 // tslint:disable:variable-name
@@ -25,9 +21,10 @@ import { backendUrl, utf8_to_b64 } from '../utils';
 @Injectable({
   providedIn: 'root'
 })
-export class BackendService extends WebsocketService {
+export class BackendService {
     http = inject(HttpClient);
     loadingCtrl = inject(LoadingController);
+    wsState = inject(WsStateService);
 
     get competition(): string {
       return this._competition;
@@ -54,15 +51,111 @@ export class BackendService extends WebsocketService {
     constructor(...args: unknown[]);
 
     constructor() {
-      super();
-      this.showMessage.subscribe(msg => {
+      this.wsState.showMessage.subscribe(msg => {
         this.resetLoading();
         this.lastMessageAck = msg;
       });
+      this.wsState.wertungUpdated.subscribe(updated => {
+        if (this.wertungen) {
+          this.wertungen = this.wertungen.map(w => {
+            if (w.id === updated.wertung.athletId && w.wertung.wettkampfdisziplinId === updated.wertung.wettkampfdisziplinId ) {
+              return Object.assign({}, w, {wertung: updated.wertung });
+            } else {
+              return w;
+            }
+          });
+          this.wertungenSubject.next(this.wertungen);
+        }
+      });
+      this.wsState.athletAssignmentChanged.subscribe(() => {
+        this.loadWertungen();
+      });
       this.resetLoading();
     }
+
+    //// Websocket state - delegated to WsStateService
+
+    get showMessage(): Subject<MessageAck> {
+      return this.wsState.showMessage;
+    }
+    get durchgangStarted(): BehaviorSubject<DurchgangStarted[]> {
+      return this.wsState.durchgangStarted;
+    }
     get activeDurchgangList(): DurchgangStarted[] {
-      return this._activeDurchgangList;
+      return this.wsState.activeDurchgangList;
+    }
+    get wertungUpdated(): Subject<AthletWertungUpdated> {
+      return this.wsState.wertungUpdated;
+    }
+    get newLastResults(): BehaviorSubject<NewLastResults> {
+      return this.wsState.newLastResults;
+    }
+    get mediaStateChanged() {
+      return this.wsState.mediaStateChanged;
+    }
+    get mediaPlayerAvailable(): BehaviorSubject<boolean> {
+      return this.wsState.mediaPlayerAvailable;
+    }
+
+    private activeWsChannel: CompetitionChannel | undefined;
+
+    private competitionChannel(): CompetitionChannel | undefined {
+      if (!this._competition || this._competition === 'undefined') {
+        return undefined;
+      }
+      return {kind: 'competition', competitionId: this._competition};
+    }
+
+    /**
+     * Opens (or reuses) the shared websocket channel of the current competition.
+     * focusDurchgang narrows the served events to one durchgang (caption mode).
+     */
+    private ensureCompetitionChannel(focusDurchgang?: string) {
+      const key = this.competitionChannel();
+      if (!key) {
+        return;
+      }
+      if (this.activeWsChannel && channelKeyId(this.activeWsChannel) !== channelKeyId(key)) {
+        this.wsState.release(this.activeWsChannel);
+        this.activeWsChannel = undefined;
+      }
+      this.wsState.setDurchgangFocus(key.competitionId, focusDurchgang);
+      if (!this.activeWsChannel) {
+        this.wsState.acquire(key);
+        this.activeWsChannel = key;
+      } else {
+        this.wsState.ensureConnected(key);
+      }
+    }
+
+    /** re-dials the current competition channel to get a fresh squash of server state */
+    resyncWebsocket() {
+      const key = this.competitionChannel();
+      if (!key) {
+        return;
+      }
+      if (!this.activeWsChannel || channelKeyId(this.activeWsChannel) !== channelKeyId(key)) {
+        this.ensureCompetitionChannel(this.captionmode ? this._durchgang : undefined);
+      } else {
+        this.wsState.resync(key);
+      }
+    }
+
+    ensureWebsocketConnection() {
+      const key = this.competitionChannel();
+      if (!key) {
+        return;
+      }
+      if (!this.activeWsChannel || channelKeyId(this.activeWsChannel) !== channelKeyId(key)) {
+        this.ensureCompetitionChannel(this.captionmode ? this._durchgang : undefined);
+      } else {
+        this.wsState.ensureConnected(key);
+      }
+    }
+
+    isWebsocketConnected(): boolean {
+      const key = this.competitionChannel() || this.activeWsChannel;
+      return !!key && this.wsState.isConnected(key);
     }
 
     get authenticatedClubId() {
@@ -105,7 +198,6 @@ export class BackendService extends WebsocketService {
     steps: number[];
     wertungen: WertungContainer[];
     wertungenSubject = new BehaviorSubject<WertungContainer[]>([]);
-    newLastResults = new BehaviorSubject<NewLastResults>(undefined);
     _clubregistrations = [];
     clubRegistrations = new BehaviorSubject<ClubRegistration[]>([]);
     clubTeams: TeamList = {};
@@ -122,16 +214,6 @@ export class BackendService extends WebsocketService {
 
     wertungenLoading = false;
     isInitializing = false;
-
-    //// Websocket implementations
-
-    private _activeDurchgangList: DurchgangStarted[] = [];
-
-    durchgangStarted = new BehaviorSubject<DurchgangStarted[]>([]);
-    wertungUpdated = new Subject<AthletWertungUpdated>();
-
-    mediaStateChanged = new BehaviorSubject<AthletMediaIsAtStart|AthletMediaIsRunning|AthletMediaIsPaused|AthletMediaIsFree>({context: '', type: 'AthletMediaIsFree'} as AthletMediaIsFree);
-    mediaPlayerAvailable = new BehaviorSubject<boolean>(false);
 
     getCurrentStation(): string {
       return localStorage.getItem('current_station')
@@ -935,8 +1017,7 @@ export class BackendService extends WebsocketService {
         this.loadSteps();
       }
       if (this.geraet) {
-        this.disconnectWS(true);
-        this.initWebsocket();
+        this.ensureCompetitionChannel(this._durchgang);
       }
     }
 
@@ -993,8 +1074,7 @@ export class BackendService extends WebsocketService {
         ) {
         this.captionmode = false;
         this._competition = competitionId;
-        this.disconnectWS(true);
-        this.initWebsocket();
+        this.ensureCompetitionChannel(undefined);
         return this.loadGeraete();
       } else {
         return of(this.geraete);
@@ -1022,9 +1102,7 @@ export class BackendService extends WebsocketService {
     validateWertung(wertung: Wertung): Observable<Wertung> {
       const competitionId = wertung.wettkampfUUID;
       const result = new Subject<Wertung>();
-      if (this.shouldConnectAgain()) {
-        this.reconnect();
-      }
+      this.ensureWebsocketConnection();
       this.http.put<Wertung | MessageAck>(backendUrl + 'api/durchgang/' + competitionId + '/validate', wertung).pipe(share())
       .subscribe({
         next: (data) => {
@@ -1046,9 +1124,7 @@ export class BackendService extends WebsocketService {
     updateWertung(durchgang: string, step: number, geraetId: number, wertung: Wertung): Observable<WertungContainer> {
       const competitionId = wertung.wettkampfUUID;
       const result = new Subject<WertungContainer>();
-      if (this.shouldConnectAgain()) {
-        this.reconnect();
-      }
+      this.ensureWebsocketConnection();
       this.startLoading('Wertung wird gespeichert. Bitte warten ...',
         this.http.put<WertungContainer | MessageAck>(
           backendUrl + 'api/durchgang/' + competitionId + '/' + encodeURIComponent2(durchgang) + '/' + geraetId + '/' + step,
@@ -1226,9 +1302,7 @@ export class BackendService extends WebsocketService {
 
     aquireMusic(wertung: Wertung) {
       const competitionId = wertung.wettkampfUUID;
-      if (this.shouldConnectAgain()) {
-        this.reconnect();
-      }
+      this.ensureWebsocketConnection();
       this.startLoading('Musik wird geladen. Bitte warten ...',
         this.http.put<MessageAck>(
           backendUrl + 'api/music/' + competitionId + '/aquire',
@@ -1243,9 +1317,7 @@ export class BackendService extends WebsocketService {
 
     releaseMusic(wertung: Wertung) {
       const competitionId = wertung.wettkampfUUID;
-      if (this.shouldConnectAgain()) {
-        this.reconnect();
-      }
+      this.ensureWebsocketConnection();
       this.startLoading('Player wird freigegeben. Bitte warten ...',
         this.http.put<MessageAck>(
           backendUrl + 'api/music/' + competitionId + '/release',
@@ -1260,9 +1332,7 @@ export class BackendService extends WebsocketService {
 
     stopMusic(wertung: Wertung) {
       const competitionId = wertung.wettkampfUUID;
-      if (this.shouldConnectAgain()) {
-        this.reconnect();
-      }
+      this.ensureWebsocketConnection();
       this.startLoading('Musik wird pausiert. Bitte warten ...',
         this.http.put<MessageAck>(
           backendUrl + 'api/music/' + competitionId + '/stop',
@@ -1277,9 +1347,7 @@ export class BackendService extends WebsocketService {
 
     playMusic(wertung: Wertung) {
       const competitionId = wertung.wettkampfUUID;
-      if (this.shouldConnectAgain()) {
-        this.reconnect();
-      }
+      this.ensureWebsocketConnection();
       this.startLoading('Musik wird abgespielt. Bitte warten ...',
         this.http.put<MessageAck>(
           backendUrl + 'api/music/' + competitionId + '/start',
@@ -1311,100 +1379,6 @@ export class BackendService extends WebsocketService {
         );
       } else {
         return of(Object.assign({}));
-      }
-    }
-
-    protected getWebsocketBackendUrl(): string {
-      let host = location.host;
-      const path = '/'; // location.pathname;
-      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      let apiPath = 'api/';
-      if (!!this._durchgang && this.captionmode) {
-        apiPath = apiPath + 'durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang) + '/ws';
-      } else {
-        apiPath = apiPath + 'durchgang/' + this._competition + '/all/ws';
-        // apiPath = apiPath + "competition/ws";
-      }
-      if (!host || host === '') {
-        host = 'wss://kutuapp.sharevic.net/';
-      // } else if (host.startsWith('localhost')) {
-      //   host = 'ws://localhost:5757/';
-      } else {
-        host = (protocol + '//' + host + path).replace('index.html', '');
-      }
-
-      return host + apiPath;
-    }
-
-    protected handleWebsocketMessage(message: any): boolean {
-      const type = message.type;
-      switch (type) {
-        case 'BulkEvent':
-           return (message as BulkEvent).events.map( e => {
-             return this.handleWebsocketMessage(e);
-           }).reduce((a, b) => a && b);
-
-        case 'DurchgangStarted':
-          this._activeDurchgangList = [...this.activeDurchgangList, (message as DurchgangStarted)]
-            .filter((value, index, self) => self.findIndex(ds => ds.durchgang === value.durchgang) === index);
-          this.durchgangStarted.next(this.activeDurchgangList);
-          return true;
-
-        case 'DurchgangFinished':
-          const finished = (message as DurchgangFinished);
-          this._activeDurchgangList = this.activeDurchgangList
-            .filter(d => d.durchgang !== finished.durchgang || d.wettkampfUUID !== finished.wettkampfUUID);
-          this.durchgangStarted.next(this.activeDurchgangList);
-          return true;
-
-        case 'AthletWertungUpdatedSequenced':
-        case 'AthletWertungUpdated':
-          const updated = (message as AthletWertungUpdated);
-          this.wertungen = this.wertungen.map(w => {
-            if (w.id === updated.wertung.athletId && w.wertung.wettkampfdisziplinId === updated.wertung.wettkampfdisziplinId ) {
-              return Object.assign({}, w, {wertung: updated.wertung });
-            } else {
-              return w;
-            }
-          });
-          this.wertungenSubject.next(this.wertungen);
-          this.wertungUpdated.next(updated);
-          return true;
-
-        case 'AthletMovedInWettkampf':
-        case 'AthletRemovedFromWettkampf':
-          this.loadWertungen();
-          return true;
-
-        case 'NewLastResults':
-          this.newLastResults.next((message as NewLastResults));
-          return true;
-
-        case 'MediaPlayerIsReady':
-          this.mediaPlayerAvailable.next(true);
-          return true;
-        case 'MediaPlayerDisconnected':
-          this.mediaPlayerAvailable.next(false);
-          return true;
-        case 'AthletMediaIsAtStart':
-          this.mediaStateChanged.next((message as AthletMediaIsAtStart));
-          return true;
-        case 'AthletMediaIsRunning':
-          this.mediaStateChanged.next((message as AthletMediaIsRunning));
-          return true;
-        case 'AthletMediaIsPaused':
-          this.mediaStateChanged.next((message as AthletMediaIsPaused));
-          return true;
-        case 'AthletMediaIsFree':
-          this.mediaStateChanged.next((message as AthletMediaIsFree));
-          return true;
-        case 'MessageAck':
-          console.log((message as MessageAck).msg);
-          this.showMessage.next((message as MessageAck));
-          return true;
-
-        default:
-          return false;
       }
     }
 }

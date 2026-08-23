@@ -7,9 +7,8 @@ import { NgForm } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { Keyboard } from '@capacitor/keyboard';
 import { Capacitor } from '@capacitor/core';
-import { turn10ProgrammNames } from '../utils';
+import { turn10ProgrammNames, encodeURIComponent2 } from '../utils';
 import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share } from 'rxjs/operators';
-import { encodeURIComponent2 } from '../services/websocket.service';
 
 @Component({
     selector: 'app-wertung-editor',
@@ -267,7 +266,7 @@ export class WertungEditorPage {
       });
     });
     if (this.editable()) {
-      this.backendService.ensurWebsocketConnection();
+      this.backendService.ensureWebsocketConnection();
     }
     this.platform.ready().then(() => {
       // We need to use a timeout in order to set the focus on load

@@ -3,7 +3,7 @@ import { AlertController, ToastController, ModalController, NavController } from
 import {ActivatedRoute} from '@angular/router';
 import {SecretService} from '../services/secret.service';
 import {AdminBackendService} from '../services/admin-backend.service';
-import { AdminWebsocketService } from '../services/admin-websocket.service';
+import {WsStateService} from '../services/ws-state.service';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { RiegeItem, RiegeSuggestionRequest, DurchgangDurationItem, UpdateRiegeRequest, Geraet, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest } from '../backend-types';
 import {RiegeEditModalComponent} from '../editors/riege-edit-modal.component';
@@ -58,13 +58,14 @@ export class RiegeEinteilungPage implements OnDestroy {
   loading = false;
   draggedRiege: { name: string; durchgang: string; startId: number | null } | null = null;
 
-  private ws: AdminWebsocketService | null = null;
+  private wsAcquired = false;
   private subscriptions: Subscription[] = [];
 
   private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
+  private wsState = inject(WsStateService);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
   private modalCtrl = inject(ModalController);
@@ -89,7 +90,10 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   ngOnDestroy() {
-    this.ws?.disconnectWS(true);
+    if (this.wsAcquired) {
+      this.wsState.release({kind: 'competition', competitionId: this.uuid});
+      this.wsAcquired = false;
+    }
     this.subscriptions.forEach(s => s.unsubscribe());
     if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
   }
@@ -130,11 +134,11 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   private initWebSocket() {
-    if (this.ws) return;
-    this.ws = new AdminWebsocketService(this.uuid, this.secret);
+    if (this.wsAcquired) return;
+    this.wsAcquired = true;
 
     this.subscriptions.push(
-      this.ws.riegeEinteilungStateUpdated.subscribe((event) => {
+      this.wsState.riegeEinteilungStateUpdated.subscribe((event) => {
         this.disziplinen = event.state.disziplinen;
         if (this.selectedDisziplinIds.size === 0) {
           this.selectedDisziplinIds = new Set(event.state.disziplinen.map(d => d.id));
@@ -145,7 +149,7 @@ export class RiegeEinteilungPage implements OnDestroy {
       })
     );
 
-    this.ws.initWebsocket();
+    this.wsState.acquire({kind: 'competition', competitionId: this.uuid});
   }
 
   private buildTable(riegen: RiegeItem[], durations: DurchgangDurationItem[]) {
