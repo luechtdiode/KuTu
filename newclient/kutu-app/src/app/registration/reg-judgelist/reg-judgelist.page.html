@@ -39,10 +39,10 @@
     (ionCancel)="reloadList($event)" />
   </ion-header>
 
-  @if (wkPgms && wkPgms.length > 0) {
+  @if (wkPgms() && wkPgms().length > 0) {
     <ion-content>
       <ion-list >
-        @if ((busy | async) || !(competition && currentRegistration && this.sJudgeRegistrationList)) {
+        @if ((busy | async) || !(competition && currentRegistration() && this.sJudgeRegistrationList())) {
           <ion-item>
             <ion-label>loading ...</ion-label>
             <ion-spinner />
@@ -50,7 +50,7 @@
         }
         @for (reg of filteredStartList; track reg) {
           <ion-item-sliding #slidingJudgeRegistrationItem>
-            <app-reg-judge-item [judgeregistration]="reg" [selectedDisciplinlist]="wkPgms" (click)='itemTapped(reg, slidingJudgeRegistrationItem)' />
+            <app-reg-judge-item [judgeregistration]="reg" [selectedDisciplinlist]="wkPgms()" (click)='itemTapped(reg, slidingJudgeRegistrationItem)' />
             <ion-item-options side="end">
               <ion-item-option color="primary" (click)="edit(reg, slidingJudgeRegistrationItem)">
                 <ion-icon name="arrow-forward-circle-outline" ios="md-arrow-forward-circle-outline" />

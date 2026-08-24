@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 
 import { Platform, AlertController, NavController, ModalController } from '@ionic/angular';
 import { BackendService } from './services/backend.service';
@@ -32,7 +32,7 @@ export class AppComponent {
 
   constructor() {
 
-    this.appPages = [
+    this.appPages.set([
       { title: 'Home', url: '/home', icon: 'home' },
       { title: 'Wettkämpfe', url: '/competitions', icon: 'folder-open-outline' },
       { title: 'Resultate', url: '/station', icon: 'list' },
@@ -40,7 +40,7 @@ export class AppComponent {
       { title: 'Top Resultate', url: 'top-results', icon: 'medal' },
       { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' },
       { title: 'Wettkampfanmeldungen', url: '/registration', icon: 'people-outline' }
-    ];
+    ]);
 
     this.adminPages = [
       { title: 'Meine Wettkämpfe', url: '/admin/competitions', icon: 'trophy' },
@@ -103,9 +103,9 @@ export class AppComponent {
 
     this.initializeApp();
   }
-  public appPages: Array<{title: string, url: string, icon: string}>;
-  public adminPages: Array<{title: string, url: string, icon: string}>;
-  public adminMode = false;
+  public appPages = signal<Array<{title: string, url: string, icon: string}>>([]);
+  public adminPages: Array<{title: string, url: string, icon: string}> = [];
+  public adminMode = signal(false);
 
   themes = {
     /*autumn: {
@@ -179,7 +179,7 @@ export class AppComponent {
   checkAdminMode() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('admin') === 'true' || window.location.pathname.startsWith('/admin')) {
-      this.adminMode = true;
+      this.adminMode.set(true);
     }
   }
 
@@ -213,30 +213,30 @@ export class AppComponent {
           const initializeWithEncoded = window.location.href.split('?')[1];
           const initializeWith = atob(initializeWithEncoded);
           if (initializeWithEncoded.startsWith('all')) {
-            this.appPages = [
+            this.appPages.set([
               { title: 'Alle Resultate', url: '/all-results', icon: 'radio' },
               { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
-            ];
+            ]);
             this.navController.navigateRoot('/last-results');
           } else if (initializeWithEncoded.startsWith('top')) {
-            this.appPages = [
+            this.appPages.set([
               { title: 'Top Resultate', url: '/top-results', icon: 'medal' },
               { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
-            ];
+            ]);
             this.navController.navigateRoot('/top-results');
           } else if (initializeWith.startsWith('last')) {
-            this.appPages = [
+            this.appPages.set([
               { title: 'Aktuelle Resultate', url: '/last-results', icon: 'radio' },
               { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
-            ];
+            ]);
             this.navController.navigateRoot('/last-results');
             this.backendService.initWithQuery(initializeWith.substring(5));
             // localStorage.setItem("external_load", initializeWith.substring(5));
           } else if (initializeWith.startsWith('top')) {
-            this.appPages = [
+            this.appPages.set([
               { title: 'Top Resultate', url: '/top-results', icon: 'medal' },
               { title: 'Athlet/-In suchen', url: 'search-athlet', icon: 'search' }
-            ];
+            ]);
             this.navController.navigateRoot('/top-results');
 
             this.backendService.initWithQuery(initializeWith.substring(4));
@@ -275,10 +275,10 @@ export class AppComponent {
             localStorage.setItem('external_load', initializeWith);
             this.backendService.initWithQuery(initializeWith).subscribe(() => {
               if (initializeWith.startsWith('c=') && initializeWith.indexOf('&st=') > -1 && initializeWith.indexOf('&g=') > -1) {
-                this.appPages = [
+                this.appPages.set([
                   { title: 'Home', url: '/home', icon: 'home' },
                   { title: 'Resultate', url: '/station', icon: 'list' },
-                ];
+                ]);
                 this.navController.navigateRoot('/station');
               }
             });
@@ -292,10 +292,10 @@ export class AppComponent {
         const cs = localStorage.getItem('current_station');
         this.backendService.initWithQuery(cs).subscribe(() => {
           if (cs.startsWith('c=') && cs.indexOf('&st=') && cs.indexOf('&g=')) {
-          this.appPages = [
+          this.appPages.set([
             { title: 'Home', url: '/home', icon: 'home' },
             { title: 'Resultate', url: '/station', icon: 'list' },
-          ];
+          ]);
           this.navController.navigateRoot('/station');
         }});
       } else if (!handled && localStorage.getItem('current_competition')) {

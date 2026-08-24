@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { StartList, Wettkampf, Teilnehmer, ProgrammItem } from '../backend-types';
 import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -25,11 +25,10 @@ export class SearchAthletPage implements OnInit {
   private secretService = inject(SecretService);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
-  private cdr = inject(ChangeDetectorRef);
 
 
-  sStartList: StartList;
-  sFilteredStartList: StartList;
+  sStartList = signal<StartList | undefined>(undefined);
+  sFilteredStartList = signal<StartList | undefined>(undefined);
   sMyQuery: string;
   adminPlaybookMode = false;
   private adminSecret = '';
@@ -66,7 +65,7 @@ export class SearchAthletPage implements OnInit {
   }
 
   get stationFreezed(): boolean {
-    return this.backendService.stationFreezed;
+    return this.backendService.stationFreezed();
   }
 
   set competition(competitionId: string) {
@@ -90,10 +89,9 @@ export class SearchAthletPage implements OnInit {
         pipeBeforeAction.pipe(
           switchMap(this.runQuery(startlist))
         ).subscribe(filteredList => {
-          this.sFilteredStartList = filteredList;
+          this.sFilteredStartList.set(filteredList);
           this.busy.next(false);
           this.syncPath(this.sMyQuery);
-          this.cdr.detectChanges();
         });
         this.startlist = startlist;
       });
@@ -104,15 +102,15 @@ export class SearchAthletPage implements OnInit {
     return this.backendService.competition || '';
   }
   set startlist(startlist: StartList) {
-    this.sStartList = startlist;
+    this.sStartList.set(startlist);
     let event = {target: {value: this.sMyQuery}};
     this.reloadList(event);
   }
   get startlist() {
-    return this.sStartList;
+    return this.sStartList();
   }
   get filteredStartList() {
-    return this.sFilteredStartList || {
+    return this.sFilteredStartList() || {
       programme : []
     } as StartList;
   }
@@ -236,7 +234,6 @@ export class SearchAthletPage implements OnInit {
       next: startlist => {
         this.busy.next(false);
         this.startlist = startlist;
-        this.cdr.detectChanges();
       },
       error: () => {
         this.busy.next(false);

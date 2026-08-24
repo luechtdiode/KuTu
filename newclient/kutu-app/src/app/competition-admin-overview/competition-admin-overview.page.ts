@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnDestroy, inject, signal, ViewChild, ElementRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { AlertController, ToastController, NavController, ModalController } from '@ionic/angular';
 import { SecretService } from '../services/secret.service';
@@ -16,15 +16,14 @@ import {StandardLinkModalComponent} from "./standard-link-modal.component";
 export class CompetitionAdminOverviewPage implements OnDestroy {
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
   uuid = '';
-  titel = '';
-  datum = '';
+  titel = signal('');
+  datum = signal('');
   secret = '';
-  logoUrl: string | null = null;
-  overviewLinks: OverviewLinks | null = null;
-  loading = true;
-  isDownloading = false;
-  isUploading = false;
-  private cdr = inject(ChangeDetectorRef);
+  logoUrl = signal<string | null>(null);
+  overviewLinks = signal<OverviewLinks | null>(null);
+  loading = signal(true);
+  isDownloading = signal(false);
+  isUploading = signal(false);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
@@ -34,7 +33,8 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   private modalCtrl = inject(ModalController);
 
   ngOnDestroy() {
-    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+    const logo = this.logoUrl();
+    if (logo) URL.revokeObjectURL(logo);
   }
 
   ionViewWillEnter() {
@@ -44,10 +44,10 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
       this.nav.navigateRoot('/admin/competitions');
       return;
     }
-    this.titel = stored.titel;
-    this.datum = stored.datum;
+    this.titel.set(stored.titel);
+    this.datum.set(stored.datum);
     this.secret = stored.secret;
-    this.loading = true;
+    this.loading.set(true);
     this.loadDetails();
   }
 
@@ -57,28 +57,24 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
 
   private loadDetails() {
     firstValueFrom(this.backend.getCompetitionDetails(this.uuid, this.secret)).then(data => {
-      this.titel = data.titel;
-      this.datum = data.datum;
+      this.titel.set(data.titel);
+      this.datum.set(data.datum);
       this.secretService.updateStoredSecretTitelDatum(this.uuid, data.titel, data.datum);
-      this.loading = false;
-      this.cdr.detectChanges();
+      this.loading.set(false);
     }).catch(() => {
-      this.loading = false;
-      this.cdr.detectChanges();
+      this.loading.set(false);
     });
 
     this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
       next: blob => {
-        this.logoUrl = URL.createObjectURL(blob);
-        this.cdr.detectChanges();
+        this.logoUrl.set(URL.createObjectURL(blob));
       },
       error: () => { /* no logo */ }
     });
 
     this.backend.getOverviewLinks(this.uuid, this.secret).subscribe({
       next: links => {
-        this.overviewLinks = links;
-        this.cdr.detectChanges();
+        this.overviewLinks.set(links);
       },
       error: () => { /* ignore */ }
     });
@@ -100,40 +96,40 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   }
 
   async openRegistratinoLinkModal() {
-    if (!this.overviewLinks?.registrationUrl) return;
+    if (!this.overviewLinks()?.registrationUrl) return;
     const modal = await this.modalCtrl.create({
       component: StandardLinkModalComponent,
       componentProps: {
         title: 'Link zur Online Vereinsanmeldung',
         description: 'Scanne den QR-Code mit einem anderen Gerät oder öffne den Link, um dort Online Vereinsanmeldung zu öffnen.',
-        link: this.overviewLinks.registrationUrl,
-        qrUrl: this.overviewLinks.registrationQr
+        link: this.overviewLinks()!.registrationUrl,
+        qrUrl: this.overviewLinks()!.registrationQr
       }
     });
     await modal.present();
   }
 
   async openLiveViewLinkModal() {
-    if (!this.overviewLinks?.liveResultsUrl) return;
+    if (!this.overviewLinks()?.liveResultsUrl) return;
     const modal = await this.modalCtrl.create({
       component: StandardLinkModalComponent,
       componentProps: {
         title: 'Link zu den Live-Ergebnissen',
         description: 'Scanne den QR-Code mit einem anderen Gerät oder öffne den Link, um die Live-Ergebnisse zu sehen.',
-        link: this.overviewLinks.liveResultsUrl,
-        qrUrl: this.overviewLinks.liveResultsQr
+        link: this.overviewLinks()!.liveResultsUrl,
+        qrUrl: this.overviewLinks()!.liveResultsQr
       }
     });
     await modal.present();
   }
 
   async openAdminAccess() {
-    if (!this.overviewLinks?.adminAccessUrl) return;
+    if (!this.overviewLinks()?.adminAccessUrl) return;
     const modal = await this.modalCtrl.create({
       component: AdminAccessLinkModalComponent,
       componentProps: {
-        link: this.overviewLinks.adminAccessUrl,
-        qrUrl: this.overviewLinks.adminAccessQr
+        link: this.overviewLinks()!.adminAccessUrl,
+        qrUrl: this.overviewLinks()!.adminAccessQr
       }
     });
     await modal.present();
@@ -164,10 +160,10 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   }
 
   async downloadZip() {
-    this.isDownloading = true;
+    this.isDownloading.set(true);
     try {
       const blob = await firstValueFrom(this.backend.downloadCompetitionZip(this.uuid, this.secret));
-      downloadBlob(blob, this.titel + '.zip');
+      downloadBlob(blob, this.titel() + '.zip');
     } catch (e) {
       const toast = await this.toastCtrl.create({
         message: 'Download fehlgeschlagen: ' + (e as any).message,
@@ -176,8 +172,7 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
       });
       await toast.present();
     } finally {
-      this.isDownloading = false;
-      this.cdr.detectChanges();
+      this.isDownloading.set(false);
     }
   }
 
@@ -194,7 +189,7 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
 
     const alert = await this.alertCtrl.create({
       header: 'Wettkampf hochladen',
-      message: `Soll "${this.titel}" (${this.formatDate(this.datum)}) mit der Datei "${file.name}" überschrieben werden? Alle vorhandenen Daten werden überschrieben!`,
+      message: `Soll "${this.titel()}" (${this.formatDate(this.datum())}) mit der Datei "${file.name}" überschrieben werden? Alle vorhandenen Daten werden überschrieben!`,
       buttons: [
         { text: 'Abbrechen', role: 'cancel' },
         {
@@ -208,7 +203,7 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   }
 
   private async uploadZip(file: File) {
-    this.isUploading = true;
+    this.isUploading.set(true);
     try {
       await firstValueFrom(this.backend.uploadCompetitionZip(this.uuid, this.secret, file));
       const toast = await this.toastCtrl.create({
@@ -226,8 +221,7 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
       });
       await toast.present();
     } finally {
-      this.isUploading = false;
-      this.cdr.detectChanges();
+      this.isUploading.set(false);
     }
   }
 
@@ -240,7 +234,7 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   async confirmDelete() {
     const alert = await this.alertCtrl.create({
       header: 'Wettkampf löschen',
-      message: `Soll "${this.titel}" (${this.formatDate(this.datum)}) wirklich gelöscht werden?
+      message: `Soll "${this.titel()}" (${this.formatDate(this.datum())}) wirklich gelöscht werden?
                 Alle Daten werden unwiderruflich gelöscht.`,
       buttons: [
         { text: 'Abbrechen', role: 'cancel' },

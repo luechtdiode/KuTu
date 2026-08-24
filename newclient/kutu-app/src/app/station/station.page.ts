@@ -41,7 +41,7 @@ export class StationPage {
   }
 
   ionViewWillEnter() {
-    if (this.geraeteList().length > 0 && !this.backendService.captionmode) {
+    if (this.geraeteList().length > 0 && !this.backendService.captionmode()) {
       this.backendService.activateCaptionMode();
     }
   }
@@ -94,10 +94,10 @@ export class StationPage {
   }
 
   get stationFreezed(): boolean {
-    return this.backendService.stationFreezed;
+    return this.backendService.stationFreezed();
   }
   isLoggedIn() {
-    return this.backendService.loggedIn;
+    return this.backendService.loggedIn();
   }
 
   get nextStepCaption(): string {

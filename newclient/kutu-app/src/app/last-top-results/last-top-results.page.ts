@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf } from '../backend-types';
 import { BackendService } from '../services/backend.service';
 import { filter } from 'rxjs/operators';
@@ -13,27 +13,25 @@ import { GroupBy } from '../component/result-display/result-display.component';
 })
 export class LastTopResultsPage implements OnInit {
   backendService = inject(BackendService);
-  private cdr = inject(ChangeDetectorRef);
 
   /** signal views for zoneless template bindings */
   readonly competitionsList = this.backendService.competitionsList;
 
-  groupBy = GroupBy; 
-  items: WertungContainer[] = [];
+  groupBy = GroupBy;
+  items = signal<WertungContainer[]>([]);
   toptop = {};
-  geraete: Geraet[] = [];
+  geraete = signal<Geraet[]>([]);
 
   ngOnInit() {
     this.backendService.competitionSubject.subscribe(comps => {
       this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
-        this.geraete = geraete || [];
+        this.geraete.set(geraete || []);
         this.sortItems();
-        this.cdr.detectChanges();
       });
       this.backendService.newLastResults.pipe(
         filter(r => !!r && !!r.lastTopResults)
       ).subscribe(newLastRes => {
-        this.items = [];
+        this.items.set([]);
         this.toptop = {};
         Object.keys(newLastRes.lastTopResults).forEach(key => {
           const top = newLastRes.lastTopResults[key];
@@ -44,12 +42,12 @@ export class LastTopResultsPage implements OnInit {
             this.toptop[top.wertung.wettkampfdisziplinId] = top;
           }
         });
+        const tops = [];
         Object.keys(this.toptop).forEach(key => {
-          const top = this.toptop[key];
-          this.items.push(top);
+          tops.push(this.toptop[key]);
         });
+        this.items.set(tops);
         this.sortItems();
-        this.cdr.detectChanges();
       });
     });
   }
@@ -64,13 +62,13 @@ export class LastTopResultsPage implements OnInit {
   }
 
   sortItems() {
-    this.items = this.items.sort((a, b) => {
+    this.items.update(items => [...items].sort((a, b) => {
       let p = a.programm.localeCompare(b.programm);
       if (p === 0) {
         p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
       }
       return p;
-    });
+    }));
     // if (this.content) {
     //   this.content.resize();
     // }
@@ -78,15 +76,14 @@ export class LastTopResultsPage implements OnInit {
   }
 
   get stationFreezed(): boolean {
-    return this.backendService.stationFreezed;
+    return this.backendService.stationFreezed();
   }
   set competition(competitionId: string) {
     if (!this.stationFreezed) {
       this.backendService.getDurchgaenge(competitionId);
       this.backendService.activateNonCaptionMode(this.backendService.competition).subscribe(geraete => {
-        this.geraete = geraete || [];
+        this.geraete.set(geraete || []);
         this.sortItems();
-        this.cdr.detectChanges();
       });
     }
   }
@@ -110,17 +107,17 @@ export class LastTopResultsPage implements OnInit {
   }
 
   geraetOrder(geraetId: number): number {
-    if (!this.geraete) {
+    if (!this.geraete()) {
       return 0;
     }
-    const ret = this.geraete
+    const ret = this.geraete()
       .findIndex(c => c.id === geraetId);
     return ret;
   }
 
   geraetText(geraetId: number): string {
-    if (!this.geraete) { return ''; }
-    const candidate = this.geraete
+    if (!this.geraete()) { return ''; }
+    const candidate = this.geraete()
       .filter(c => c.id === geraetId)
       .map(c => c.name);
 
@@ -132,11 +129,11 @@ export class LastTopResultsPage implements OnInit {
   }
 
   getColumnSpec(): number {
-    return this.geraete?.length || 0;
+    return this.geraete()?.length || 0;
   }
 
   getMaxColumnSpec(): number {
-    return Math.min(12, Math.max(1, Math.floor(12 / this.geraete.length + 0.5)));
+    return Math.min(12, Math.max(1, Math.floor(12 / this.geraete().length + 0.5)));
   }
   
   getTitle(wertungContainer: WertungContainer): string {
@@ -146,11 +143,11 @@ export class LastTopResultsPage implements OnInit {
     return self.indexOf(value) === index;
   }
   getProgramme() {
-    return this.items.map(wc => wc.programm).filter(this.onlyUnique);
+    return this.items().map(wc => wc.programm).filter(this.onlyUnique);
   }
 
   getWertungen(programm) {
-    return this.items.filter(wc => wc.programm === programm);
+    return this.items().filter(wc => wc.programm === programm);
   }
 
   itemTapped(event, item) {

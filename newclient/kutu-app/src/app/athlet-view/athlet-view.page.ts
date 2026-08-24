@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { WertungContainer, Geraet, Wettkampf, Wertung } from '../backend-types';
 import { NavController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -19,7 +19,6 @@ export class AthletViewPage  implements OnInit {
   navCtrl = inject(NavController);
   private readonly route = inject(ActivatedRoute);
   backendService = inject(BackendService);
-  private cdr = inject(ChangeDetectorRef);
 
   /** signal views for zoneless template bindings */
   readonly competitionsList = this.backendService.competitionsList;
@@ -28,9 +27,9 @@ export class AthletViewPage  implements OnInit {
 
   // @ViewChild(IonContent) content: IonContent;
 
-  items: WertungContainer[] = [];
-  lastItems: number[] = [];
-  geraete: Geraet[] = [];
+  items = signal<WertungContainer[]>([]);
+  lastItems = signal<number[]>([]);
+  geraete = signal<Geraet[]>([]);
   athletId: number;
   wkId: string;
 
@@ -44,7 +43,7 @@ export class AthletViewPage  implements OnInit {
   }
 
   makeItemHash(item: WertungContainer) {
-    return item.id * this.geraete.length * 200 + item.geraet * 100 + (item.wertung.endnote || -1);
+    return item.id * this.geraete().length * 200 + item.geraet * 100 + (item.wertung.endnote || -1);
   }
 
   ngOnInit(): void {
@@ -54,27 +53,25 @@ export class AthletViewPage  implements OnInit {
     this.backendService.loadAthletWertungen(this.wkId, this.athletId).pipe(
       filter(r => !!r && r.length > 0)
     ).subscribe(athletWertungen => {
-      this.items = athletWertungen;
+      this.items.set(athletWertungen);
       this.sortItems(this.athletId);
-      this.cdr.markForCheck();
     });
     this.backendService.geraeteSubject.subscribe(geraete => {
-      if (!this.backendService.captionmode) {
-        this.geraete = geraete;
-        this.cdr.markForCheck();
+      if (!this.backendService.captionmode()) {
+        this.geraete.set(geraete);
       }
     });
     const changeHandler = (wcs: {string: WertungContainer}) => {
-      this.lastItems = this.items.map(item => this.makeItemHash(item));
-      this.items = this.items.map(item => {
+      const currentItems = this.items();
+      this.lastItems.set(currentItems.map(item => this.makeItemHash(item)));
+      this.items.set(currentItems.map(item => {
         const newItem: WertungContainer = wcs[item.wertung.wettkampfdisziplinId];
         if (newItem && newItem.id === item.id) {
           return newItem;
         } else {
           return item;
         }
-      });
-      this.cdr.markForCheck();
+      }));
     };
     this.backendService.newLastResults.pipe(
       filter(r => !!r),
@@ -83,18 +80,18 @@ export class AthletViewPage  implements OnInit {
   }
 
   sortItems(athletId: number) {
-    this.items.sort((a, b) => {
+    this.items.update(items => [...items].sort((a, b) => {
       let p = a.programm.localeCompare(b.programm);
       if (p === 0) {
         p = this.geraetOrder(a.geraet) - this.geraetOrder(b.geraet);
       }
       return p;
-    });
+    }));
   }
 
   isNew(item: WertungContainer): boolean {
     const itemhash = this.makeItemHash(item);
-    return this.lastItems.filter(id => id === itemhash).length === 0;
+    return this.lastItems().filter(id => id === itemhash).length === 0;
   }
 
   isStroked(item: WertungContainer): boolean {
@@ -102,9 +99,10 @@ export class AthletViewPage  implements OnInit {
   }
 
   get total(): WertungContainer {
-    const currentItem = this.items && this.items.length > 0 ? <WertungContainer>{ programm: '', geraet: 0, id: 0, vorname: this.items[0].vorname, name: this.items[0].name, geschlecht: this.items[0].geschlecht, verein: this.items[0].verein, wertung: <Wertung>{ noteE: 0, noteD: 0, endnote: 0, wettkampfdisziplinId: 0 }, isDNoteUsed: this.items[0].isDNoteUsed} : <WertungContainer>{ vorname: '', name: '', geschlecht: '', verein: '', programm: '', geraet: 0, id: 0, wertung: <Wertung>{ noteE: 0, noteD: 0, endnote: 0, wettkampfdisziplinId: 0 }, isDNoteUsed: false };
-    if (this.items && this.items.length > 0) {
-      return this.items.reduce((acc, item) => {
+    const items = this.items();
+    const currentItem = items && items.length > 0 ? <WertungContainer>{ programm: '', geraet: 0, id: 0, vorname: items[0].vorname, name: items[0].name, geschlecht: items[0].geschlecht, verein: items[0].verein, wertung: <Wertung>{ noteE: 0, noteD: 0, endnote: 0, wettkampfdisziplinId: 0 }, isDNoteUsed: items[0].isDNoteUsed} : <WertungContainer>{ vorname: '', name: '', geschlecht: '', verein: '', programm: '', geraet: 0, id: 0, wertung: <Wertung>{ noteE: 0, noteD: 0, endnote: 0, wettkampfdisziplinId: 0 }, isDNoteUsed: false };
+    if (items && items.length > 0) {
+      return items.reduce((acc, item) => {
         if (!item.isStroked) {
           currentItem.wertung.noteE += item.wertung.noteE || 0;
           currentItem.wertung.noteD += item.wertung.noteD || 0;
@@ -119,7 +117,7 @@ export class AthletViewPage  implements OnInit {
   }
 
   get stationFreezed(): boolean {
-    return this.backendService.stationFreezed;
+    return this.backendService.stationFreezed();
   }
   get competition(): string {
     return this.backendService.competition || '';
@@ -160,33 +158,34 @@ export class AthletViewPage  implements OnInit {
   }
 
   get athlet(): WertungContainer {
-    if (this.items && this.items.length > 0) {
-      return this.items[0];
+    const items = this.items();
+    if (items && items.length > 0) {
+      return items[0];
     } else {
       return <WertungContainer>{};
     }
   }
 
   getColumnSpec(): number {
-    return this.geraete.length;
+    return this.geraete().length;
   }
 
   getMaxColumnSpec(): number {
-    return Math.min(12, Math.max(1, Math.floor(12 / this.items.length + 0.5)));
+    return Math.min(12, Math.max(1, Math.floor(12 / this.items().length + 0.5)));
   }
 
   geraetOrder(geraetId: number): number {
-    if (!this.geraete) {
+    if (!this.geraete()) {
       return 0;
     }
-    const ret = this.geraete
+    const ret = this.geraete()
       .findIndex(c => c.id === geraetId);
     return ret;
   }
 
   geraetText(geraetId: number): string {
-    if (!this.geraete) { return ''; }
-    const candidate = this.geraete
+    if (!this.geraete()) { return ''; }
+    const candidate = this.geraete()
       .filter(c => c.id === geraetId)
       .map(c => c.name);
 
@@ -217,7 +216,7 @@ export class AthletViewPage  implements OnInit {
     if (c.titel !== '') {
       sport = SPORT_MAPPING[c.programmId];
     }    // API is fairly new, check if it is supported
-    let text = `${this.items[0].vorname} ${this.items[0].name}, ${this.items[0].verein} #${sport}-${c.titel.replace(',', ' ').split(' ').join('_')}_${this.items[0].programm} #${this.items[0].verein.replace(',', ' ').split(' ').join('_')}`;
+    let text = `${this.items()[0].vorname} ${this.items()[0].name}, ${this.items()[0].verein} #${sport}-${c.titel.replace(',', ' ').split(' ').join('_')}_${this.items()[0].programm} #${this.items()[0].verein.replace(',', ' ').split(' ').join('_')}`;
 
     if (new Date(c.datum).getTime() > Date.now()) {
       text = "Hoffe das Beste für " + text;

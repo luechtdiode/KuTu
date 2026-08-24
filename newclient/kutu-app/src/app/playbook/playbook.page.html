@@ -34,7 +34,7 @@
       @switch (activeLogTab) {
         @case ('events') {
         <div class="ws-log">
-          @for (line of wsEvents; track $index) {
+          @for (line of wsEvents(); track $index) {
           <div class="ws-log-line">{{ line }}</div>
           } @empty {
           <div class="ws-log-line ws-log-empty">keine Einträge</div>
@@ -43,7 +43,7 @@
         }
         @case ('connection') {
         <div class="ws-log">
-          @for (line of wsLog; track $index) {
+          @for (line of wsLog(); track $index) {
           <div class="ws-log-line">{{ line }}</div>
           } @empty {
           <div class="ws-log-line ws-log-empty">keine Einträge</div>
@@ -58,10 +58,10 @@
   <ion-card>
     <ion-card-header>
       <ion-item lines="none" class="ion-no-padding">
-        @if (logoUrl) {
-        <img class="wk-logo" [src]="logoUrl" alt="Logo" />
+        @if (logoUrl()) {
+        <img class="wk-logo" [src]="logoUrl()" alt="Logo" />
         }
-        <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+        <ion-card-title>{{ wettkampfTitle() }}</ion-card-title>
       </ion-item>
     </ion-card-header>
     <ion-card-content>
@@ -76,15 +76,15 @@
     </ion-card-content>
   </ion-card>
 
-  @if (loading) {
+  @if (loading()) {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
-  @if (stepperDgs.length > 0) {
+  @if (stepperDgs().length > 0) {
     <ion-card>
       <ion-card-content class="stepper-card">
         <div class="stepper">
-          @for (dg of stepperDgs; track dg.name; let i = $index) {
+          @for (dg of stepperDgs(); track dg.name; let i = $index) {
             @if (i > 0) { <div class="stepper-connector"></div> }
             <div class="stepper-dg" [class.running]="dg.status === 'running'" [class.pending]="dg.status === 'pending'"
                  [class.finished]="dg.status === 'finished'" [class.current]="isCurrentDg(dg)"
@@ -118,7 +118,7 @@
     </ion-card>
   }
 
-  @if (groups.length > 0 && disziplinen.length > 0) {
+  @if (groups().length > 0 && disziplinen().length > 0) {
     <ion-card>
       <ion-card-content class="ion-padding-0" style="overflow-x: auto;">
         <table class="riege-table playbook-table">
@@ -126,18 +126,18 @@
             <tr>
               <th class="col-durchgang">Durchgang</th>
               <th class="col-actions">Aktionen</th>
-              @for (d of disziplinen; track d.id) {
+              @for (d of disziplinen(); track d.id) {
                 <th class="col-geraet">{{ d.name }}</th>
               }
               <th class="col-overall">Fertig</th>
             </tr>
           </thead>
           <tbody>
-            @for (group of groups; track group.title) {
+            @for (group of groups(); track group.title) {
               @if (hasGroupedDgs(group)) {
                 <tr class="group-header-row" [class.dg-running]="isGroupRunning(group)" [class.dg-finished]="isGroupFinished(group)">
                   <td class="col-durchgang group-toggle-cell" (click)="toggleGroup(group)">
-                    <span class="group-toggle" [class.expanded]="expandedGroups.has(group.title)">▶</span>
+                    <span class="group-toggle" [class.expanded]="expandedGroups().has(group.title)">▶</span>
                     <strong>{{ group.title }}</strong>
                     <div class="dg-info">
                       @if (groupStartOffset(group) > 0) {
@@ -170,7 +170,7 @@
                       }
                     </div>
                   </td>
-                  @for (d of disziplinen; track d.id) {
+                  @for (d of disziplinen(); track d.id) {
                     <td class="col-geraet">
                       @if (getGroupStation(group, d.id); as station) {
                         @for (step of station.steps; track step.halt) {
@@ -196,7 +196,7 @@
                   </td>
                 </tr>
               }
-              @if (!hasGroupedDgs(group) || expandedGroups.has(group.title)) {
+              @if (!hasGroupedDgs(group) || expandedGroups().has(group.title)) {
                 @for (row of group.rows; track row.name) {
                   <tr [class.dg-running]="row.isRunning" [class.dg-finished]="row.isFinished">
                     <td class="col-durchgang">
@@ -241,7 +241,7 @@
                         }
                       </div>
                     </td>
-                    @for (d of disziplinen; track d.id) {
+                    @for (d of disziplinen(); track d.id) {
                       <td class="col-geraet">
                         @if (getStation(row, d.id); as station) {
                           @for (step of station.steps; track step.halt) {
@@ -280,14 +280,14 @@
     </ion-text>
   }
 
-  @if (savedScores.length > 0) {
+  @if (savedScores().length > 0) {
     <ion-card>
       <ion-card-header>
         <ion-card-title>Ranglisten</ion-card-title>
       </ion-card-header>
       <ion-card-content>
         <ion-list>
-          @for (score of savedScores; track score.id) {
+          @for (score of savedScores(); track score.id) {
             <ion-item>
               <ion-icon name="document-text-outline" slot="start"></ion-icon>
               <ion-label class="ion-text-wrap score-item-label">

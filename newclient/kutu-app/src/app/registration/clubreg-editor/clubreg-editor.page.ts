@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { ClubRegistration, NewClubRegistration, Verein } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -24,7 +24,6 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
   actionSheetController = inject(ActionSheetController);
-  private cdr = inject(ChangeDetectorRef);
   private wsState = inject(WsStateService);
 
   /** Inserted by Angular inject() migration for backwards compatibility */
@@ -36,10 +35,10 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
         this.backendService.getCompetitions();
       }
       this.backendService.getClubList().subscribe(list => {
-        this.clublist = list.map(item => <TypeAheadItem<Verein>>{
+        this.clublist.set(list.map(item => <TypeAheadItem<Verein>>{
           item: item,
           text: item.name + ' (' + item.verband + ')'
-        });
+        }));
       });
   }
 
@@ -49,35 +48,36 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
   }
   setVereinSelected(selection: Verein) {
     this._selectedVerein = selection;
-    this.newRegistration.vereinname = selection.name;
-    this.newRegistration.verband = selection.verband;
+    const newRegistration = this.newRegistration();
+    newRegistration.vereinname = selection.name;
+    newRegistration.verband = selection.verband;
   }
 
-  waiting = false;
-  registration: ClubRegistration | NewClubRegistration;
-  newRegistration: NewClubRegistration;
-  changePassword: RegistrationResetPW;
-  sSyncActions: string[] = [];
-  clublist: TypeAheadItem<Verein>[] = [];
-  wettkampf: string;
-  regId: number;
+  waiting = signal(false);
+  registration = signal<ClubRegistration | NewClubRegistration>(undefined);
+  newRegistration = signal<NewClubRegistration>(undefined);
+  changePassword = signal<RegistrationResetPW>(undefined);
+  sSyncActions = signal<string[]>([]);
+  clublist = signal<TypeAheadItem<Verein>[]>([]);
+  wettkampf = signal<string>(undefined);
+  regId = signal<number>(undefined);
   wkId: string;
   wettkampfId: number;
   private wsAcquired = false;
   private wsSubscriptions: Subscription[] = [];
 
   ngOnInit() {
-    this.waiting = true;
+    this.waiting.set(true);
     this.wkId = this.route.snapshot.paramMap.get('wkId');
     // tslint:disable-next-line: radix
-    this.regId = parseInt(this.route.snapshot.paramMap.get('regId'));
+    this.regId.set(parseInt(this.route.snapshot.paramMap.get('regId')));
     this.backendService.getCompetitions().subscribe(comps => {
       // tslint:disable-next-line: radix
       this.wettkampfId = parseInt(comps.find(c => c.uuid === this.wkId).id);
-      if (this.regId) {
+      if (this.regId()) {
         this.backendService.getClubRegistrations(this.wkId).subscribe(regs => {
           if (regs && regs.length > 0) {
-            this.updateUI(regs.find(reg => reg.id === this.regId));
+            this.updateUI(regs.find(reg => reg.id === this.regId()));
           }
         });
       } else {
@@ -102,7 +102,7 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
 
   async presentActionSheet() {
     let actionconfig: any = {};
-    if ((this.registration as ClubRegistration).vereinId) {
+    if ((this.registration() as ClubRegistration).vereinId) {
       actionconfig = {
         header: 'Anmeldungen',
         cssClass: 'my-actionsheet-class',
@@ -178,7 +178,7 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
   }
 
   editable() {
-    return this.backendService.loggedIn;
+    return this.backendService.loggedIn();
   }
 
   ionViewWillEnter() {
@@ -206,49 +206,54 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
   }
 
   getSyncActions() {
-    if (this.regId > 0) {
+    if (this.regId() > 0) {
       this.backendService.loadRegistrationSyncActions().pipe(
         take(1)
       ).subscribe(sa => {
-        this.sSyncActions = sa
-        .filter(action => action.verein.id === (this.registration as ClubRegistration).id)
-        .map(action => action.caption);
+        this.sSyncActions.set(sa
+        .filter(action => action.verein.id === (this.registration() as ClubRegistration).id)
+        .map(action => action.caption));
       });
     }
   }
 
   updateUI(registration: ClubRegistration | NewClubRegistration) {
-    this.waiting = false;
-    this.wettkampf = this.backendService.competitionName;
-    this.registration = registration;
+    this.waiting.set(false);
+    this.wettkampf.set(this.backendService.competitionName);
+    this.registration.set(registration);
     if (!!registration) {
-      if (this.regId === 0) {
-        this.newRegistration = registration as NewClubRegistration;
+      if (this.regId() === 0) {
+        this.newRegistration.set(registration as NewClubRegistration);
       } else {
-        this.changePassword = {
-          id: this.regId,
+        this.changePassword.set({
+          id: this.regId(),
           wettkampfId: registration.wettkampfId || this.wettkampfId,
           secret: '',
           verification: ''
-        } as RegistrationResetPW;
+        } as RegistrationResetPW);
       }
-      if (!!this.registration.mail && this.registration.mail.length > 1) {
-        this.backendService.currentUserName = this.registration.mail;
+      const current = this.registration();
+      if (!!current.mail && current.mail.length > 1) {
+        this.backendService.currentUserName = current.mail;
       }
     }
-    this.cdr.detectChanges();
+  }
+
+  patchChangePassword(patch: Partial<RegistrationResetPW>) {
+    this.changePassword.update(pw => Object.assign({}, pw, patch));
   }
 
   savePWChange() {
-    if (this.changePassword && this.changePassword.secret && this.changePassword.secret === this.changePassword.verification) {
-      this.backendService.saveClubRegistrationPW(this.wkId, this.changePassword);
+    const changePassword = this.changePassword();
+    if (changePassword && changePassword.secret && changePassword.secret === changePassword.verification) {
+      this.backendService.saveClubRegistrationPW(this.wkId, changePassword);
     }
   }
 
   save(form: NgForm) {
     if(!form.valid) return;
     const registration: ClubRegistration | NewClubRegistration = form.value;
-    if (this.regId === 0) {
+    if (this.regId() === 0) {
       const nereg = registration as NewClubRegistration;
       if (nereg.secret !== nereg.verification) {
         const alert = this.alertCtrl.create({
@@ -272,17 +277,17 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
           secret: nereg.secret
         } as NewClubRegistration;
         this.backendService.createClubRegistration(this.wkId, reg).subscribe((data) => {
-          this.regId = data.id;
-          this.registration = data;
+          this.regId.set(data.id);
+          this.registration.set(data);
           this.backendService.currentUserName = data.mail;
           this.presentActionSheet();
         });
       }
     } else {
       const reg =  {
-        id: (this.registration as ClubRegistration).id,
-        registrationTime: (this.registration as ClubRegistration).registrationTime,
-        vereinId: (this.registration as ClubRegistration).vereinId,
+        id: (this.registration() as ClubRegistration).id,
+        registrationTime: (this.registration() as ClubRegistration).registrationTime,
+        vereinId: (this.registration() as ClubRegistration).vereinId,
         mail: registration.mail,
         mobilephone: registration.mobilephone,
         respName: registration.respName,
@@ -304,7 +309,7 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
       buttons: [
         {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
         {text: 'OKAY', handler: () => {
-          this.backendService.deleteClubRegistration(this.wkId, this.regId).subscribe(() => {
+          this.backendService.deleteClubRegistration(this.wkId, this.regId()).subscribe(() => {
             this.navCtrl.pop();
           });
           }
@@ -315,15 +320,15 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
   }
 
   editAthletRegistrations() {
-    this.navCtrl.navigateForward(`reg-athletlist/${this.backendService.competition}/${this.regId}`);
+    this.navCtrl.navigateForward(`reg-athletlist/${this.backendService.competition}/${this.regId()}`);
   }
 
   editJudgeRegistrations() {
-    this.navCtrl.navigateForward(`reg-judgelist/${this.backendService.competition}/${this.regId}`);
+    this.navCtrl.navigateForward(`reg-judgelist/${this.backendService.competition}/${this.regId()}`);
   }
 
   copyFromOthers() {
-    this.backendService.findCompetitionsByVerein((this.registration as ClubRegistration).vereinId).subscribe(list => {
+    this.backendService.findCompetitionsByVerein((this.registration() as ClubRegistration).vereinId).subscribe(list => {
       const selectOptions = list.map(wk => {
         return {
           type: 'radio',
@@ -341,7 +346,7 @@ export class ClubregEditorPage implements OnInit, OnDestroy {
         buttons: [
           {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
           {text: 'OKAY', handler: (data) => {
-            this.backendService.copyClubRegsFromCompetition(data, this.backendService.competition, (this.registration as ClubRegistration).id).subscribe(() => {
+            this.backendService.copyClubRegsFromCompetition(data, this.backendService.competition, (this.registration() as ClubRegistration).id).subscribe(() => {
               this.getSyncActions();
               this.alertCtrl.create({
                 header: 'Anmeldungen kopieren',

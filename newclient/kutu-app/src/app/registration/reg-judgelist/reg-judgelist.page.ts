@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BehaviorSubject, Subject, of } from 'rxjs';
@@ -18,18 +18,20 @@ export class RegJudgelistPage  implements OnInit {
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
-  private cdr = inject(ChangeDetectorRef);
+
+  /** signal views for zoneless template bindings */
+  readonly competitionsList = this.backendService.competitionsList;
 
   busy = new BehaviorSubject(false);
 
-  currentRegistration: ClubRegistration;
+  currentRegistration = signal<ClubRegistration>(undefined);
   currentRegId: number;
-  wkPgms: JudgeRegistrationProgramItem[];
+  wkPgms = signal<JudgeRegistrationProgramItem[]>(undefined);
   tMyQueryStream = new Subject<any>();
 
   sFilterTask: () => void = undefined;
-  sFilteredRegistrationList: JudgeRegistration[];
-  sJudgeRegistrationList: JudgeRegistration[];
+  sFilteredRegistrationList = signal<JudgeRegistration[]>(undefined);
+  sJudgeRegistrationList = signal<JudgeRegistration[]>(undefined);
   sMyQuery: string;
   sSyncActions: SyncAction[] = [];
 
@@ -61,11 +63,11 @@ export class RegJudgelistPage  implements OnInit {
 
   refreshList() {
     this.busy.next(true);
-    this.currentRegistration = undefined;
+    this.currentRegistration.set(undefined);
     this.backendService.getClubRegistrations(this.competition).pipe(
       filter(regs => !!regs.find(reg => reg.id === this.currentRegId))
       , take(1)).subscribe(regs => {
-      this.currentRegistration = regs.find(reg => reg.id === this.currentRegId);
+      this.currentRegistration.set(regs.find(reg => reg.id === this.currentRegId));
       console.log('ask Judgees-list for registration');
       this.backendService.loadJudgeRegistrations(this.competition, this.currentRegId).subscribe(judgeRegs => {
         this.busy.next(false);
@@ -81,19 +83,17 @@ export class RegJudgelistPage  implements OnInit {
         );
 
         pipeBeforeAction.subscribe(filteredList => {
-          this.sFilteredRegistrationList = filteredList;
+          this.sFilteredRegistrationList.set(filteredList);
           this.busy.next(false);
-          this.cdr.detectChanges();
         });
       });
     });
   }
 
   set competition(competitionId: string) {
-    if (!this.currentRegistration || competitionId !== this.backendService.competition) {
+    if (!this.currentRegistration() || competitionId !== this.backendService.competition) {
       this.backendService.loadJudgeProgramDisziplinList(this.competition).subscribe(pgms => {
-        this.wkPgms = pgms;
-        this.cdr.detectChanges();
+        this.wkPgms.set(pgms);
       });
     }
   }
@@ -103,7 +103,7 @@ export class RegJudgelistPage  implements OnInit {
   }
 
   getCompetitions(): Wettkampf[] {
-    return this.backendService.competitions || [];
+    return this.competitionsList();
   }
 
   competitionName(): string {
@@ -128,14 +128,14 @@ export class RegJudgelistPage  implements OnInit {
     };
   }
   set judgeregistrations(list: JudgeRegistration[]) {
-    this.sJudgeRegistrationList = list;
+    this.sJudgeRegistrationList.set(list);
     this.reloadList(this.sMyQuery);
   }
   get judgeregistrations() {
-    return this.sJudgeRegistrationList;
+    return this.sJudgeRegistrationList();
   }
   get filteredStartList() {
-    return this.sFilteredRegistrationList || this.sJudgeRegistrationList || [];
+    return this.sFilteredRegistrationList() || this.sJudgeRegistrationList() || [];
   }
   reloadList(event: any) {
     this.tMyQueryStream.next(event);
@@ -152,15 +152,15 @@ export class RegJudgelistPage  implements OnInit {
   }
 
   isLoggedInAsClub(): boolean {
-    return this.backendService.loggedIn && this.backendService.authenticatedClubId === this.currentRegId + '';
+    return this.backendService.loggedIn() && this.backendService.authenticatedClubId === this.currentRegId + '';
   }
 
   isLoggedInAsAdmin(): boolean {
-    return this.backendService.loggedIn && !!this.backendService.authenticatedClubId;
+    return this.backendService.loggedIn() && !!this.backendService.authenticatedClubId;
   }
 
   isLoggedIn(): boolean {
-    return this.backendService.loggedIn;
+    return this.backendService.loggedIn();
   }
 
   filter(query: string) {

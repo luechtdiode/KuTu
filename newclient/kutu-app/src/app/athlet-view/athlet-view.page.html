@@ -41,7 +41,7 @@
   <ion-grid no-padding>
     @if (getColumnSpec() === 6) {
       <ion-row>
-        @for (w of items; track w) {
+        @for (w of items(); track w) {
           <ion-col class="align-self-start"
             size-xs="12" size-md="6" size-lg="4" [attr.size-xl]="getMaxColumnSpec()"
             >
@@ -54,7 +54,7 @@
     }
     @if (getColumnSpec() !== 6) {
       <ion-row>
-        @for (w of items; track w) {
+        @for (w of items(); track w) {
           <ion-col class="align-self-start"
             size-xs="12" size-md="6" size-lg="3" [attr.size-xl]="getMaxColumnSpec()"
             >
