@@ -16,15 +16,15 @@
   <ion-card>
     <ion-card-header>
       <ion-item lines="none" class="ion-no-padding">
-        @if (logoUrl) {
-        <img class="wk-logo" [src]="logoUrl" alt="Logo" />
+        @if (logoUrl()) {
+        <img class="wk-logo" [src]="logoUrl()" alt="Logo" />
         }
         <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
       </ion-item>
     </ion-card-header>
   </ion-card>
 
-  @if (loading) {
+  @if (loading()) {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
@@ -34,11 +34,11 @@
       <ion-card-subtitle>Verwaltung der gespeicherten und veröffentlichten Ranglisten</ion-card-subtitle>
     </ion-card-header>
     <ion-card-content>
-      @if (savedScores.length > 0) {
+      @if (savedScores().length > 0) {
         <ion-list>
-          @for (score of savedScores; track score.id) {
+          @for (score of savedScores(); track score.id) {
             <ion-item-sliding>
-              <ion-item [color]="editingScore?.id === score.id ? 'light' : ''">
+              <ion-item [color]="editingScore()?.id === score.id ? 'light' : ''">
                 <ion-icon name="document-text-outline" slot="start"></ion-icon>
                 <ion-label class="ion-text-wrap score-item-label">
                   <h2>
@@ -73,7 +73,7 @@
             </ion-item-sliding>
           }
         </ion-list>
-      } @else if (!loading) {
+      } @else if (!loading()) {
         <ion-text color="medium">
           <p class="ion-text-center">Noch keine Ranglisten gespeichert.</p>
         </ion-text>
@@ -85,16 +85,16 @@
     </ion-card-content>
   </ion-card>
 
-  @if (creatingNew || editingScore || selectedGroupers.some(g => g !== null)) {
+  @if (creatingNew || editingScore() || selectedGroupers.some(g => g !== null)) {
     <ion-card>
       <ion-card-header>
         <ion-card-title style="display: flex; align-items: center; gap: 8px;">
-          {{ editingScore ? 'Rangliste bearbeiten' : 'Neue Rangliste' }}
+          {{ editingScore() ? 'Rangliste bearbeiten' : 'Neue Rangliste' }}
           <ion-button fill="clear" size="small" (click)="closeEditor()" title="Schliessen">
             <ion-icon slot="icon-only" size="large" name="close"></ion-icon>
           </ion-button>
-          @if (editingScore && hasGroupers) {
-            <ion-button fill="clear" size="small" (click)="openScore(editingScore.id)" title="Öffnen">
+          @if (editingScore() && hasGroupers) {
+            <ion-button fill="clear" size="small" (click)="openScore(editingScore()!.id)" title="Öffnen">
               <ion-icon slot="start" size="large" name="open-outline"></ion-icon>
               Öffnen
             </ion-button>
@@ -132,7 +132,7 @@
           <ion-checkbox [(ngModel)]="isAvg">Durchschnitt bei mehreren Wettkämpfen</ion-checkbox>
         </ion-item>
 
-        @if (loadingGroupers) {
+        @if (loadingGroupers()) {
           <ion-item>
             <ion-label color="medium">Lade verfügbare Gruppierungen...</ion-label>
           </ion-item>
@@ -150,7 +150,7 @@
                     (ionChange)="onGrouperChange(level)"
                     placeholder="--- keine ---">
                     <ion-select-option [value]="null">--- keine ---</ion-select-option>
-                    @for (grouper of availableGroupers; track grouper) {
+                    @for (grouper of availableGroupers(); track grouper) {
                       <ion-select-option [value]="grouper">{{ grouper }}</ion-select-option>
                     }
                   </ion-select>
@@ -197,17 +197,17 @@
     </ion-card>
   }
 
-  @if (previewLoading) {
+  @if (previewLoading()) {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
-  @if (scoreblocks.length > 0) {
+  @if (scoreblocks().length > 0) {
     <ion-card>
       <ion-card-header>
         <ion-card-title>Vorschau</ion-card-title>
       </ion-card-header>
       <ion-card-content>
-        @for (block of scoreblocks; track $index) {
+        @for (block of scoreblocks(); track $index) {
           <div>
             <ion-item-divider>{{ block.title.text }}</ion-item-divider>
             @for (tn of block.rows; track $index) {

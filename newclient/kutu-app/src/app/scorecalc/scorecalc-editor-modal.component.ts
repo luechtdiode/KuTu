@@ -1,4 +1,4 @@
-import { Component, Input, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, inject, signal } from '@angular/core';
 import {AlertController, ModalController} from '@ionic/angular';
 import { AdminBackendService } from '../services/admin-backend.service';
 import {
@@ -25,9 +25,9 @@ export class ScorecalcEditorModalComponent {
   pFormula = '';
   aggregateFn: string | null = null;
 
-  preview: ScoreCalcPreviewResponse | null = null;
-  previewStale = true;
-  previewError: string | null = null;
+  preview = signal<ScoreCalcPreviewResponse | null>(null);
+  previewStale = signal(true);
+  previewError = signal<string | null>(null);
   private valueOverrides = new Map<string, string>();
   private previewSeq = 0;
   private previewTimer: any = null;
@@ -35,7 +35,6 @@ export class ScorecalcEditorModalComponent {
   private modalCtrl = inject(ModalController);
   private alertCtrl = inject(AlertController);
   private backend = inject(AdminBackendService);
-  private cdr = inject(ChangeDetectorRef);
 
   ionViewWillEnter() {
     const t = this.template;
@@ -116,7 +115,7 @@ export class ScorecalcEditorModalComponent {
   }
 
   get savingDisabled(): boolean {
-    return this.previewStale || !this.preview || !this.preview.valid;
+    return this.previewStale() || !this.preview() || !this.preview().valid;
   }
 
   okState(state: string): boolean {
@@ -177,8 +176,8 @@ export class ScorecalcEditorModalComponent {
   }
 
   schedulePreview() {
-    this.previewStale = true;
-    this.previewError = null;
+    this.previewStale.set(true);
+    this.previewError.set(null);
     if (this.previewTimer) clearTimeout(this.previewTimer);
     this.previewTimer = setTimeout(() => this.updatePreview(), 300);
   }
@@ -198,9 +197,8 @@ export class ScorecalcEditorModalComponent {
   private async updatePreview() {
     const wkdId = this.previewWkdId;
     if (wkdId == null) {
-      this.previewStale = false;
-      this.previewError = 'Keine Kategorie-Disziplin für die Vorschau vorhanden.';
-      this.cdr.detectChanges();
+      this.previewStale.set(false);
+      this.previewError.set('Keine Kategorie-Disziplin für die Vorschau vorhanden.');
       return;
     }
     const seq = ++this.previewSeq;
@@ -212,16 +210,14 @@ export class ScorecalcEditorModalComponent {
     try {
       const response = await firstValueFrom(this.backend.previewScoreCalc(this.uuid, request, this.secret));
       if (seq === this.previewSeq) {
-        this.preview = response;
+        this.preview.set(response);
         this.valueOverrides.clear();
-        this.previewStale = false;
-        this.cdr.detectChanges();
+        this.previewStale.set(false);
       }
     } catch (e) {
       if (seq === this.previewSeq) {
-        this.previewStale = false;
-        this.previewError = 'Vorschau fehlgeschlagen: ' + ((e as any)?.error || (e as any)?.message || e);
-        this.cdr.detectChanges();
+        this.previewStale.set(false);
+        this.previewError.set('Vorschau fehlgeschlagen: ' + ((e as any)?.error || (e as any)?.message || e));
       }
     }
   }
@@ -231,8 +227,8 @@ export class ScorecalcEditorModalComponent {
   }
 
   private currentValues(): ScoreCalcVariable[] {
-    if (!this.preview) return [];
-    return this.preview.exercises.reduce<ScoreCalcVariable[]>((acc, ex) =>
+    if (!this.preview()) return [];
+    return this.preview().exercises.reduce<ScoreCalcVariable[]>((acc, ex) =>
       acc.concat(ex.map(v => {
         const key = ScorecalcEditorModalComponent.varKey(v);
         const value = this.valueOverrides.has(key) ? this.valueOverrides.get(key)! : v.value;

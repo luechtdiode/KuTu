@@ -9,7 +9,7 @@
       <ion-content>
         <ion-list>
           <ion-menu-toggle auto-hide="false">
-            @for (p of appPages; track p) {
+            @for (p of appPages(); track p) {
               <ion-item menuClose (click)="openPage(p.url)">
                 <ion-icon slot="start" [name]="p.icon" />
                 <ion-label>
@@ -41,7 +41,7 @@
                 </ion-label>
               </ion-item>
             }
-            @if (adminMode) {
+            @if (adminMode()) {
               <ion-item-divider>&nbsp;<br>
               Admin</ion-item-divider>
               @for (p of adminPages; track p) {

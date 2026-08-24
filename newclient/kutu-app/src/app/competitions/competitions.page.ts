@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { BackendService } from '../services/backend.service';
 import { NavController } from '@ionic/angular';
 import { Subject, distinctUntilChanged, map, of, share, switchMap } from 'rxjs';
@@ -14,12 +14,11 @@ import { Wettkampf } from '../backend-types';
 export class CompetitionsPage implements OnInit {
   private navCtrl = inject(NavController);
   private backendService = inject(BackendService);
-  private cdr = inject(ChangeDetectorRef);
 
-  pgmList;
+  pgmList = signal<{ [id: number]: string } | undefined>(undefined);
 
-  sFilteredWettkampfList: Wettkampf[];
-  sMyQuery: string;
+  sFilteredWettkampfList = signal<Wettkampf[]>([]);
+  sMyQuery = signal('');
 
   tMyQueryStream = new Subject<any>();
 
@@ -30,18 +29,16 @@ export class CompetitionsPage implements OnInit {
 
   constructor() {
     this.backendService.loadWKPrograms().subscribe(pgms => {
-      this.pgmList = pgms.reduce(function (map, pgm) {
+      this.pgmList.set(pgms.reduce(function (map: { [id: number]: string }, pgm) {
         map[pgm.id] = pgm.name;
         return map;
       }, {}
-      )
-      this.cdr.markForCheck();
+      ))
     });
 
     this.backendService.competitionSubject.subscribe(wks => {
-      this.sFilteredWettkampfList = wks;
-      this.sMyQuery = '';
-      this.cdr.markForCheck();
+      this.sFilteredWettkampfList.set(wks);
+      this.sMyQuery.set('');
       const pipeBeforeAction = this.tMyQueryStream.pipe(
         map(event => event?.target?.value || ''),
         distinctUntilChanged(),
@@ -50,8 +47,7 @@ export class CompetitionsPage implements OnInit {
       );
 
       pipeBeforeAction.subscribe(filteredList => {
-        this.sFilteredWettkampfList = filteredList;
-        this.cdr.markForCheck();
+        this.sFilteredWettkampfList.set(filteredList);
       });
     });
 
@@ -102,12 +98,12 @@ export class CompetitionsPage implements OnInit {
   }
 
   getCompetitions(): Wettkampf[] {
-    return this.sFilteredWettkampfList;
+    return this.sFilteredWettkampfList();
   }
 
   getProgrammname(id: number): string {
-    if (this.pgmList) {
-      return this.pgmList[id];
+    if (this.pgmList()) {
+      return this.pgmList()![id];
     }
     return '';
   }

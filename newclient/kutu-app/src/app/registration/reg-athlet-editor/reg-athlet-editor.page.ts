@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { NavController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -18,7 +18,6 @@ export class RegAthletEditorPage implements OnInit {
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
-  private cdr = inject(ChangeDetectorRef);
 
   /** Inserted by Angular inject() migration for backwards compatibility */
   constructor(...args: unknown[]);
@@ -27,23 +26,23 @@ export class RegAthletEditorPage implements OnInit {
   constructor() {
   }
 
-  waiting = false;
-  registration: AthletRegistration;
-  wettkampf: string;
-  wettkampfFull: Wettkampf;
+  waiting = signal(false);
+  registration = signal<AthletRegistration>(undefined);
+  wettkampf = signal<string>(undefined);
+  wettkampfFull = signal<Wettkampf>(undefined);
   regId: number;
   athletId: number;
   wkId: string;
-  wkPgms: ProgrammRaw[];
-  teams: TeamItem[];
+  wkPgms = signal<ProgrammRaw[]>(undefined);
+  teams = signal<TeamItem[]>(undefined);
   wettkampfId: number;
-  clubAthletList: AthletRegistration[];
-  clubAthletListCurrent: AthletRegistration[];
+  clubAthletList = signal<AthletRegistration[]>(undefined);
+  clubAthletListCurrent = signal<AthletRegistration[]>(undefined);
   // tslint:disable-next-line: variable-name
   private _selectedClubAthletId: number;
 
   ngOnInit() {
-    this.waiting = true;
+    this.waiting.set(true);
     this.wkId = this.route.snapshot.paramMap.get('wkId');
     // tslint:disable-next-line: radix
     this.regId = parseInt(this.route.snapshot.paramMap.get('regId'));
@@ -55,13 +54,13 @@ export class RegAthletEditorPage implements OnInit {
       // tslint:disable-next-line: radix
       this.wettkampfId = parseInt(wk.id);
       this.backendService.loadProgramsForCompetition(wk.uuid).subscribe(pgms => {
-        this.wkPgms = pgms;
+        this.wkPgms.set(pgms);
         this.backendService.loadTeamsListForClub(this.wkId, this.regId).subscribe(teams => {
-          this.teams = teams.filter(tm => tm.name?.trim().length > 0);
+          this.teams.set(teams.filter(tm => tm.name?.trim().length > 0));
           this.backendService.loadAthletListForClub(this.wkId, this.regId).subscribe(regs => {
-            this.clubAthletList = regs;
+            this.clubAthletList.set(regs);
               this.backendService.loadAthletRegistrations(this.wkId, this.regId).subscribe(regs => {
-                this.clubAthletListCurrent = regs;
+                this.clubAthletListCurrent.set(regs);
                 if (this.athletId) {
                   this.updateUI(regs.find(athlet => athlet.id === this.athletId));
                 } else {
@@ -90,25 +89,25 @@ export class RegAthletEditorPage implements OnInit {
 
   set selectedClubAthletId(id: number) {
     this._selectedClubAthletId = id;
-    this.registration = this.clubAthletList.find(r => r.athletId === id);
+    this.registration.set(this.clubAthletList().find(r => r.athletId === id));
   }
 
   get teamrules() {
-    return (this.wettkampfFull.teamrule || '').split(',');
+    return (this.wettkampfFull().teamrule || '').split(',');
   }
 
   needsPGMChoice(): boolean {
-    const pgm = [...this.wkPgms][0];
+    const pgm = [...this.wkPgms()][0];
     return !(pgm.aggregate == 1 && pgm.riegenmode > 1);
   }
 
   alter(athlet: AthletRegistration): number {
-    if (this.wettkampfFull.altersklassen?.trim().length > 0) {
-      let timeDiff = Math.abs(new Date(this.wettkampfFull.datum).getTime() - new Date(athlet.gebdat).getTime());
+    if (this.wettkampfFull().altersklassen?.trim().length > 0) {
+      let timeDiff = Math.abs(new Date(this.wettkampfFull().datum).getTime() - new Date(athlet.gebdat).getTime());
       return Math.floor((timeDiff / (1000 * 3600 * 24))/365 + 0.25);
     } else {
       const yearOfBirth = new Date(toDateString(athlet.gebdat)).getFullYear();
-      const wkYear = new Date(this.wettkampfFull.datum).getFullYear();
+      const wkYear = new Date(this.wettkampfFull().datum).getFullYear();
       return wkYear - yearOfBirth;
     }
   }
@@ -118,17 +117,17 @@ export class RegAthletEditorPage implements OnInit {
       a.name === b.name && a.vorname === b.vorname && a.gebdat === b.gebdat && a.geschlecht === b.geschlecht;
   }
   alternatives(athlet:AthletRegistration): AthletRegistration[] {
-    return this.clubAthletListCurrent?.filter(cc => this.similarRegistration(cc, athlet) && (cc.id != athlet.id)) || [];
+    return this.clubAthletListCurrent()?.filter(cc => this.similarRegistration(cc, athlet) && (cc.id != athlet.id)) || [];
   }
   getAthletPgm(athlet: AthletRegistration) {
-    return this.wkPgms.find(p => p.id === athlet.programId) || Object.assign({
+    return this.wkPgms().find(p => p.id === athlet.programId) || Object.assign({
       parent: 0
     }) as ProgrammRaw
   }
   filterPGMsForAthlet(athlet: AthletRegistration): ProgrammRaw[] {
     const alter = this.alter(athlet);
     const alternatives = this.alternatives(athlet);
-    return this.wkPgms.filter(pgm => {
+    return this.wkPgms().filter(pgm => {
       return (pgm.alterVon || 0) <= alter &&
         (pgm.alterBis || 100) >= alter &&
         alternatives.filter(a =>
@@ -138,11 +137,11 @@ export class RegAthletEditorPage implements OnInit {
     });
   }
   teamsAllowed(): boolean {
-    return this.wettkampfFull.teamrule?.length > 0 && this.wettkampfFull.teamrule !== 'Keine Teams';
+    return this.wettkampfFull().teamrule?.length > 0 && this.wettkampfFull().teamrule !== 'Keine Teams';
   }
 
   mapTeam(teamId: number): string {
-    return [...this.teams.filter(tm => tm.index == teamId).map(tm => {
+    return [...this.teams().filter(tm => tm.index == teamId).map(tm => {
       if (tm.index > 0) {
         return tm.name + ' ' + tm.index;
       } else return tm.name;
@@ -150,42 +149,47 @@ export class RegAthletEditorPage implements OnInit {
   }
 
   editable() {
-    return this.backendService.loggedIn;
+    return this.backendService.loggedIn();
   }
 
   updateUI(registration: AthletRegistration) {
-    this.waiting = false;
-    this.wettkampf = this.backendService.competitionName;
-    this.wettkampfFull = this.backendService.currentCompetition();
-    this.registration = Object.assign({}, registration);
-    this.registration.gebdat = toDateString(this.registration.gebdat);
-    if (!this.registration.team) {
-      this.registration.team = 0;
-      this.registration.reserve = 0;
+    this.waiting.set(false);
+    this.wettkampf.set(this.backendService.competitionName);
+    this.wettkampfFull.set(this.backendService.currentCompetition());
+    const reg = Object.assign({}, registration);
+    reg.gebdat = toDateString(reg.gebdat);
+    if (!reg.team) {
+      reg.team = 0;
+      reg.reserve = 0;
     }
-    this.cdr.detectChanges();
+    this.registration.set(reg);
+  }
+
+  patchRegistration(patch: Partial<AthletRegistration>) {
+    this.registration.update(reg => Object.assign({}, reg, patch));
   }
 
   isFormValid(): boolean {
-    if(!this.registration?.programId && !this.needsPGMChoice()) {
-      this.registration.programId = this.filterPGMsForAthlet(this.registration)[0]?.id;
+    const reg = this.registration();
+    if(!reg?.programId && !this.needsPGMChoice()) {
+      reg.programId = this.filterPGMsForAthlet(reg)[0]?.id;
     }
-    return !!this.registration.gebdat &&
-           !!this.registration.geschlecht &&
-           this.registration.geschlecht.length > 0 &&
-           !!this.registration.name &&
-           this.registration.name.length > 0 &&
-           !!this.registration.vorname &&
-           this.registration.vorname.length > 0 &&
-           !!this.registration.programId &&
-           this.registration.programId > 0 &&
-           (!this.teamsAllowed() || ((!!this.registration.team || this.registration.team === 0) && !isNaN(this.registration.team)));
+    return !!reg.gebdat &&
+           !!reg.geschlecht &&
+           reg.geschlecht.length > 0 &&
+           !!reg.name &&
+           reg.name.length > 0 &&
+           !!reg.vorname &&
+           reg.vorname.length > 0 &&
+           !!reg.programId &&
+           reg.programId > 0 &&
+           (!this.teamsAllowed() || ((!!reg.team || reg.team === 0) && !isNaN(reg.team)));
 
   }
 
   checkPersonOverride(reg: AthletRegistration) {
     if (reg.athletId) {
-      const originalReg = [...this.clubAthletListCurrent, ...this.clubAthletList].find(r => r.athletId === reg.athletId);
+      const originalReg = [...this.clubAthletListCurrent(), ...this.clubAthletList()].find(r => r.athletId === reg.athletId);
       if (originalReg.geschlecht !== reg.geschlecht ||
           new Date(toDateString(originalReg.gebdat)).toJSON() !== new Date(toDateString(reg.gebdat)).toJSON()||
           originalReg.name !== reg.name ||
@@ -196,25 +200,25 @@ export class RegAthletEditorPage implements OnInit {
     return false;
   }
   
-  mediaSource: string;
+  mediaSource = signal<string>(undefined);
   onRemoveMedia(event) {
-    this.backendService.deleteFile(this.wkId, this.regId, this.registration.id).subscribe({
-      next: (response) => {     
+    this.backendService.deleteFile(this.wkId, this.regId, this.registration().id).subscribe({
+      next: (response) => {
         console.log("File delete finished: response:", response);
-        this.registration.mediafile = undefined;
-        this.mediaSource = undefined;  
-        const EL_audio: any = document.querySelector("#myAudio");        
+        this.registration.update(reg => Object.assign({}, reg, { mediafile: undefined }));
+        this.mediaSource.set(undefined);
+        const EL_audio: any = document.querySelector("#myAudio");
         EL_audio.src = undefined;
         EL_audio.load();
-      }, 
+      },
         error: this.backendService.standardErrorHandler
       }
     );
   }
   onFileChange(fileChangeEvent) {
     if (!fileChangeEvent) {
-        this.backendService.downloadFile(this.wkId, this.regId, this.registration.id).subscribe((blob) => {
-          this.mediaSource = URL.createObjectURL(blob);
+        this.backendService.downloadFile(this.wkId, this.regId, this.registration().id).subscribe((blob) => {
+          this.mediaSource.set(URL.createObjectURL(blob));
           const EL_audio: any = document.querySelector("#myAudio");
           EL_audio.src = URL.createObjectURL(blob);
           EL_audio.load();
@@ -225,21 +229,21 @@ export class RegAthletEditorPage implements OnInit {
       // Create a form data object using the FormData API
       let formData = new FormData();
       // Add the file that was just added to the form data
-      formData.append("mediafile", audiofile, audiofile.name);    
+      formData.append("mediafile", audiofile, audiofile.name);
       // POST formData to server using HttpClient
-      this.backendService.uploadFile(this.wkId, this.regId, this.registration.id, formData).subscribe({
+      this.backendService.uploadFile(this.wkId, this.regId, this.registration().id, formData).subscribe({
         next: (response) => {
           console.log("File upload finished: response:", response);
-          this.registration.mediafile = response.mediafile;
-          if (this.registration.id > 0) {
-            this.backendService.downloadFile(this.wkId, this.regId, this.registration.id).subscribe((blob) => {
-              this.mediaSource = URL.createObjectURL(blob);
+          this.registration.update(reg => Object.assign({}, reg, { mediafile: response.mediafile }));
+          if (this.registration().id > 0) {
+            this.backendService.downloadFile(this.wkId, this.regId, this.registration().id).subscribe((blob) => {
+              this.mediaSource.set(URL.createObjectURL(blob));
               const EL_audio: any = document.querySelector("#myAudio");
               EL_audio.src = URL.createObjectURL(blob);
               EL_audio.load();
             })
           }
-        }, 
+        },
           error: this.backendService.standardErrorHandler
         }
       );
@@ -248,17 +252,17 @@ export class RegAthletEditorPage implements OnInit {
 
   save(form: NgForm) {
     if(!form.valid) return;
-    const reg = Object.assign({}, this.registration, {
+    const reg = Object.assign({}, this.registration(), {
       gebdat: new Date(form.value.gebdat).toJSON(),
       team: form.value.team ? form.value.team : 0,
       reserve: form.value.reserve ? form.value.reserve : 0,
-      athletId: this.registration.athletId > 0 ? this.registration.athletId : 0
+      athletId: this.registration().athletId > 0 ? this.registration().athletId : 0
     });
 
     if (this.athletId === 0 || reg.id === 0) {
 
       if(!this.needsPGMChoice()) {
-        this.filterPGMsForAthlet(this.registration).filter(pgm => pgm.id !== reg.programId).forEach(pgm => {
+        this.filterPGMsForAthlet(this.registration()).filter(pgm => pgm.id !== reg.programId).forEach(pgm => {
           this.backendService.createAthletRegistration(this.wkId, this.regId, Object.assign({}, reg, {programId: pgm.id}));
         });
       }
@@ -277,9 +281,9 @@ export class RegAthletEditorPage implements OnInit {
             {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
             {text: 'Korektur durchführen', handler: () => {
               this.backendService.saveAthletRegistration(this.wkId, this.regId, reg).subscribe(() => {
-                this.clubAthletListCurrent
-                .filter(regg => this.similarRegistration(this.registration, regg))
-                .filter(regg => regg.id !== this.registration.id)
+                this.clubAthletListCurrent()
+                .filter(regg => this.similarRegistration(this.registration(), regg))
+                .filter(regg => regg.id !== this.registration().id)
                 .forEach(regg => {
                   const patchedreg = Object.assign({}, reg, {id: regg.id, registrationTime: regg.registrationTime, programId: regg.programId});
                   this.backendService.saveAthletRegistration(this.wkId, this.regId, patchedreg);
@@ -304,19 +308,19 @@ export class RegAthletEditorPage implements OnInit {
       header: 'Achtung',
       // tslint:disable-next-line:max-line-length
       subHeader: 'Löschen der Athlet-Anmeldung am Wettkampf',
-      message: 'Hiermit wird die Anmeldung von ' + this.registration.name + ', ' + this.registration.vorname + ' am Wettkampf gelöscht.',
+      message: 'Hiermit wird die Anmeldung von ' + this.registration().name + ', ' + this.registration().vorname + ' am Wettkampf gelöscht.',
       buttons: [
         {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
         {text: 'OKAY', handler: () => {
           if(!this.needsPGMChoice()) {
-            this.clubAthletListCurrent
-            .filter(reg => this.similarRegistration(this.registration, reg))
-            .filter(reg => reg.id !== this.registration.id)
+            this.clubAthletListCurrent()
+            .filter(reg => this.similarRegistration(this.registration(), reg))
+            .filter(reg => reg.id !== this.registration().id)
             .forEach(reg => {
               this.backendService.deleteAthletRegistration(this.wkId, this.regId, reg);
             });
           }
-          this.backendService.deleteAthletRegistration(this.wkId, this.regId, this.registration).subscribe(() => {
+          this.backendService.deleteAthletRegistration(this.wkId, this.regId, this.registration()).subscribe(() => {
             this.navCtrl.pop();
           });
           }

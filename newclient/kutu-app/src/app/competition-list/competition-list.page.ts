@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnDestroy, inject, signal, ViewChild, ElementRef } from '@angular/core';
 import { NavController, AlertController, ToastController } from '@ionic/angular';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
@@ -22,9 +22,8 @@ interface CompetitionListItem {
 })
 export class CompetitionListPage implements OnDestroy {
   @ViewChild('zipFileInput') zipFileInput!: ElementRef<HTMLInputElement>;
-  competitions: CompetitionListItem[] = [];
-  isUploading = false;
-  private cdr = inject(ChangeDetectorRef);
+  competitions = signal<CompetitionListItem[]>([]);
+  isUploading = signal(false);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
   private nav = inject(NavController);
@@ -32,21 +31,21 @@ export class CompetitionListPage implements OnDestroy {
   private toastCtrl = inject(ToastController);
 
   ngOnDestroy() {
-    for (const c of this.competitions) {
+    for (const c of this.competitions()) {
       if (c.logoUrl) URL.revokeObjectURL(c.logoUrl);
     }
   }
 
   ionViewWillEnter() {
     const secrets = this.secretService.getSecrets();
-    this.competitions = secrets.map(s => ({
+    this.competitions.set(secrets.map(s => ({
       uuid: s.uuid,
       titel: s.titel,
       datum: s.datum,
       secret: s.secret,
       loading: true,
       error: false
-    }));
+    })));
     this.refreshFromServer();
   }
 
@@ -68,7 +67,7 @@ export class CompetitionListPage implements OnDestroy {
     const file = input.files[0];
     input.value = '';
 
-    this.isUploading = true;
+    this.isUploading.set(true);
     try {
       const arrayBuffer = await file.arrayBuffer();
       const files = unzipSync(new Uint8Array(arrayBuffer));
@@ -128,8 +127,7 @@ export class CompetitionListPage implements OnDestroy {
       });
       await toast.present();
     } finally {
-      this.isUploading = false;
-      this.cdr.detectChanges();
+      this.isUploading.set(false);
     }
   }
 
@@ -233,36 +231,37 @@ export class CompetitionListPage implements OnDestroy {
   }
 
   private refreshFromServer() {
-    const requests = this.competitions.map(c =>
+    const requests = this.competitions().map(c =>
       this.backend.getCompetitionDetails(c.uuid, c.secret)
     );
     if (requests.length === 0) {
-      this.cdr.detectChanges();
       return;
     }
     forkJoin(requests.map(r => firstValueFrom(r).catch(() => null))).subscribe(results => {
       for (let i = 0; i < results.length; i++) {
         const data = results[i];
-        if (data) {
-          this.competitions[i].titel = data.titel;
-          this.competitions[i].datum = data.datum;
-          this.competitions[i].error = false;
-        } else {
-          this.competitions[i].error = true;
-        }
-        this.competitions[i].loading = false;
+        this.competitions.update(list => {
+          const copy = [...list];
+          copy[i] = data
+            ? { ...copy[i], titel: data.titel, datum: data.datum, error: false, loading: false }
+            : { ...copy[i], error: true, loading: false };
+          return copy;
+        });
         this.loadLogo(i);
       }
-      this.cdr.detectChanges();
     });
   }
 
   private loadLogo(index: number) {
-    const c = this.competitions[index];
+    const c = this.competitions()[index];
     this.backend.getCompetitionLogo(c.uuid, c.secret).subscribe({
       next: blob => {
-        c.logoUrl = URL.createObjectURL(blob);
-        this.cdr.detectChanges();
+        const logoUrl = URL.createObjectURL(blob);
+        this.competitions.update(list => {
+          const copy = [...list];
+          copy[index] = { ...copy[index], logoUrl };
+          return copy;
+        });
       },
       error: () => { /* no logo */ }
     });

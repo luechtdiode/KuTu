@@ -21,7 +21,7 @@ export class VereinsRegistrationGuardService  {
   canActivate(route: ActivatedRouteSnapshot): boolean {
     const wkId = route.paramMap.get('wkId');
     const regId = route.paramMap.get('regId');
-    if (regId === '0' || this.backendService.loggedIn && this.backendService.authenticatedClubId === regId) {
+    if (regId === '0' || this.backendService.loggedIn() && this.backendService.authenticatedClubId === regId) {
       return true;
     }
     this.router.navigate(['registration/' + wkId]);

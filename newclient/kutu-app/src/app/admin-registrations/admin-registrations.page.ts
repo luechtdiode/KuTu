@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnDestroy } from '@angular/core';
 import { AlertController, ToastController } from '@ionic/angular';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SecretService } from '../services/secret.service';
@@ -19,17 +19,16 @@ export class AdminRegistrationsPage implements OnDestroy {
   uuid = '';
   secret = '';
   wettkampfTitle = '';
-  logoUrl = '';
+  logoUrl = signal('');
   registrationUrl = '';
-  registrations: ClubRegistration[] = [];
-  syncActions: SyncAction[] = [];
-  judgeRegistrations: JudgeWithClub[] = [];
-  selectedSyncIndices = new Set<number>();
-  applying = false;
-  loading = false;
-  unassignedRiegenCount = 0;
+  registrations = signal<ClubRegistration[]>([]);
+  syncActions = signal<SyncAction[]>([]);
+  judgeRegistrations = signal<JudgeWithClub[]>([]);
+  selectedSyncIndices = signal<Set<number>>(new Set());
+  applying = signal(false);
+  loading = signal(false);
+  unassignedRiegenCount = signal(0);
 
-  private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private secretService = inject(SecretService);
@@ -53,7 +52,7 @@ export class AdminRegistrationsPage implements OnDestroy {
   }
 
   ngOnDestroy() {
-    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
     this.wsSubscriptions.forEach(s => s.unsubscribe());
     if (this.wsAcquired) {
       this.wsState.release({kind: 'competition', competitionId: this.uuid});
@@ -73,16 +72,16 @@ export class AdminRegistrationsPage implements OnDestroy {
   }
 
   async loadData() {
-    this.loading = true;
+    this.loading.set(true);
     try {
       const [registrations, syncActions, riegen] = await Promise.all([
         firstValueFrom(this.backend.getRegistrations(this.uuid, this.secret)),
         firstValueFrom(this.backend.getSyncActions(this.uuid, this.secret)).catch(() => [] as SyncAction[]),
         firstValueFrom(this.backend.getRiegen(this.uuid, this.secret)).catch(() => [] as RiegeItem[])
       ]);
-      this.registrations = registrations;
-      this.syncActions = syncActions;
-      this.unassignedRiegenCount = riegen.filter(r => !r.durchgang).length;
+      this.registrations.set(registrations);
+      this.syncActions.set(syncActions);
+      this.unassignedRiegenCount.set(riegen.filter(r => !r.durchgang).length);
 
       const judgeResults = await Promise.all(
         registrations.map(reg =>
@@ -91,62 +90,60 @@ export class AdminRegistrationsPage implements OnDestroy {
             .catch(() => [] as JudgeWithClub[])
         )
       );
-      this.judgeRegistrations = judgeResults.reduce<JudgeWithClub[]>((acc, list) => acc.concat(list), []);
+      this.judgeRegistrations.set(judgeResults.reduce<JudgeWithClub[]>((acc, list) => acc.concat(list), []));
     } catch {
-      this.registrations = [];
-      this.syncActions = [];
-      this.unassignedRiegenCount = 0;
-      this.judgeRegistrations = [];
+      this.registrations.set([]);
+      this.syncActions.set([]);
+      this.unassignedRiegenCount.set(0);
+      this.judgeRegistrations.set([]);
     } finally {
-      this.loading = false;
-      this.selectedSyncIndices.clear();
-      this.cdr.detectChanges();
+      this.loading.set(false);
+      this.selectedSyncIndices.set(new Set());
     }
     this.loadLogo();
   }
 
   private loadLogo() {
-    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
-    this.logoUrl = '';
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
+    this.logoUrl.set('');
     this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
       next: blob => {
-        this.logoUrl = URL.createObjectURL(blob);
-        this.cdr.detectChanges();
+        this.logoUrl.set(URL.createObjectURL(blob));
       },
       error: () => {}
     });
   }
 
   toggleSyncAction(index: number) {
-    if (this.selectedSyncIndices.has(index)) {
-      this.selectedSyncIndices.delete(index);
+    if (this.selectedSyncIndices().has(index)) {
+      this.selectedSyncIndices.update(s => { const next = new Set(s); next.delete(index); return next; });
     } else {
-      this.selectedSyncIndices.add(index);
+      this.selectedSyncIndices.update(s => new Set(s).add(index));
     }
   }
 
   toggleAllSyncAction() {
-    if (this.selectedSyncIndices.size < this.syncActions.length) {
-      for(const index of [...this.syncActions.map((v,i)=>i)]) {
-        if (!this.selectedSyncIndices.has(index)) {
-          this.selectedSyncIndices.add(index);
+    if (this.selectedSyncIndices().size < this.syncActions().length) {
+      for(const index of [...this.syncActions().map((v,i)=>i)]) {
+        if (!this.selectedSyncIndices().has(index)) {
+          this.selectedSyncIndices.update(s => new Set(s).add(index));
         }
       }
     } else {
-      this.selectedSyncIndices.clear();
+      this.selectedSyncIndices.set(new Set());
     }
   }
 
   isAllSelected(): boolean {
-    return this.selectedSyncIndices.size > 0 && this.selectedSyncIndices.size === this.syncActions.length;
+    return this.selectedSyncIndices().size > 0 && this.selectedSyncIndices().size === this.syncActions().length;
   }
 
   isSelected(index: number): boolean {
-    return this.selectedSyncIndices.has(index);
+    return this.selectedSyncIndices().has(index);
   }
 
   get selectedCount(): number {
-    return this.selectedSyncIndices.size;
+    return this.selectedSyncIndices().size;
   }
 
   private actionToKey(action: SyncAction): SyncActionKey {
@@ -160,10 +157,10 @@ export class AdminRegistrationsPage implements OnDestroy {
   }
 
   async applySelected() {
-    if (this.selectedSyncIndices.size === 0) return;
-    this.applying = true;
-    const keys = Array.from(this.selectedSyncIndices)
-      .map(i => this.syncActions[i])
+    if (this.selectedSyncIndices().size === 0) return;
+    this.applying.set(true);
+    const keys = Array.from(this.selectedSyncIndices())
+      .map(i => this.syncActions()[i])
       .filter(a => a?.data)
       .map(a => this.actionToKey(a));
     try {
@@ -179,7 +176,7 @@ export class AdminRegistrationsPage implements OnDestroy {
       const toast = await this.toastCtrl.create({ message: 'Fehler: ' + (e.message || e), duration: 3000, color: 'danger' });
       await toast.present();
     } finally {
-      this.applying = false;
+      this.applying.set(false);
     }
   }
 

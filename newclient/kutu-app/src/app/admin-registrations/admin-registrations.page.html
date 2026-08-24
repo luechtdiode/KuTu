@@ -22,8 +22,8 @@
     <ion-card-header>
 
       <ion-item lines="none" class="ion-no-padding">
-        @if (logoUrl) {
-        <img class="wk-logo" [src]="logoUrl" alt="Logo" />
+        @if (logoUrl()) {
+        <img class="wk-logo" [src]="logoUrl()" alt="Logo" />
         }
         <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
       </ion-item>
@@ -37,16 +37,16 @@
     </ion-card-content>
   </ion-card>
 
-  @if (loading) {
+  @if (loading()) {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
-  @if (!loading && unassignedRiegenCount > 0) {
+  @if (!loading() && unassignedRiegenCount() > 0) {
     <ion-card color="warning">
       <ion-card-header>
         <ion-card-title>
           <ion-icon name="warning-outline"></ion-icon>
-          {{ unassignedRiegenCount }} Riegen noch nicht eingeteilt
+          {{ unassignedRiegenCount() }} Riegen noch nicht eingeteilt
         </ion-card-title>
         <ion-card-subtitle>
           Es gibt Riegen ohne Durchgang- und Gerätezuweisung.
@@ -61,14 +61,14 @@
     </ion-card>
   }
 
-  @if (registrations.length > 0) {
+  @if (registrations().length > 0) {
     <ion-card>
       <ion-card-header>
-        <ion-card-title>Vereinsanmeldungen ({{ registrations.length }})</ion-card-title>
+        <ion-card-title>Vereinsanmeldungen ({{ registrations().length }})</ion-card-title>
       </ion-card-header>
       <ion-card-content>
         <ion-list>
-          @for (reg of registrations; track reg.id) {
+          @for (reg of registrations(); track reg.id) {
             <ion-item button (click)="openClubDetail(reg)">
               <ion-badge slot="start" color="{{ getStatusColor(reg) }}">{{ getStatusBadge(reg) }}</ion-badge>
               <ion-label>
@@ -95,7 +95,7 @@
         </ion-list>
       </ion-card-content>
     </ion-card>
-  } @else if (!loading) {
+  } @else if (!loading()) {
     <ion-card>
       <ion-card-content>
         <ion-text color="medium">
@@ -105,10 +105,10 @@
     </ion-card>
   }
 
-  @if (syncActions.length > 0) {
+  @if (syncActions().length > 0) {
     <ion-card>
       <ion-card-header>
-        <ion-card-title>Sync-Aktionen ({{ syncActions.length }})</ion-card-title>
+        <ion-card-title>Sync-Aktionen ({{ syncActions().length }})</ion-card-title>
         <ion-item (click)="toggleAllSyncAction()" [color]="isAllSelected() ? 'light' : ''" button>
           <ion-icon slot="start" [name]="isAllSelected() ? 'checkbox' : 'square-outline'" color="primary"></ion-icon>
           <ion-label class="ion-text-wrap">
@@ -118,7 +118,7 @@
       </ion-card-header>
       <ion-card-content>
         <ion-list>
-          @for (action of syncActions; track $index; let i = $index) {
+          @for (action of syncActions(); track $index; let i = $index) {
             <ion-item (click)="toggleSyncAction(i)" [color]="isSelected(i) ? 'light' : ''" button>
               <ion-icon slot="start" [name]="isSelected(i) ? 'checkbox' : 'square-outline'" color="primary"></ion-icon>
               <ion-label class="ion-text-wrap">
@@ -129,23 +129,23 @@
           }
         </ion-list>
         @if (selectedCount > 0) {
-          <ion-button expand="block" color="primary" [disabled]="applying" (click)="applySelected()">
+          <ion-button expand="block" color="primary" [disabled]="applying()" (click)="applySelected()">
             <ion-icon slot="start" name="sync"></ion-icon>
-            {{ applying ? 'Verarbeite...' : selectedCount + ' ausgewählte Aktionen ausführen' }}
+            {{ applying() ? 'Verarbeite...' : selectedCount + ' ausgewählte Aktionen ausführen' }}
           </ion-button>
         }
       </ion-card-content>
     </ion-card>
   }
 
-  @if (judgeRegistrations.length > 0) {
+  @if (judgeRegistrations().length > 0) {
     <ion-card>
       <ion-card-header>
-        <ion-card-title>Wertungsrichter ({{ judgeRegistrations.length }})</ion-card-title>
+        <ion-card-title>Wertungsrichter ({{ judgeRegistrations().length }})</ion-card-title>
       </ion-card-header>
       <ion-card-content>
         <ion-list>
-          @for (judge of judgeRegistrations; track judge.id) {
+          @for (judge of judgeRegistrations(); track judge.id) {
             <ion-item>
               <ion-icon name="person-outline" slot="start"></ion-icon>
               <ion-label class="ion-text-wrap">

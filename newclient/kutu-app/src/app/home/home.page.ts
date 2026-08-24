@@ -48,13 +48,13 @@ export class HomePage implements OnInit {
   }
 
   get isLocked(): boolean {
-    return this.backendService.stationFreezed;
+    return this.backendService.stationFreezed();
   }
   get isOpenAndActive() {
     return this.durchgangopen() && this.backendService.isWebsocketConnected();
   }
   get isLoggedIn() {
-    return this.backendService.loggedIn;
+    return this.backendService.loggedIn();
   }
 
   set competition(competitionId: string) {

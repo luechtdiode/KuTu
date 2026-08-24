@@ -5,7 +5,7 @@
       <ion-back-button [defaultHref]="'/admin/registrations/' + uuid"></ion-back-button>
       <ion-icon name="people" style="margin-left: 8px"></ion-icon>
     </ion-buttons>
-    <ion-title>{{ registration?.vereinname || 'Verein' }}</ion-title>
+    <ion-title>{{ registration()?.vereinname || 'Verein' }}</ion-title>
   </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
@@ -13,14 +13,14 @@
     <ion-refresher-content></ion-refresher-content>
   </ion-refresher>
 
-  @if (loading) {
+  @if (loading()) {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
-  @if (registration) {
+  @if (registration()) {
     <ion-card>
       <ion-card-header>
-        <ion-card-title>{{ registration.vereinname }}</ion-card-title>
+        <ion-card-title>{{ registration()!.vereinname }}</ion-card-title>
         <ion-card-subtitle>
           <ion-badge [color]="isApproved ? 'success' : 'warning'">
             {{ isApproved ? 'Angenommen' : 'Neu' }}
@@ -32,15 +32,15 @@
           <ion-icon name="person-outline" slot="start"></ion-icon>
           <ion-label>
             <h3>Verantwortlich</h3>
-            <p>{{ registration.respVorname }} {{ registration.respName }}</p>
+            <p>{{ registration()!.respVorname }} {{ registration()!.respName }}</p>
           </ion-label>
         </ion-item>
-        @if (registration.verband) {
+        @if (registration()!.verband) {
           <ion-item lines="none">
             <ion-icon name="ribbon-outline" slot="start"></ion-icon>
             <ion-label>
               <h3>Verband</h3>
-              <p>{{ registration.verband }}</p>
+              <p>{{ registration()!.verband }}</p>
             </ion-label>
           </ion-item>
         }
@@ -48,15 +48,15 @@
           <ion-icon name="mail-outline" slot="start"></ion-icon>
           <ion-label>
             <h3>E-Mail</h3>
-            <p><a [attr.href]="'mailto:' + registration.mail">{{ registration.mail }}</a></p>
+            <p><a [attr.href]="'mailto:' + registration()!.mail">{{ registration()!.mail }}</a></p>
           </ion-label>
         </ion-item>
-        @if (registration.mobilephone) {
+        @if (registration()!.mobilephone) {
           <ion-item lines="none">
             <ion-icon name="call-outline" slot="start"></ion-icon>
             <ion-label>
               <h3>Telefon</h3>
-              <p><a [attr.href]="'tel:' + registration.mobilephone">{{ registration.mobilephone }}</a></p>
+              <p><a [attr.href]="'tel:' + registration()!.mobilephone">{{ registration()!.mobilephone }}</a></p>
             </ion-label>
           </ion-item>
         }
@@ -65,10 +65,10 @@
 
     <ion-card>
       <ion-card-header>
-        <ion-card-title>Athlet-Anmeldungen ({{ athletRegistrations.length }})</ion-card-title>
+        <ion-card-title>Athlet-Anmeldungen ({{ athletRegistrations().length }})</ion-card-title>
       </ion-card-header>
       <ion-card-content>
-        @if (athletRegistrations.length > 0) {
+        @if (athletRegistrations().length > 0) {
           @for (pgm of groupedPrograms; track pgm.id) {
             <ion-item-divider class="ion-text-wrap">{{ pgm.name }}</ion-item-divider>
             @for (ath of pgm.athletes; track ath.id) {
@@ -96,12 +96,12 @@
 
     <ion-card>
       <ion-card-header>
-        <ion-card-title>Wertungsrichter ({{ judgeRegistrations.length }})</ion-card-title>
+        <ion-card-title>Wertungsrichter ({{ judgeRegistrations().length }})</ion-card-title>
       </ion-card-header>
       <ion-card-content>
-        @if (judgeRegistrations.length > 0) {
+        @if (judgeRegistrations().length > 0) {
           <ion-list>
-            @for (judge of judgeRegistrations; track judge.id) {
+            @for (judge of judgeRegistrations(); track judge.id) {
               <ion-item>
                 <ion-icon name="person-outline" slot="start"></ion-icon>
                 <ion-label class="ion-text-wrap">
@@ -119,7 +119,7 @@
         }
       </ion-card-content>
     </ion-card>
-  } @else if (!loading) {
+  } @else if (!loading()) {
     <ion-card>
       <ion-card-content>
         <ion-text color="medium">

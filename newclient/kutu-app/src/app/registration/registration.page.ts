@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { Wettkampf, ClubRegistration, SyncAction } from '../backend-types';
 import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -21,16 +21,18 @@ export class RegistrationPage implements OnInit, OnDestroy {
   toastController = inject(ToastController);
   private alertCtrl = inject(AlertController);
   private wsState = inject(WsStateService);
-  private cdr = inject(ChangeDetectorRef);
   private wsAcquired = false;
   private wsSubscriptions: Subscription[] = [];
 
 
 
-  sClubRegistrationList: ClubRegistration[];
-  sFilteredRegistrationList: ClubRegistration[];
+  /** signal views for zoneless template bindings */
+  readonly competitionsList = this.backendService.competitionsList;
+
+  sClubRegistrationList = signal<ClubRegistration[]>(undefined);
+  sFilteredRegistrationList = signal<ClubRegistration[]>(undefined);
   sMyQuery: string;
-  sSyncActions: SyncAction[] = [];
+  sSyncActions = signal<SyncAction[]>([]);
 
   tMyQueryStream = new Subject<any>();
 
@@ -83,7 +85,7 @@ export class RegistrationPage implements OnInit, OnDestroy {
   }
 
   get stationFreezed(): boolean {
-    return this.backendService.stationFreezed;
+    return this.backendService.stationFreezed();
   }
 
   set competition(competitionId: string) {
@@ -108,9 +110,8 @@ export class RegistrationPage implements OnInit, OnDestroy {
         );
 
         pipeBeforeAction.subscribe(filteredList => {
-          this.sFilteredRegistrationList = filteredList;
+          this.sFilteredRegistrationList.set(filteredList);
           this.busy.next(false);
-          this.cdr.detectChanges();
         });
       });
     }
@@ -120,14 +121,14 @@ export class RegistrationPage implements OnInit, OnDestroy {
     return this.backendService.competition || '';
   }
   set clubregistrations(list: ClubRegistration[]) {
-    this.sClubRegistrationList = list;
+    this.sClubRegistrationList.set(list);
     this.reloadList(this.sMyQuery);
   }
   get clubregistrations() {
-    return this.sClubRegistrationList;
+    return this.sClubRegistrationList();
   }
   get filteredStartList() {
-    return this.sFilteredRegistrationList || this.sClubRegistrationList;
+    return this.sFilteredRegistrationList() || this.sClubRegistrationList();
   }
 
   get isBusy(): Observable<boolean> {
@@ -138,14 +139,13 @@ export class RegistrationPage implements OnInit, OnDestroy {
     this.backendService.loadRegistrationSyncActions().pipe(
       take(1)
     ).subscribe(sa => {
-      this.sSyncActions = sa;
-      this.cdr.detectChanges();
+      this.sSyncActions.set(sa);
     });
   }
 
   getStatus(verein: ClubRegistration) {
-    if (this.sSyncActions) {
-      if (this.sSyncActions.find(a => a.verein.id === verein.id)) {
+    if (this.sSyncActions()) {
+      if (this.sSyncActions().find(a => a.verein.id === verein.id)) {
         return 'Abgleich ausstehend';
       } else {
         return 'Nachgeführt';
@@ -189,11 +189,11 @@ export class RegistrationPage implements OnInit, OnDestroy {
   }
 
   isLoggedIn(club: ClubRegistration): boolean {
-    return this.backendService.loggedIn && this.backendService.authenticatedClubId === club.id + '';
+    return this.backendService.loggedIn() && this.backendService.authenticatedClubId === club.id + '';
   }
 
   isLoggedInAsClub(): boolean {
-    return this.backendService.loggedIn && !!this.backendService.authenticatedClubId;
+    return this.backendService.loggedIn() && !!this.backendService.authenticatedClubId;
   }
 
   logout(slidingItem: IonItemSliding) {
@@ -342,7 +342,7 @@ export class RegistrationPage implements OnInit, OnDestroy {
   }
 
   getCompetitions(): Wettkampf[] {
-    return this.backendService.competitions || [];
+    return this.competitionsList();
   }
 
   competitionName(): string {

@@ -22,10 +22,10 @@
     <ion-card-header>
       <ion-item lines="none" class="ion-no-padding">
         <div style="display: flex; align-items: center; gap: 12px">
-          @if (logoUrl) {
-          <img class="wk-logo" [src]="logoUrl" alt="Logo" />
+          @if (logoUrl()) {
+          <img class="wk-logo" [src]="logoUrl()" alt="Logo" />
           }
-          <ion-card-title>{{ wettkampfTitle }}</ion-card-title>
+          <ion-card-title>{{ wettkampfTitle() }}</ion-card-title>
         </div>
         <span class="color-legend" slot="end">
           <span class="legend-title">Farblegende</span>
@@ -50,11 +50,11 @@
         <ion-icon slot="start" name="settings-outline"></ion-icon>
         Optionen
       </ion-button>
-      <ion-button (click)="generate()" [disabled]="loading" color="primary" size="small">
+      <ion-button (click)="generate()" [disabled]="loading()" color="primary" size="small">
         <ion-icon slot="start" name="flash-outline"></ion-icon>
         Generieren
       </ion-button>
-      <ion-button (click)="resetRiegen()" [disabled]="loading" color="danger" fill="outline" size="small" class="ion-margin-start">
+      <ion-button (click)="resetRiegen()" [disabled]="loading()" color="danger" fill="outline" size="small" class="ion-margin-start">
         <ion-icon slot="start" name="trash-outline"></ion-icon>
         Zurücksetzen
       </ion-button>
@@ -104,15 +104,15 @@
 
       @if (showGeneratePanel) {
         <ion-list class="ion-margin-top">
-          @if (filterDurchgaenge.length > 0) {
+          @if (filterDurchgaenge().length > 0) {
             <ion-item color="warning">
               <ion-icon name="refresh-outline" slot="start"></ion-icon>
               <ion-label>
-                <h2>{{ filterDurchgaenge.length > 1 ? 'Durchgänge' : 'Durchgang' }}
-                  "{{ filterDurchgaenge.join('", "') }}" neu generieren</h2>
+                <h2>{{ filterDurchgaenge().length > 1 ? 'Durchgänge' : 'Durchgang' }}
+                  "{{ filterDurchgaenge().join('", "') }}" neu generieren</h2>
                 <p>Bestehende Riegeneinteilungen werden zurückgesetzt und neu generiert.</p>
               </ion-label>
-              <ion-button slot="end" fill="clear" size="small" (click)="filterDurchgaenge = []">Auswahl aufheben</ion-button>
+              <ion-button slot="end" fill="clear" size="small" (click)="filterDurchgaenge.set([])">Auswahl aufheben</ion-button>
             </ion-item>
           }
           <ion-item>
@@ -147,7 +147,7 @@
             <ion-button size="small" fill="clear" (click)="selectAllDisziplinen()">Alle</ion-button>
             <ion-button size="small" fill="clear" (click)="selectNoneDisziplinen()">Keine</ion-button>
           </ion-item>
-          @for (d of disziplinen; track d.id) {
+          @for (d of disziplinen(); track d.id) {
             <ion-item>
               <ion-checkbox slot="start"
                 [checked]="selectedDisziplinIds.has(d.id)"
@@ -161,21 +161,21 @@
     </ion-card-content>
   </ion-card>
 
-  @if (loading) {
+  @if (loading()) {
     <ion-progress-bar type="indeterminate"></ion-progress-bar>
   }
 
-  @if (unassignedRiegen.length > 0) {
+  @if (unassignedRiegen().length > 0) {
     <ion-card class="unassigned-card">
       <ion-card-header>
         <ion-card-title>
           <ion-icon name="warning-outline" color="warning"></ion-icon>
-          Noch nicht eingeteilte Riegen ({{ unassignedRiegen.length }})
+          Noch nicht eingeteilte Riegen ({{ unassignedRiegen().length }})
         </ion-card-title>
         <ion-card-subtitle>Ziehe eine Riege auf eine Zelle in der Tabelle, um sie einem Durchgang und Gerät zuzuweisen.</ion-card-subtitle>
       </ion-card-header>
       <ion-card-content class="unassigned-chips">
-        @for (riege of unassignedRiegen; track riege.name) {
+        @for (riege of unassignedRiegen(); track riege.name) {
           <div class="riege-chip unassigned"
             [attr.draggable]="riege.kind !== 1"
             (dragstart)="riege.kind !== 1 && onDragStart($event, riege.name, '', null)"
@@ -188,7 +188,7 @@
     </ion-card>
   }
 
-  @if (groups.length > 0 && disziplinen.length > 0) {
+  @if (groups().length > 0 && disziplinen().length > 0) {
     <ion-card>
       <ion-card-content class="ion-padding-0" style="overflow-x: auto;">
         <table class="riege-table" [class.has-selection]="selectedDgs.size > 0">
@@ -205,7 +205,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (group of groups; track group.title) {
+            @for (group of groups(); track group.title) {
               @if (hasGroupedRiegen) {
                 <tr class="group-header-row">
                   <td class="col-select">
@@ -309,7 +309,7 @@
         </table>
       </ion-card-content>
     </ion-card>
-  } @else if (!loading) {
+  } @else if (!loading()) {
     <ion-card>
       <ion-card-content>
         <ion-text color="medium">

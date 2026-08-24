@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, inject, viewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, viewChild, ChangeDetectionStrategy, signal } from '@angular/core';
 import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables, AthletMediaIsAtStart, AthletMediaIsFree, AthletMediaIsPaused, AthletMediaIsRunning } from '../backend-types';
 import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
@@ -24,7 +24,6 @@ export class WertungEditorPage {
   toastController = inject(ToastController);
   backendService = inject(BackendService);
   platform = inject(Platform);
-  private cdr = inject(ChangeDetectorRef);
 
   constructor() {
     const backendService = this.backendService;
@@ -43,13 +42,12 @@ export class WertungEditorPage {
         encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.durchgang)
         && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
     )    ).subscribe(dg => {
-      this.durchgangopen = dg;
-      this.mediaButtonDisabled = !this.backendService.isWebsocketConnected() || !dg;
-      this.cdr.markForCheck();
+      this.durchgangopen.set(dg);
+      this.mediaButtonDisabled.set(!this.backendService.isWebsocketConnected() || !dg);
     });
   }
   private itemOriginal: WertungContainer;
-  private durchgangopen = false;
+  durchgangopen = signal(false);
   public readonly form = viewChild<any>('wertungsform');
   public readonly enote = viewChild<{
     setFocus: () => void;
@@ -63,16 +61,15 @@ export class WertungEditorPage {
 
   private readonly wertungChanged = new Subject<Wertung>();
 
-  item: WertungContainer;
-  _wertung: Wertung;
+  item = signal<WertungContainer>({} as WertungContainer);
   lastValidatedWertung: Wertung;
-  nextItem: WertungContainer
-  exercices: ScoreCalcVariable[][];
-  currentMediaState = 'unbekannt';
-  currentMediaButtonText = 'Musik laden';
-  currentMediaButtonIcon = 'play-circle-outline';
-  currentMediaButtonDisabled = true;
-  currentMediaReleaseButtonDisabled = true;
+  nextItem = signal<WertungContainer | undefined>(undefined);
+  exercices = signal<ScoreCalcVariable[][]>([]);
+  currentMediaState = signal('unbekannt');
+  currentMediaButtonText = signal('Musik laden');
+  currentMediaButtonIcon = signal('play-circle-outline');
+  currentMediaButtonDisabled = signal(true);
+  currentMediaReleaseButtonDisabled = signal(true);
   currentMediaAction = () => {};
 
   geraetId: number;
@@ -81,20 +78,21 @@ export class WertungEditorPage {
 
   durchgang: string;
 
-  waiting = false;
+  waiting = signal(false);
 
-  isDNoteUsed = true;
+  isDNoteUsed = signal(true);
 
+  private wertungState = signal<Wertung | undefined>(undefined);
   get wertung(): Wertung {
-    return this._wertung;
+    return this.wertungState();
   }
   set wertung(value: Wertung) {
-    this._wertung = value;
+    this.wertungState.set(value);
     this.updateExercices();
   }
-  mediaButtonDisabled = true;
+  mediaButtonDisabled = signal(true);
   durchgangstate() {
-    const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen ? 'gestartet' : 'gesperrt') : 'offline';
+    const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen() ? 'gestartet' : 'gesperrt') : 'offline';
     return connected;
   }
   get connected(): boolean {
@@ -117,7 +115,7 @@ export class WertungEditorPage {
   }
 
   updateVariable(event, variable: ScoreCalcVariable) {
-    const exercices = this.flatten(this.exercices);
+    const exercices = this.flatten(this.exercices());
     if (this.wertung.variables) {
         exercices
           .filter(e => e.prefix === 'A' || e.prefix === 'D')
@@ -144,11 +142,11 @@ export class WertungEditorPage {
   }
 
   get dNoteLabel() {
-    return this.item.isDNoteUsed && turn10ProgrammNames.indexOf(this.item.programm) > -1 ? "A-Note" : "D-Note";
+    return this.item().isDNoteUsed && turn10ProgrammNames.indexOf(this.item().programm) > -1 ? "A-Note" : "D-Note";
   }
 
   get eNoteLabel() {
-    return this.item.isDNoteUsed && turn10ProgrammNames.indexOf(this.item.programm) > -1 ? "B-Note" : "E-Note";
+    return this.item().isDNoteUsed && turn10ProgrammNames.indexOf(this.item().programm) > -1 ? "B-Note" : "E-Note";
   }
 
   get dNote() {
@@ -179,18 +177,16 @@ export class WertungEditorPage {
         }
       }),
       tap(wertung => {
-        if (this.wertung.variables) {
-          this.wertung.noteD = null;
-          this.wertung.noteE = null;
-        }
-        this.wertung.endnote = null;
-        this.cdr.markForCheck();
+        this.wertungState.update(v => Object.assign({}, v, {
+          noteD: wertung.variables ? null : v.noteD,
+          noteE: wertung.variables ? null : v.noteE,
+          endnote: null
+        }));
       }),
       debounceTime(1500),
       share()
     ).subscribe(wertung => {
       this.calculateEndnote(wertung);
-      this.cdr.markForCheck();
     });
   }
 
@@ -202,20 +198,21 @@ export class WertungEditorPage {
       mediafile: wertung.mediafile
     });
     if (toValidate.variables || toValidate.noteD !== this.lastValidatedWertung?.noteD || toValidate.noteE !== this.lastValidatedWertung?.noteE) {
-      if (this.wertung.variables) {
-        this.wertung.noteD = null;
-        this.wertung.noteE = null;
+      if (this.wertungState().variables) {
+        this.wertungState.update(v => Object.assign({}, v, { noteD: null, noteE: null, endnote: null }));
+      } else {
+        this.wertungState.update(v => Object.assign({}, v, { endnote: null }));
       }
-      this.wertung.endnote = null;
       this.backendService.validateWertung(toValidate).subscribe({
         next: (w) => {
           if (w.athletId === this.wertung.athletId && w.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId) {
             this.lastValidatedWertung = toValidate;
-            this.wertung.noteD = w.noteD;
-            this.wertung.noteE = w.noteE;
-            this.wertung.endnote = w.endnote;
+            this.wertungState.update(v => Object.assign({}, v, {
+              noteD: w.noteD,
+              noteE: w.noteE,
+              endnote: w.endnote
+            }));
           }
-          this.cdr.markForCheck();
         },
         error: (err) => {
           console.log(err);
@@ -246,21 +243,20 @@ export class WertungEditorPage {
     }
     this.mediasubscription = this.backendService.mediaStateChanged.subscribe(ms => {
       this.mediaStateChanged(ms);
-      this.cdr.markForCheck();
     });
     this.subscription = this.backendService.wertungUpdated.subscribe(wc => {
       if (wc.wertung.athletId === this.wertung.athletId
         && wc.wertung.wettkampfdisziplinId === this.wertung.wettkampfdisziplinId
         && wc.wertung.endnote !== this.wertung.endnote) {
-        this.item.wertung = Object.assign({}, wc.wertung);
+        this.item.update(i => Object.assign({}, i, { wertung: Object.assign({}, wc.wertung) }));
         this.itemOriginal.wertung = Object.assign({}, wc.wertung);
-        this.wertung = Object.assign({
+        this.wertungState.set(Object.assign({
           noteD: 0.00,
           noteE: 0.00,
           endnote: 0.00
-        }, this.item.wertung);
+        }, this.item().wertung));
+        this.updateExercices();
       }
-      this.cdr.markForCheck();
     });
     if (this.editable()) {
       this.backendService.ensureWebsocketConnection();
@@ -291,20 +287,20 @@ export class WertungEditorPage {
   }
 
   editable() {
-    return this.backendService.loggedIn && this.wertung.wettkampfdisziplinId > 0;
+    return this.backendService.loggedIn() && this.wertung.wettkampfdisziplinId > 0;
   }
 
   updateExercices() {
-    const scvs = this.groupBy([...this.wertung.variables?.dVariables || [], ...this.wertung.variables?.eVariables || [], ...this.wertung.variables?.pVariables || []], v => v.index);
-    this.exercices = Object.keys(scvs).map(k => scvs[k]).sort((a, b) => a[0].index - b[0].index);
+    const scvs = this.groupBy([...this.wertungState()?.variables?.dVariables || [], ...this.wertungState()?.variables?.eVariables || [], ...this.wertungState()?.variables?.pVariables || []], v => v.index);
+    this.exercices.set(Object.keys(scvs).map(k => scvs[k]).sort((a, b) => a[0].index - b[0].index));
   }
 
   updateUI(wc: WertungContainer) {
 
     this.mediaStateChanged(this.backendService.mediaStateChanged.value);
-    this.waiting = false;
-    this.item = Object.assign({}, wc);
-    this.isDNoteUsed = this.item.isDNoteUsed;
+    this.waiting.set(false);
+    this.item.set(Object.assign({}, wc));
+    this.isDNoteUsed.set(this.item().isDNoteUsed);
     this.itemOriginal = Object.assign({}, wc);
     this.wertung = Object.assign({
       noteD: 0.00,
@@ -315,13 +311,12 @@ export class WertungEditorPage {
     const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === wc.wertung.id);
     let nextItemIndex = currentItemIndex + 1;
     if (currentItemIndex < 0 || currentItemIndex >= this.backendService.wertungen.length - 1) {
-      this.nextItem = undefined;
+      this.nextItem.set(undefined);
     } else {
-      this.nextItem = this.backendService.wertungen[nextItemIndex];
+      this.nextItem.set(this.backendService.wertungen[nextItemIndex]);
     }
 
     this.ionViewWillEnter();
-    this.cdr.markForCheck();
   }
 
   ensureInitialValues(wertung: Wertung): Wertung {
@@ -331,60 +326,60 @@ export class WertungEditorPage {
 
   mediaStateChanged(message: AthletMediaIsAtStart|AthletMediaIsRunning|AthletMediaIsPaused|AthletMediaIsFree) {
     if (this.wertung?.mediafile === null || this.geraetName() !== 'Boden') {
-      this.currentMediaState = 'keine Musik zugeordnet';
-      this.currentMediaButtonDisabled = true;
-      this.currentMediaReleaseButtonDisabled = true;
-      this.currentMediaButtonText = '';
+      this.currentMediaState.set('keine Musik zugeordnet');
+      this.currentMediaButtonDisabled.set(true);
+      this.currentMediaReleaseButtonDisabled.set(true);
+      this.currentMediaButtonText.set('');
     } else {
       switch (message.type) {
         case 'AthletMediaIsFree':
-          this.currentMediaState = 'Musik Player ist frei';
-          this.currentMediaButtonText = 'Musik laden';
-          this.currentMediaButtonIcon = 'recording-outline';
+          this.currentMediaState.set('Musik Player ist frei');
+          this.currentMediaButtonText.set('Musik laden');
+          this.currentMediaButtonIcon.set('recording-outline');
           this.currentMediaAction = this.loadMusic;
-          this.currentMediaButtonDisabled = false;
-          this.currentMediaReleaseButtonDisabled = true;
+          this.currentMediaButtonDisabled.set(false);
+          this.currentMediaReleaseButtonDisabled.set(true);
           break;
         default:
           if (message.media?.id === this.wertung?.mediafile?.id) {
-            this.currentMediaReleaseButtonDisabled = false;
+            this.currentMediaReleaseButtonDisabled.set(false);
             switch (message.type) {
               case 'AthletMediaIsAtStart':
-                this.currentMediaState = 'Musik ist bereit für ' + message.context;
-                this.currentMediaButtonText = 'Musik abspielen';
-                this.currentMediaButtonIcon = 'play-circle-outline';
+                this.currentMediaState.set('Musik ist bereit für ' + message.context);
+                this.currentMediaButtonText.set('Musik abspielen');
+                this.currentMediaButtonIcon.set('play-circle-outline');
                 this.currentMediaAction = this.playMusic;
-                this.currentMediaButtonDisabled = false;
+                this.currentMediaButtonDisabled.set(false);
                 break;
               case 'AthletMediaIsRunning':
-                this.currentMediaState = 'Musik läuft für ' + message.context;
-                this.currentMediaButtonText = 'Musik stoppen';
-                this.currentMediaButtonIcon = 'stop-circle-outline';
+                this.currentMediaState.set('Musik läuft für ' + message.context);
+                this.currentMediaButtonText.set('Musik stoppen');
+                this.currentMediaButtonIcon.set('stop-circle-outline');
                 this.currentMediaAction = this.playMusic;
-                this.currentMediaButtonDisabled = false;
+                this.currentMediaButtonDisabled.set(false);
                 break;
               case 'AthletMediaIsPaused':
-                this.currentMediaState = 'Musik ist pausiert für ' + message.context;
-                this.currentMediaButtonText = 'Musik abspielen';
-                this.currentMediaButtonIcon = 'play-circle-outline';
+                this.currentMediaState.set('Musik ist pausiert für ' + message.context);
+                this.currentMediaButtonText.set('Musik abspielen');
+                this.currentMediaButtonIcon.set('play-circle-outline');
                 this.currentMediaAction = this.playMusic;
-                this.currentMediaButtonDisabled = false;
+                this.currentMediaButtonDisabled.set(false);
                 break;
               case 'AthletMediaIsFree':
-                this.currentMediaState = 'Musik Player ist frei';
-                this.currentMediaButtonText = 'Musik abspielen';
-                this.currentMediaButtonIcon = 'play-circle-outline';
+                this.currentMediaState.set('Musik Player ist frei');
+                this.currentMediaButtonText.set('Musik abspielen');
+                this.currentMediaButtonIcon.set('play-circle-outline');
                 this.currentMediaAction = this.playMusic;
-                this.currentMediaButtonDisabled = false;
+                this.currentMediaButtonDisabled.set(false);
                 break;
             }
           } else {
-            this.currentMediaState = 'Musik Player ist belegt für ' + message.context;
-            this.currentMediaButtonText = 'Musik laden';
-            this.currentMediaButtonIcon = 'recording-outline';
+            this.currentMediaState.set('Musik Player ist belegt für ' + message.context);
+            this.currentMediaButtonText.set('Musik laden');
+            this.currentMediaButtonIcon.set('recording-outline');
             this.currentMediaAction = () => {};
-            this.currentMediaButtonDisabled = true;
-            this.currentMediaReleaseButtonDisabled = true;
+            this.currentMediaButtonDisabled.set(true);
+            this.currentMediaReleaseButtonDisabled.set(true);
           }
       }
     }
@@ -427,37 +422,37 @@ export class WertungEditorPage {
 
   saveClose(form: NgForm) {
     if(!form.valid) return;
-    this.waiting = true;
+    this.waiting.set(true);
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
       next: (wc) => {
         this.updateUI(wc);
         this.navCtrl.pop();
       },
       error: (err) => {
-        this.waiting = false;
+        this.waiting.set(false);
         console.log(err);
     }});
   }
 
   save(form: NgForm) {
     if(!form.valid) return;
-    this.waiting = true;
+    this.waiting.set(true);
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
       next: (wc) => {
         this.updateUI(wc);
       },
       error: (err) => {
-        this.waiting = false;
+        this.waiting.set(false);
         console.log(err);
     }});
   }
 
   saveNext(form: NgForm) {
     if(!form.valid) return;
-    this.waiting = true;
+    this.waiting.set(true);
     this.backendService.updateWertung(this.durchgang, this.step, this.geraetId, this.ensureInitialValues(form.value)).subscribe({
       next: (wc) => {
-        this.waiting = false;
+        this.waiting.set(false);
         const currentItemIndex = this.backendService.wertungen.findIndex(w => w.wertung.id === wc.wertung.id);
         if (currentItemIndex < 0) {
           console.log('unexpected wertung - id matches not with current wertung: ' + wc.wertung.id);
@@ -480,7 +475,7 @@ export class WertungEditorPage {
         this.updateUI(this.backendService.wertungen[nextItemIndex]);
       },
       error: (err) => {
-        this.waiting = false;
+        this.waiting.set(false);
         console.log(err);
     }});
   }

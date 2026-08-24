@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { AlertController, ModalController, ToastController, NavController } from '@ionic/angular';
 import { SecretService } from '../services/secret.service';
@@ -18,13 +18,12 @@ export class ScoreCalcPage {
   secret = '';
   titel = '';
   datum = '';
-  logoUrl: string | null = null;
-  templates: ScoreCalcTemplate[] = [];
-  options: ScoreCalcOptions = { disziplinen: [], wettkampfdisziplinen: [] };
+  logoUrl = signal<string | null>(null);
+  templates = signal<ScoreCalcTemplate[]>([]);
+  options = signal<ScoreCalcOptions>({ disziplinen: [], wettkampfdisziplinen: [] });
   filterText = '';
-  loading = false;
+  loading = signal(false);
 
-  private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
@@ -34,7 +33,7 @@ export class ScoreCalcPage {
   private nav = inject(NavController);
 
   ngOnDestroy() {
-    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
   }
 
   ionViewWillEnter() {
@@ -47,7 +46,7 @@ export class ScoreCalcPage {
     this.secret = stored.secret;
     this.titel = stored.titel;
     this.datum = stored.datum;
-    this.loading = true;
+    this.loading.set(true);
     this.loadData();
     this.loadLogo();
   }
@@ -57,12 +56,11 @@ export class ScoreCalcPage {
   }
 
   private loadLogo() {
-    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
-    this.logoUrl = null;
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
+    this.logoUrl.set(null);
     this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
       next: blob => {
-        this.logoUrl = URL.createObjectURL(blob);
-        this.cdr.detectChanges();
+        this.logoUrl.set(URL.createObjectURL(blob));
       },
       error: () => {}
     });
@@ -74,11 +72,11 @@ export class ScoreCalcPage {
         firstValueFrom(this.backend.getScoreCalcOptions(this.uuid, this.secret)),
         firstValueFrom(this.backend.getScoreCalcTemplates(this.uuid, this.secret))
       ]);
-      this.options = {
+      this.options.set({
         disziplinen: Array.isArray(options?.disziplinen) ? options.disziplinen : [],
         wettkampfdisziplinen: Array.isArray(options?.wettkampfdisziplinen) ? options.wettkampfdisziplinen : []
-      };
-      this.templates = Array.isArray(templates) ? templates : [];
+      });
+      this.templates.set(Array.isArray(templates) ? templates : []);
     } catch (e) {
       const toast = await this.toastCtrl.create({
         message: 'Fehler beim Laden: ' + ((e as any).error || (e as any).message),
@@ -87,19 +85,18 @@ export class ScoreCalcPage {
       });
       await toast.present();
     } finally {
-      this.loading = false;
-      this.cdr.detectChanges();
+      this.loading.set(false);
     }
   }
 
   disziplinName(t: ScoreCalcTemplate): string {
     if (t.disziplinId == null) return '';
-    return this.options.disziplinen.find(d => d.id === t.disziplinId)?.name ?? '';
+    return this.options().disziplinen.find(d => d.id === t.disziplinId)?.name ?? '';
   }
 
   kategoriedisziplinName(t: ScoreCalcTemplate): string {
     if (t.wettkampfdisziplinId == null) return '';
-    return this.options.wettkampfdisziplinen.find(w => w.id === t.wettkampfdisziplinId)?.easyprint ?? '';
+    return this.options().wettkampfdisziplinen.find(w => w.id === t.wettkampfdisziplinId)?.easyprint ?? '';
   }
 
   sortOrderOf(t: ScoreCalcTemplate): string {
@@ -115,8 +112,8 @@ export class ScoreCalcPage {
 
   get filteredTemplates(): ScoreCalcTemplate[] {
     const searchQuery = this.filterText.toUpperCase().split(' ').filter(s => s.length > 0);
-    if (searchQuery.length === 0) return this.templates;
-    return this.templates.filter(t => {
+    if (searchQuery.length === 0) return this.templates();
+    return this.templates().filter(t => {
       return searchQuery.every(search =>
         t.dFormula.toUpperCase().includes(search) ||
         t.eFormula.toUpperCase().includes(search) ||
@@ -153,7 +150,7 @@ export class ScoreCalcPage {
         template,
         uuid: this.uuid,
         secret: this.secret,
-        options: this.options
+        options: this.options()
       }
     });
     modal.onDidDismiss().then(async (result) => {

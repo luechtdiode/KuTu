@@ -1,4 +1,4 @@
-import {Component, inject, ChangeDetectorRef, OnDestroy} from '@angular/core';
+import {Component, inject, signal, OnDestroy} from '@angular/core';
 import { AlertController, ToastController } from '@ionic/angular';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
@@ -21,65 +21,65 @@ interface CompetitionListItem {
   standalone: false
 })
 export class SecurityPage implements OnDestroy {
-  secrets: StoredSecret[] = [];
-  competitions: CompetitionListItem[] = [];
-  private cdr = inject(ChangeDetectorRef);
+  secrets = signal<StoredSecret[]>([]);
+  competitions = signal<CompetitionListItem[]>([]);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
 
   ngOnDestroy() {
-    for (const c of this.competitions) {
+    for (const c of this.competitions()) {
       if (c.logoUrl) URL.revokeObjectURL(c.logoUrl);
     }
   }
 
   ionViewWillEnter() {
-    this.secrets = this.secretService.getSecrets();
-    this.competitions = this.secrets.map(s => ({
+    const secrets = this.secretService.getSecrets();
+    this.secrets.set(secrets);
+    this.competitions.set(secrets.map(s => ({
       uuid: s.uuid,
       titel: s.titel,
       datum: s.datum,
       secret: s.secret,
       loading: true,
       error: false
-    }));
+    })));
     this.refreshFromServer();
-    this.cdr.detectChanges();
   }
 
   private refreshFromServer() {
-    const requests = this.competitions.map(c =>
+    const requests = this.competitions().map(c =>
       this.backend.getCompetitionDetails(c.uuid, c.secret)
     );
     if (requests.length === 0) {
-      this.cdr.detectChanges();
       return;
     }
     forkJoin(requests.map(r => firstValueFrom(r).catch(() => null))).subscribe(results => {
       for (let i = 0; i < results.length; i++) {
         const data = results[i];
-        if (data) {
-          this.competitions[i].titel = data.titel;
-          this.competitions[i].datum = data.datum;
-          this.competitions[i].error = false;
-        } else {
-          this.competitions[i].error = true;
-        }
-        this.competitions[i].loading = false;
+        this.competitions.update(list => {
+          const copy = [...list];
+          copy[i] = data
+            ? { ...copy[i], titel: data.titel, datum: data.datum, error: false, loading: false }
+            : { ...copy[i], error: true, loading: false };
+          return copy;
+        });
         this.loadLogo(i);
       }
-      this.cdr.detectChanges();
     });
   }
 
   private loadLogo(index: number) {
-    const c = this.competitions[index];
+    const c = this.competitions()[index];
     this.backend.getCompetitionLogo(c.uuid, c.secret).subscribe({
       next: blob => {
-        c.logoUrl = URL.createObjectURL(blob);
-        this.cdr.detectChanges();
+        const logoUrl = URL.createObjectURL(blob);
+        this.competitions.update(list => {
+          const copy = [...list];
+          copy[index] = { ...copy[index], logoUrl };
+          return copy;
+        });
       },
       error: () => { /* no logo */ }
     });
@@ -108,8 +108,7 @@ export class SecurityPage implements OnDestroy {
       // Continue even if server delete fails
     }
     this.secretService.removeSecret(s.uuid);
-    this.secrets = this.secretService.getSecrets();
-    this.cdr.detectChanges();
+    this.secrets.set(this.secretService.getSecrets());
     const toast = await this.toastCtrl.create({
       message: 'Wettkampf gelöscht.',
       duration: 2000,

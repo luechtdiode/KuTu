@@ -21,7 +21,7 @@ export class RiegeListComponent {
 
 
   itemTapped(event: any, item: WertungContainer) {
-    if (this.backendService.loggedIn) {
+    if (this.backendService.loggedIn()) {
       this.navCtrl.navigateForward('wertung-editor/' + item.id);
     } else {
       this.navCtrl.navigateForward(`athlet-view/${this.backendService.competition}/${item.id}`);

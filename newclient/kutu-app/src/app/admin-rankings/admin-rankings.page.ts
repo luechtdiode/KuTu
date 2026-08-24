@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnDestroy } from '@angular/core';
 import { AlertController, ToastController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
@@ -17,12 +17,12 @@ export class AdminRankingsPage implements OnDestroy {
   uuid = '';
   secret = '';
   wettkampfTitle = '';
-  logoUrl = '';
+  logoUrl = signal('');
 
-  availableGroupers: string[] = [];
+  availableGroupers = signal<string[]>([]);
   selectedGroupers: (string | null)[] = [null, null, null, null];
-  filterOptions: Map<string, string[]> = new Map();
-  selectedFilters: Map<string, Set<string>> = new Map();
+  filterOptions = signal<Map<string, string[]>>(new Map());
+  selectedFilters = signal<Map<string, Set<string>>>(new Map());
   filterOnly: boolean[] = [false, false, false, false];
 
   kind = 'Einzelrangliste';
@@ -30,17 +30,16 @@ export class AdminRankingsPage implements OnDestroy {
   isAlphanumeric = false;
   isAvg = true;
 
-  scoreblocks: ScoreBlock[] = [];
-  savedScores: PublishedScoreView[] = [];
-  editingScore: PublishedScoreView | null = null;
+  scoreblocks = signal<ScoreBlock[]>([]);
+  savedScores = signal<PublishedScoreView[]>([]);
+  editingScore = signal<PublishedScoreView | null>(null);
   editTitle = '';
 
   creatingNew = false;
-  loading = false;
-  previewLoading = false;
-  loadingGroupers = false;
+  loading = signal(false);
+  previewLoading = signal(false);
+  loadingGroupers = signal(false);
 
-  private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
@@ -52,7 +51,7 @@ export class AdminRankingsPage implements OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(s => s.unsubscribe());
-    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
   }
 
   async ionViewWillEnter() {
@@ -64,8 +63,7 @@ export class AdminRankingsPage implements OnDestroy {
     }
     this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
       next: blob => {
-        this.logoUrl = URL.createObjectURL(blob);
-        this.cdr.detectChanges();
+        this.logoUrl.set(URL.createObjectURL(blob));
       },
       error: () => { /* no logo */ }
     });
@@ -74,24 +72,23 @@ export class AdminRankingsPage implements OnDestroy {
   }
 
   async loadGroupers() {
-    this.loadingGroupers = true;
+    this.loadingGroupers.set(true);
     try {
-      this.availableGroupers = [...new Set(
+      this.availableGroupers.set([...new Set(
         (await firstValueFrom(this.backend.getAvailableGroupers(this.uuid))).map(g => decodeURIComponent(g))
-      )];
+      )]);
     } catch {
-      this.availableGroupers = [];
+      this.availableGroupers.set([]);
     } finally {
-      this.loadingGroupers = false;
-      this.cdr.detectChanges();
+      this.loadingGroupers.set(false);
     }
   }
 
   async loadFilterOptions(level: number) {
     const grouper = this.selectedGroupers[level];
     if (!grouper) {
-      this.filterOptions.delete('' + level);
-      this.selectedFilters.delete('' + level);
+      this.filterOptions.update(m => { const next = new Map(m); next.delete('' + level); return next; });
+      this.selectedFilters.update(m => { const next = new Map(m); next.delete('' + level); return next; });
       return;
     }
     try {
@@ -102,32 +99,32 @@ export class AdminRankingsPage implements OnDestroy {
       const parsedFilters = matching
         ? matching.substring(prefix.length).split('!').sort()
         : [];
-      this.filterOptions.set('' + level, parsedFilters);
-      if (!this.selectedFilters.has('' + level)) {
-        this.selectedFilters.set('' + level, new Set());
+      this.filterOptions.update(m => new Map(m).set('' + level, parsedFilters));
+      if (!this.selectedFilters().has('' + level)) {
+        this.selectedFilters.update(m => new Map(m).set('' + level, new Set()));
       } else {
-        const existing = this.selectedFilters.get('' + level);
+        const existing = this.selectedFilters().get('' + level)!;
         const newSet = new Set<string>();
         parsedFilters.forEach(f => {
           if (existing.has(f)) {
             newSet.add(f);
           }
         });
-        this.selectedFilters.set('' + level, newSet);
+        this.selectedFilters.update(m => new Map(m).set('' + level, newSet));
       }
     } catch {
-      this.filterOptions.delete('' + level);
-      this.selectedFilters.delete('' + level);
+      this.filterOptions.update(m => { const next = new Map(m); next.delete('' + level); return next; });
+      this.selectedFilters.update(m => { const next = new Map(m); next.delete('' + level); return next; });
     }
-    this.cdr.detectChanges();
   }
 
   onGrouperChange(level: number) {
     this.filterOnly[level] = false;
     for (let i = level + 1; i < 4; i++) {
       this.selectedGroupers[i] = null;
-      this.filterOptions.delete('' + i);
-      this.selectedFilters.delete('' + i);
+      const li = '' + i;
+      this.filterOptions.update(m => { const next = new Map(m); next.delete(li); return next; });
+      this.selectedFilters.update(m => { const next = new Map(m); next.delete(li); return next; });
       this.filterOnly[i] = false;
     }
     this.loadFilterOptions(level);
@@ -138,11 +135,11 @@ export class AdminRankingsPage implements OnDestroy {
   }
 
   getFilterOptions(level: number): string[] {
-    return this.filterOptions.get('' + level) || [];
+    return this.filterOptions().get('' + level) || [];
   }
 
   getSelectedFilters(level: number): Set<string> {
-    return this.selectedFilters.get('' + level) || new Set();
+    return this.selectedFilters().get('' + level) || new Set();
   }
 
   getSelectedFilterArray(level: number): string[] {
@@ -150,7 +147,7 @@ export class AdminRankingsPage implements OnDestroy {
   }
 
   onFilterSelect(level: number, event: any) {
-    this.selectedFilters.set('' + level, new Set(event.detail.value || []));
+    this.selectedFilters.update(m => new Map(m).set('' + level, new Set(event.detail.value || [])));
     if (this.getSelectedFilterArray(level).length <= 1) {
       this.filterOnly[level] = false;
     }
@@ -187,50 +184,48 @@ export class AdminRankingsPage implements OnDestroy {
   async loadPreview() {
     const query = this.buildQuery();
     if (!query) {
-      this.scoreblocks = [];
+      this.scoreblocks.set([]);
       return;
     }
-    this.previewLoading = true;
+    this.previewLoading.set(true);
     try {
       const link = `${backendUrl}api/scores/${this.uuid}/query?${query}`;
       const score = await firstValueFrom(this.backendService.getScoreList('api/scores/' + this.uuid + '/query?' + query));
-      this.scoreblocks = score.scoreblocks || [];
+      this.scoreblocks.set(score.scoreblocks || []);
     } catch {
-      this.scoreblocks = [];
+      this.scoreblocks.set([]);
     } finally {
-      this.previewLoading = false;
-      this.cdr.detectChanges();
+      this.previewLoading.set(false);
     }
   }
 
   async loadSavedScores() {
-    this.loading = true;
+    this.loading.set(true);
     try {
-      this.savedScores = (await firstValueFrom(this.backend.getAdminScores(this.uuid, this.secret)))
-        .sort((a, b) => a.title.localeCompare(b.title));
+      this.savedScores.set((await firstValueFrom(this.backend.getAdminScores(this.uuid, this.secret)))
+        .sort((a, b) => a.title.localeCompare(b.title)));
     } catch {
-      this.savedScores = [];
+      this.savedScores.set([]);
     } finally {
-      this.loading = false;
-      this.cdr.detectChanges();
+      this.loading.set(false);
     }
   }
 
   startNewScore() {
     this.creatingNew = true;
-    this.editingScore = null;
+    this.editingScore.set(null);
     this.editTitle = '';
-    const default0 = this.availableGroupers[0] || null;
-    const default1 = this.availableGroupers.includes('Geschlecht') ? 'Geschlecht' : null;
+    const default0 = this.availableGroupers()[0] || null;
+    const default1 = this.availableGroupers().includes('Geschlecht') ? 'Geschlecht' : null;
     this.selectedGroupers = [default0, default1, null, null];
-    this.filterOptions.clear();
-    this.selectedFilters.clear();
+    this.filterOptions.set(new Map());
+    this.selectedFilters.set(new Map());
     this.filterOnly = [false, false, false, false];
     this.kind = 'Einzelrangliste';
     this.bestN = 'alle';
     this.isAlphanumeric = false;
     this.isAvg = true;
-    this.scoreblocks = [];
+    this.scoreblocks.set([]);
     if (default0 || default1) {
       this.loadAllFilterOptions();
     }
@@ -238,18 +233,18 @@ export class AdminRankingsPage implements OnDestroy {
 
   closeEditor() {
     this.creatingNew = false;
-    this.editingScore = null;
+    this.editingScore.set(null);
     this.editTitle = '';
     this.selectedGroupers = [null, null, null, null];
-    this.filterOptions.clear();
-    this.selectedFilters.clear();
+    this.filterOptions.set(new Map());
+    this.selectedFilters.set(new Map());
     this.filterOnly = [false, false, false, false];
-    this.scoreblocks = [];
+    this.scoreblocks.set([]);
   }
 
   async editScore(score: PublishedScoreView) {
     this.creatingNew = false;
-    this.editingScore = score;
+    this.editingScore.set(score);
     this.editTitle = score.title;
     this.parseQuery(score.query);
     await this.loadAllFilterOptions();
@@ -258,8 +253,8 @@ export class AdminRankingsPage implements OnDestroy {
 
   private parseQuery(query: string) {
     this.selectedGroupers = [null, null, null, null];
-    this.filterOptions.clear();
-    this.selectedFilters.clear();
+    this.filterOptions.set(new Map());
+    this.selectedFilters.set(new Map());
     this.filterOnly = [false, false, false, false];
     this.kind = 'Einzelrangliste';
     this.bestN = 'alle';
@@ -284,7 +279,7 @@ export class AdminRankingsPage implements OnDestroy {
       const realValues = decodedValues.filter(v => v !== 'all' && v !== 'alle');
       const level = this.selectedGroupers.findIndex(g => g === decodedGrouper);
       if (level >= 0) {
-        this.selectedFilters.set('' + level, new Set(realValues));
+        this.selectedFilters.update(m => new Map(m).set('' + level, new Set(realValues)));
         if (hasAll) {
           this.filterOnly[level] = true;
         }
@@ -319,8 +314,8 @@ export class AdminRankingsPage implements OnDestroy {
     }
     const request: AdminScoreRequest = { title: this.editTitle.trim(), query, published };
     try {
-      if (this.editingScore) {
-        await firstValueFrom(this.backend.updateAdminScore(this.uuid, this.editingScore.id, request, this.secret));
+      if (this.editingScore()) {
+        await firstValueFrom(this.backend.updateAdminScore(this.uuid, this.editingScore()!.id, request, this.secret));
       } else {
         await firstValueFrom(this.backend.createAdminScore(this.uuid, request, this.secret));
       }
@@ -377,8 +372,8 @@ export class AdminRankingsPage implements OnDestroy {
               await firstValueFrom(this.backend.deleteAdminScore(this.uuid, score.id, this.secret));
               const toast = await this.toastCtrl.create({ message: 'Gelöscht', duration: 2000, color: 'success' });
               await toast.present();
-              if (this.editingScore?.id === score.id) {
-                this.editingScore = null;
+              if (this.editingScore()?.id === score.id) {
+                this.editingScore.set(null);
               }
               await this.loadSavedScores();
             } catch {

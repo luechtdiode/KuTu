@@ -78,20 +78,20 @@
 
   <ion-list-header>
     <ion-label>Vorschau</ion-label>
-    @if (previewStale) {
+    @if (previewStale()) {
     <ion-spinner slot="end" style="width: 18px; height: 18px"></ion-spinner>
     }
   </ion-list-header>
 
-  @if (preview) {
-  @if (previewError) {
+  @if (preview()) {
+  @if (previewError()) {
   <div class="ion-padding">
-    <ion-text color="danger" class="sc-valid">{{ previewError }}</ion-text>
+    <ion-text color="danger" class="sc-valid">{{ previewError() }}</ion-text>
   </div>
   }
-  @if (preview.exercises.length > 0) {
+  @if (preview().exercises.length > 0) {
   <ion-list>
-    @for (ex of preview.exercises; track $index) {
+    @for (ex of preview().exercises; track $index) {
     <ion-item-group>
       <ion-item-divider>Übung {{ $index + 1 }}</ion-item-divider>
       @for (v of ex; track v.prefix + v.name + v.index) {
@@ -109,41 +109,41 @@
     @if (isDNoteUsed) {
     <ion-item>
       <ion-label>{{ dNoteLabel }}-Note</ion-label>
-      <ion-text slot="end" class="sc-result">{{ preview.noteD != null ? preview.noteD : '—' }}</ion-text>
+      <ion-text slot="end" class="sc-result">{{ preview().noteD != null ? preview().noteD : '—' }}</ion-text>
     </ion-item>
     }
     <ion-item>
       <ion-label>{{ eNoteLabel }}-Note</ion-label>
-      <ion-text slot="end" class="sc-result">{{ preview.noteE != null ? preview.noteE : '—' }}</ion-text>
+      <ion-text slot="end" class="sc-result">{{ preview().noteE != null ? preview().noteE : '—' }}</ion-text>
     </ion-item>
     <ion-item>
       <ion-label>Endnote</ion-label>
-      <ion-text slot="end" class="sc-result sc-endnote">{{ preview.endnote != null ? preview.endnote : '—' }}</ion-text>
+      <ion-text slot="end" class="sc-result sc-endnote">{{ preview().endnote != null ? preview().endnote : '—' }}</ion-text>
     </ion-item>
   </ion-list>
 
   <ion-list>
     @if (isDNoteUsed) {
     <ion-item lines="none">
-      <ion-text [color]="okState(preview.dValidState) ? 'success' : 'danger'" class="sc-valid">
-        {{ preview.dValidState }}
+      <ion-text [color]="okState(preview().dValidState) ? 'success' : 'danger'" class="sc-valid">
+        {{ preview().dValidState }}
       </ion-text>
     </ion-item>
     }
     <ion-item lines="none">
-      <ion-text [color]="okState(preview.eValidState) ? 'success' : 'danger'" class="sc-valid">
-        {{ preview.eValidState }}
+      <ion-text [color]="okState(preview().eValidState) ? 'success' : 'danger'" class="sc-valid">
+        {{ preview().eValidState }}
       </ion-text>
     </ion-item>
     <ion-item lines="none">
-      <ion-text [color]="okState(preview.pValidState) ? 'success' : 'danger'" class="sc-valid">
-        {{ preview.pValidState }}
+      <ion-text [color]="okState(preview().pValidState) ? 'success' : 'danger'" class="sc-valid">
+        {{ preview().pValidState }}
       </ion-text>
     </ion-item>
   </ion-list>
-  } @else if (previewError) {
+  } @else if (previewError()) {
   <div class="ion-padding ion-text-center">
-    <ion-text color="danger" class="sc-valid">{{ previewError }}</ion-text>
+    <ion-text color="danger" class="sc-valid">{{ previewError() }}</ion-text>
   </div>
   }
 </ion-content>

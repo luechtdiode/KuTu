@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient, HttpHeaders, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { LoadingController } from '@ionic/angular';
@@ -136,7 +136,7 @@ export class BackendService {
         return;
       }
       if (!this.activeWsChannel || channelKeyId(this.activeWsChannel) !== channelKeyId(key)) {
-        this.ensureCompetitionChannel(this.captionmode ? this._durchgang : undefined);
+        this.ensureCompetitionChannel(this.captionmode() ? this._durchgang : undefined);
       } else {
         this.wsState.resync(key);
       }
@@ -148,7 +148,7 @@ export class BackendService {
         return;
       }
       if (!this.activeWsChannel || channelKeyId(this.activeWsChannel) !== channelKeyId(key)) {
-        this.ensureCompetitionChannel(this.captionmode ? this._durchgang : undefined);
+        this.ensureCompetitionChannel(this.captionmode() ? this._durchgang : undefined);
       } else {
         this.wsState.ensureConnected(key);
       }
@@ -185,9 +185,10 @@ export class BackendService {
 
     externalLoaderSubscription: Subscription;
 
-    loggedIn = false;
-    stationFreezed = false;
-    captionmode = false;
+    //// reactive flags - safe to read in zoneless templates
+    readonly loggedIn = signal(false);
+    readonly stationFreezed = signal(false);
+    readonly captionmode = signal(false);
     private loadingInstance: Promise<HTMLIonLoadingElement>;
 
     competitions: Wettkampf[];
@@ -215,8 +216,8 @@ export class BackendService {
 
     private lastJWTChecked = 0;
 
-    wertungenLoading = false;
-    isInitializing = false;
+    readonly wertungenLoading = signal(false);
+    readonly isInitializing = signal(false);
 
     //// signal views of the list subjects - safe to read in zoneless templates
 
@@ -253,7 +254,7 @@ export class BackendService {
     }
 
     initWithQuery(initWith: string) {
-      this.isInitializing = true;
+      this.isInitializing.set(true);
       const finished = new BehaviorSubject<boolean>(false);
       if (initWith && initWith.startsWith('c=') ) {
         this._step = 1;
@@ -289,12 +290,12 @@ export class BackendService {
               this._geraet = parseInt(value);
               localStorage.setItem('current_station', initWith);
               this.checkJWT();
-              this.stationFreezed = true;
+              this.stationFreezed.set(true);
               break;
             case 'rs':
               localStorage.setItem('auth_token', value);
               this.unlock();
-              this.loggedIn = true;
+              this.loggedIn.set(true);
               //this.checkJWT(value);
               console.log('club auth-token initialized');
               break;
@@ -331,7 +332,7 @@ export class BackendService {
 
       finished.subscribe(fin => {
         if (fin) {
-          this.isInitializing = false;
+          this.isInitializing.set(false);
           this.resetLoading();
         }
       });
@@ -342,19 +343,19 @@ export class BackendService {
     standardErrorHandler = (err: HttpErrorResponse) => {
       console.log(err);
       this.resetLoading();
-      this.wertungenLoading = false;
-      this.isInitializing = false;
+      this.wertungenLoading.set(false);
+      this.isInitializing.set(false);
       if (err.status === 401) {
         localStorage.removeItem('auth_token');
-        this.loggedIn = false;
+        this.loggedIn.set(false);
         this.showMessage.next({
           msg: 'Die Berechtigung zum erfassen von Wertungen ist abgelaufen.',
           type: 'Berechtigung'
         } as MessageAck);
       } else if (err.status === 404) {
-        this.loggedIn = false;
-        this.stationFreezed = false;
-        this.captionmode = false;
+        this.loggedIn.set(false);
+        this.stationFreezed.set(false);
+        this.captionmode.set(false);
         this._competition = undefined;
         this._durchgang = undefined;
         this._geraet = undefined;
@@ -382,7 +383,7 @@ export class BackendService {
         jwt = localStorage.getItem('auth_token');
       }
       if (!jwt) {
-        this.loggedIn = false;
+        this.loggedIn.set(false);
         return;
       }
 
@@ -401,7 +402,7 @@ export class BackendService {
       }).pipe(share())).subscribe({
         next: (data) => {
           localStorage.setItem('auth_token', data.headers.get('x-access-token'));
-          this.loggedIn = true;
+          this.loggedIn.set(true);
           if (!this.competitions || this.competitions.length === 0) {
             this.getCompetitions().subscribe(d => {
               if (this._competition) {
@@ -416,7 +417,7 @@ export class BackendService {
           console.log(err);
           if (err.status === 401) {
             localStorage.removeItem('auth_token');
-            this.loggedIn = false;
+            this.loggedIn.set(false);
             this.showMessage.next({
               msg: 'Die Berechtigung ist abgelaufen. Bitte neu anmelden',
               type: 'Berechtigung'
@@ -470,7 +471,7 @@ export class BackendService {
           console.log(data);
           localStorage.setItem('auth_token', data.headers.get('x-access-token'));
           localStorage.setItem('auth_clubid', data.body.id + '');
-          this.loggedIn = true;
+          this.loggedIn.set(true);
           return data.body;
         }),
         share()));
@@ -747,7 +748,7 @@ export class BackendService {
           console.log(data);
           localStorage.setItem('auth_token', data.headers.get('x-access-token'));
           localStorage.setItem('auth_clubid', username);
-          this.loggedIn = true;
+          this.loggedIn.set(true);
         }, 
         error: (err) => {
           console.log(err);
@@ -755,7 +756,7 @@ export class BackendService {
           this.resetLoading();
           if (err.status === 401) {
             localStorage.setItem('auth_token', err.headers.get('x-access-token'));
-            this.loggedIn = false;
+            this.loggedIn.set(false);
             /*this.showMessage.next({
               msg: 'Die Anmeldung ist nicht gültig oder abgelaufen.',
               type: 'Berechtigung'
@@ -771,13 +772,13 @@ export class BackendService {
     unlock() {
       localStorage.removeItem('current_station');
       this.checkJWT();
-      this.stationFreezed = false;
+      this.stationFreezed.set(false);
     }
 
     logout() {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_clubid');
-      this.loggedIn = false;
+      this.loggedIn.set(false);
       this.unlock();
     }
 
@@ -796,7 +797,7 @@ export class BackendService {
 
     getClubRegistrations(competitionId: string) {
       this.checkJWT();
-      if ((this._clubregistrations !== undefined && this._competition === competitionId) || this.isInitializing) {
+      if ((this._clubregistrations !== undefined && this._competition === competitionId) || this.isInitializing()) {
         return this.loadClubRegistrations();
       }
       this.durchgaenge = [];
@@ -871,7 +872,7 @@ export class BackendService {
 
     getDurchgaenge(competitionId: string) {
       this.checkJWT();
-      if ((this.durchgaenge !== undefined && this._competition === competitionId) || this.isInitializing) {
+      if ((this.durchgaenge !== undefined && this._competition === competitionId) || this.isInitializing()) {
         return of(this.durchgaenge || []);
       }
       this.resetCompetition(competitionId);
@@ -914,7 +915,7 @@ export class BackendService {
 
 
     getGeraete(competitionId: string, durchgang: string) {
-      if ((this.geraete !== undefined && this._competition === competitionId && this._durchgang === durchgang) || this.isInitializing) {
+      if ((this.geraete !== undefined && this._competition === competitionId && this._durchgang === durchgang) || this.isInitializing()) {
         return of(this.geraete || []);
       }
       this.geraete = [];
@@ -928,7 +929,7 @@ export class BackendService {
       this._geraet = undefined;
       this._step = undefined;
 
-      this.captionmode = !!durchgang && this.durchgang !== 'undefined';
+      this.captionmode.set(!!durchgang && this.durchgang !== 'undefined');
 
       return this.loadGeraete();
     }
@@ -940,7 +941,7 @@ export class BackendService {
       }
       console.log('renewing geraetelist');
       let path = '';
-      if (this.captionmode && !!this._durchgang && this._durchgang !== 'undefined') {
+      if (this.captionmode() && !!this._durchgang && this._durchgang !== 'undefined') {
         path = backendUrl + 'api/durchgang/' + this._competition + '/' + encodeURIComponent2(this._durchgang);
       } else {
         path = backendUrl + 'api/durchgang/' + this._competition + '/geraete';
@@ -960,7 +961,7 @@ export class BackendService {
 
     getSteps(competitionId: string, durchgang: string, geraetId: number) {
       if ((this.steps !== undefined && this._competition === competitionId
-        && this._durchgang === durchgang && this._geraet === geraetId) || this.isInitializing) {
+        && this._durchgang === durchgang && this._geraet === geraetId) || this.isInitializing()) {
           return of(this.steps || []);
       }
       this.steps = [];
@@ -1017,7 +1018,7 @@ export class BackendService {
 
     getWertungen(competitionId: string, durchgang: string, geraetId: number, step: number) {
       if ((this.wertungen !== undefined && this._competition === competitionId
-        && this._durchgang === durchgang && this._geraet === geraetId && this._step === step) || this.isInitializing) { return; }
+        && this._durchgang === durchgang && this._geraet === geraetId && this._step === step) || this.isInitializing()) { return; }
       this.wertungen = [];
 
       this._competition = competitionId;
@@ -1035,8 +1036,8 @@ export class BackendService {
       if (!this.durchgaenge) {
         this.loadDurchgaenge();
       }
-      if (!this.captionmode || !this.geraete) {
-        this.captionmode = true;
+      if (!this.captionmode() || !this.geraete) {
+        this.captionmode.set(true);
         this.loadGeraete();
       }
       if (this.geraet && !this.steps) {
@@ -1049,12 +1050,12 @@ export class BackendService {
 
     loadWertungen() {
       // prevent denial of service fired from the step-slider
-      if (this.wertungenLoading || this._geraet === undefined || this._step === undefined) {
+      if (this.wertungenLoading() || this._geraet === undefined || this._step === undefined) {
         return of([]);
       }
       this.activateCaptionMode();
       const lastStepToLoad = this._step;
-      this.wertungenLoading = true;
+      this.wertungenLoading.set(true);
       const loader = this.startLoading('Riegenteilnehmer werden geladen. Bitte warten ...',
         this.http.get<WertungContainer[]>(
           backendUrl + 'api/durchgang/' + this._competition + '/'
@@ -1065,7 +1066,7 @@ export class BackendService {
 
       loader.subscribe({
         next: (data) => {
-          this.wertungenLoading = false;
+          this.wertungenLoading.set(false);
           if (this._step !== lastStepToLoad) {
             this.loadWertungen();
           } else {
@@ -1094,11 +1095,11 @@ export class BackendService {
         return of([]);
       }
       if (this._competition !== competitionId
-        || this.captionmode
+        || this.captionmode()
         || (!!!this.geraete || this.geraete.length === 0)
         || (competitionId && !this.isWebsocketConnected())
         ) {
-        this.captionmode = false;
+        this.captionmode.set(false);
         this._competition = competitionId;
         this.ensureCompetitionChannel(undefined);
         return this.loadGeraete();
@@ -1203,7 +1204,7 @@ export class BackendService {
           } else {
             localStorage.removeItem('current_station');
             this.checkJWT();
-            this.stationFreezed = false;
+            this.stationFreezed.set(false);
             this._step = this.steps[0];
           }
           this.loadWertungen().subscribe(wertungen => {
@@ -1283,7 +1284,7 @@ export class BackendService {
     }
 
     nextGeraet(): Observable<number> {
-      if (this.loggedIn) {
+      if (this.loggedIn()) {
         const nextSteps = this.steps.filter(s => s > this._step);
         if (nextSteps.length > 0) {
           return of(nextSteps[0]);
@@ -1305,7 +1306,7 @@ export class BackendService {
     }
 
     prevGeraet(): Observable<number> {
-      if (this.loggedIn) {
+      if (this.loggedIn()) {
         const prevSteps = this.steps.filter(s => s < this._step);
         if (prevSteps.length > 0) {
           return of(prevSteps[prevSteps.length - 1]);

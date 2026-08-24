@@ -8,9 +8,9 @@
   </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
-  @if (secrets.length > 0) {
+  @if (secrets().length > 0) {
     <ion-list>
-      @for (s of competitions; track s.uuid) {
+      @for (s of competitions(); track s.uuid) {
         <ion-item>
           @if (s.logoUrl) {
           <ion-avatar slot="start">

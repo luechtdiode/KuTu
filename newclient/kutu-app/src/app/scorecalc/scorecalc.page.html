@@ -11,8 +11,8 @@
   <ion-card>
     <ion-card-header>
       <ion-item lines="none" class="ion-no-padding">
-        @if (logoUrl) {
-        <img class="wk-logo" [src]="logoUrl" alt="Logo"/>
+        @if (logoUrl()) {
+        <img class="wk-logo" [src]="logoUrl()" alt="Logo"/>
         } @else {
         <img class="wk-logo" src="assets/imgs/wettkampf.png" alt="Logo"/>
         }
@@ -39,7 +39,7 @@
     </ion-buttons>
   </ion-toolbar>
 
-  @if (loading) {
+  @if (loading()) {
   <div class="ion-padding">
     <ion-skeleton-text animated style="width: 60%; height: 24px"></ion-skeleton-text>
     <ion-skeleton-text animated style="width: 40%; height: 16px; margin-top: 8px"></ion-skeleton-text>

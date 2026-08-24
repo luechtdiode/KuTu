@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnDestroy, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { ActionSheetController, IonItemSliding, NavController } from '@ionic/angular';
 import { Geraet, NewLastResults, ScoreBlock, ScoreLink, ScoreRow, Wertung, WertungContainer, Wettkampf } from '../backend-types';
 
@@ -23,19 +23,23 @@ export class LastResultsPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   actionSheetController = inject(ActionSheetController);
-  private cdr = inject(ChangeDetectorRef);
 
   groupBy = GroupBy;
 
-  items: WertungContainer[] = [];
-  mixeditems: WertungContainer[] = [];
-  hasCountingItems: boolean = undefined;
-  lastItems: number[];
-  geraete: Geraet[] = [];
-  scorelinks: ScoreLink[] = [];
+  /** signal views for zoneless template bindings */
+  readonly competitionsList = this.backendService.competitionsList;
+  readonly durchgaengeList = this.backendService.durchgaengeList;
+  readonly activeDurchgaenge = this.backendService.wsState.durchgangStartedList;
+
+  items = signal<WertungContainer[]>([]);
+  mixeditems = signal<WertungContainer[]>([]);
+  hasCountingItems = signal<boolean>(undefined);
+  lastItems = signal<number[]>([]);
+  geraete = signal<Geraet[]>([]);
+  scorelinks = signal<ScoreLink[]>([]);
   defaultPath: string = undefined;
-  scoreblocks: ScoreBlock[] = [];
-  sFilteredScoreList: ScoreBlock[] = [];
+  scoreblocks = signal<ScoreBlock[]>([]);
+  sFilteredScoreList = signal<ScoreBlock[]>([]);
   sMyQuery: string;
   isDNoteUsed: boolean = true;
 
@@ -44,8 +48,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
   sFilterTask: () => void = undefined;
 
   private busy = new BehaviorSubject(false);
-  
-  durchgangopen: boolean;
+
+  durchgangopen = signal(false);
 
   subscriptions: Subscription[] = [];
 
@@ -56,13 +60,12 @@ export class LastResultsPage implements OnInit, OnDestroy {
     if (! this.backendService.competitions) {
       this.backendService.getCompetitions();
     }
-    this.durchgangopen = false;
+    this.durchgangopen.set(false);
     this.backendService.durchgangStarted.pipe(
       filter(dgl => dgl !== undefined),
       map(dgl => dgl.filter(dg => dg.wettkampfUUID === this.backendService.competition).length > 0
     )).subscribe(dg => {
-      this.durchgangopen = dg;
-      this.cdr.markForCheck();
+      this.durchgangopen.set(dg);
       //console.log('durchgang new assigned: ' + dg);
     });
   }
@@ -82,36 +85,36 @@ export class LastResultsPage implements OnInit, OnDestroy {
     }));
   }
 
-  _optionsVisible: boolean = false;
+  _optionsVisible = signal(false);
 
   get optionsVisible(): boolean {
-    return this._optionsVisible || !this.competition
+    return this._optionsVisible() || !this.competition
   }
   set optionsVisible(value: boolean) {
-    this._optionsVisible = value;
+    this._optionsVisible.set(value);
   }
   toggleOptions() {
-    this._optionsVisible = !this._optionsVisible;
+    this._optionsVisible.update(v => !v);
   }
 
   teamsAllowed(wk: Wettkampf): boolean {
     return wk.teamrule?.trim().length > 0 && wk.teamrule !== 'Keine Teams';
   }
 
-  _title: string = 'Aktuelle Resultate';
+  _title = signal<string>('Aktuelle Resultate');
   get title() {
-    return this._title;
+    return this._title();
   }
   set title(title) {
-    this._title = title;
+    this._title.set(title);
   }
 
   isNew(item: WertungContainer): boolean {
-    return this.lastItems.filter(id => id === item.id * this.geraete.length + item.geraet).length === 0;
+    return this.lastItems().filter(id => id === item.id * this.geraete().length + item.geraet).length === 0;
   }
 
   get stationFreezed(): boolean {
-    return this.backendService.stationFreezed;
+    return this.backendService.stationFreezed();
   }
   set competition(competitionId: string) {
     if (!this.stationFreezed) {
@@ -130,7 +133,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
     return this.backendService.competition || '';
   }
   getCompetitions(): Wettkampf[] {
-    return this.backendService.competitions || [];
+    return this.competitionsList() || [];
   }
 
   competitionContainer(): Wettkampf {
@@ -146,8 +149,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
       teamrule: ""
     };
 
-    if (!this.backendService.competitions) { return emptyCandidate; }
-      const candidate = this.backendService.competitions
+    if (!this.competitionsList()) { return emptyCandidate; }
+      const candidate = this.competitionsList()
         .filter(c => c.uuid === this.backendService.competition);
 
     if (candidate.length === 1) {
@@ -167,16 +170,16 @@ export class LastResultsPage implements OnInit, OnDestroy {
 
 
   geraetOrder(geraetId: number): number {
-    if (!this.geraete) {
+    if (!this.geraete()) {
       return 0;
     }
-    return this.geraete
+    return this.geraete()
       .findIndex(c => c.id === geraetId);
   }
 
   geraetText(geraetId: number): string {
-    if (!this.geraete) { return ''; }
-    const candidate = this.geraete
+    if (!this.geraete()) { return ''; }
+    const candidate = this.geraete()
       .filter(c => c.id === geraetId)
       .map(c => c.name);
 
@@ -188,7 +191,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   getColumnSpec(): number {
-    return this.geraete?.length || 0;
+    return this.geraete()?.length || 0;
   }
 
   getColumnSpecs(): number[] {
@@ -201,7 +204,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   getMaxColumnSpec(): number {
-    return Math.min(12, Math.max(1, Math.floor(12 / this.geraete.length + 0.5)));
+    return Math.min(12, Math.max(1, Math.floor(12 / this.geraete().length + 0.5)));
   }
 
   getTitle(wertungContainer: WertungContainer): string {
@@ -214,33 +217,33 @@ export class LastResultsPage implements OnInit, OnDestroy {
 
   getProgramme() {
     if (this.kategorieFilter === 'getrennt') {
-      return this.items.map(wc => wc.programm).filter(this.onlyUnique);
+      return this.items().map(wc => wc.programm).filter(this.onlyUnique);
     } else {
-      return [this.mixeditems.map(wc => wc.programm)[0]];
+      return [this.mixeditems().map(wc => wc.programm)[0]];
     }
   }
 
   getWertungen(programm) {
     if (this.kategorieFilter === 'getrennt') {
-      return this.items.filter(wc => wc.programm === programm);
+      return this.items().filter(wc => wc.programm === programm);
     } else {
       return this.getMixedWertungen();
     }
   }
 
   getMixedWertungen() {
-    return this.mixeditems;
+    return this.mixeditems();
   }
-  
+
   getDurchgaenge() {
     return [
-      ...this.backendService.activeDurchgangList.map(d => d.durchgang), 
-      ...this.backendService.durchgaenge.filter(d => !this.isDurchgangActiv(d))
+      ...this.activeDurchgaenge().map(d => d.durchgang),
+      ...this.durchgaengeList().filter(d => !this.isDurchgangActiv(d))
     ];
   }
-  
+
   isDurchgangActiv(durchgang: string): boolean {
-    return this.backendService.activeDurchgangList.find(d => d.durchgang === durchgang) !== undefined
+    return this.activeDurchgaenge().find(d => d.durchgang === durchgang) !== undefined
   }
   
   _durchgang: string = undefined;
@@ -255,8 +258,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
         }
       );
       this.backendService.getGeraete(this.backendService.competition, undefined).subscribe(geraete => {
-        this.geraete = geraete ?? [];
-        this.cdr.markForCheck();
+        this.geraete.set(geraete ?? []);
       });
       this.backendService.resyncWebsocket();
       this._durchgang = undefined;
@@ -270,8 +272,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
         }
       );
       this.backendService.getGeraete(this.backendService.competition, durchgang).subscribe(geraete => {
-        this.geraete = geraete ?? [];
-        this.cdr.markForCheck();
+        this.geraete.set(geraete ?? []);
       });;
       this.backendService.resyncWebsocket();
       this._durchgang = durchgang;
@@ -345,10 +346,10 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   refreshItems(newLastRes: NewLastResults) {
-    this.lastItems = this.items.map(item => item.id * this.geraete.length + item.geraet);
-    this.items = [];
-    this.mixeditems = [];
-    this.hasCountingItems = false;
+    this.lastItems.set(this.items().map(item => item.id * this.geraete().length + item.geraet));
+    this.items.set([]);
+    this.mixeditems.set([]);
+    this.hasCountingItems.set(false);
     //console.log('refreshing newLastRes...', newLastRes);
     if (!!newLastRes && !!newLastRes.resultsPerWkDisz) {
       //console.log('refreshing items ...');
@@ -360,8 +361,8 @@ export class LastResultsPage implements OnInit, OnDestroy {
       }
       const tmpItems = [];
       programme.forEach(p => {
-        this.geraete.map(g => {
-          return newLastWKDiszValues.find(d => d.geraet === g.id && d.wertung.endnote && (p === '\u{00A0}' || d.programm === p) ) 
+        this.geraete().map(g => {
+          return newLastWKDiszValues.find(d => d.geraet === g.id && d.wertung.endnote && (p === '\u{00A0}' || d.programm === p) )
           || <WertungContainer>{
             programm: p,
             geraet: g.id,
@@ -374,12 +375,12 @@ export class LastResultsPage implements OnInit, OnDestroy {
             isDNoteUsed:  this.isDNoteUsed
           }
         }).forEach(wc => {
-            this.hasCountingItems = this.hasCountingItems || wc.wertung.endnote > 0;
             tmpItems.push(wc);
+            this.hasCountingItems.update(has => has || wc.wertung.endnote > 0);
         });
       });
-      this.items = tmpItems;
-      this.mixeditems = this.geraete.map(g => newLastRes.resultsPerDisz[g.id] ?? <WertungContainer>{
+      this.items.set(tmpItems);
+      this.mixeditems.set(this.geraete().map(g => newLastRes.resultsPerDisz[g.id] ?? <WertungContainer>{
           programm: '\u{00A0}',
           geraet: g.id,
           id: 0,
@@ -388,25 +389,24 @@ export class LastResultsPage implements OnInit, OnDestroy {
             noteE: 0, noteD: 0, endnote: 0,
             wettkampfdisziplinId: 0
           },
-          isDNoteUsed: this.items.length > 0 ?  this.items[0].isDNoteUsed : true
+          isDNoteUsed: this.items().length > 0 ?  this.items()[0].isDNoteUsed : true
         }
-      );
+      ));
     }
     if (this.scorelistAvailable()) {
       this.loadScoreList();
     } else {
       this.title = 'Aktuelle Resultate';
     }
-    this.cdr.markForCheck();
   }
 
   scorelistAvailable(): boolean {
-    return this.hasCountingItems !== undefined && !this.durchgangopen && !this.hasCountingItems && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
+    return this.hasCountingItems() !== undefined && !this.durchgangopen() && !this.hasCountingItems() && new Date(this.competitionContainer().datum).getTime() <  new Date(Date.now() - 3600 * 1000 * 24).getTime();
   }
 
   get filteredScoreList() {
-    if (this.sFilteredScoreList?.length > 0) {
-      return this.sFilteredScoreList;
+    if (this.sFilteredScoreList()?.length > 0) {
+      return this.sFilteredScoreList();
     } else {
       return this.getScoreListItems();
     }
@@ -441,11 +441,10 @@ export class LastResultsPage implements OnInit, OnDestroy {
           "scores-href": `/api/scores/${c.uuid}/query?kind=Teamrangliste`,
           "scores-query": `/api/scores/${c.uuid}/query?kind=Teamrangliste`
         };
-        this.scorelinks = this.teamsAllowed(c) ? [...lists, teamGeneric, einzelGeneric] : [...lists, einzelGeneric];
-        const publishedLists = this.scorelinks.filter(s => ''+s.published === 'true')
+        this.scorelinks.set(this.teamsAllowed(c) ? [...lists, teamGeneric, einzelGeneric] : [...lists, einzelGeneric]);
+        const publishedLists = this.scorelinks().filter(s => ''+s.published === 'true')
         this.refreshScoreList(publishedLists[0]);
       }
-      this.cdr.markForCheck();
     });
   }
 
@@ -465,7 +464,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
       path = path.substring(1);
     }
     path = path.replace('html', '');
-    this._optionsVisible = false;
+    this.optionsVisible = false;
     this.title = link.name;
     this.defaultPath = path;
     this._scorelistSubscription.push(this.backendService.getScoreList(this.defaultPath).pipe(
@@ -476,10 +475,9 @@ export class LastResultsPage implements OnInit, OnDestroy {
           return [];
         }
       })).subscribe(scoreblocks => {
-        this.scoreblocks = scoreblocks;
-        this.sFilteredScoreList = scoreblocks;
+        this.scoreblocks.set(scoreblocks);
+        this.sFilteredScoreList.set(scoreblocks);
         this.cleanScoreListSubscriptions();
-        this.cdr.markForCheck();
         const pipeBeforeAction = this.tMyQueryStream.pipe(
           filter(event => !!event && !!event.target && !!event.target.value),
           map(event => event.target.value),
@@ -491,12 +489,11 @@ export class LastResultsPage implements OnInit, OnDestroy {
           this.busy.next(true);
         }));
         this._scorelistSubscription.push(pipeBeforeAction.pipe(
-          switchMap(this.runQuery(this.scoreblocks))
+          switchMap(this.runQuery(this.scoreblocks()))
         ).subscribe(filteredList => {
           //console.log('filteredList retrieved', filteredList);
-          this.sFilteredScoreList = filteredList;
+          this.sFilteredScoreList.set(filteredList);
           this.busy.next(false);
-          this.cdr.markForCheck();
         }));
       }));
   }
@@ -565,7 +562,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   getScoreListItems(): ScoreBlock[] {
-    return this.scoreblocks;
+    return this.scoreblocks();
   }
   scoreItemTapped(item: ScoreRow, slidingItem: IonItemSliding) {
     slidingItem.getOpenAmount().then(amount => {
@@ -623,7 +620,7 @@ export class LastResultsPage implements OnInit, OnDestroy {
   }
 
   async presentActionSheet() {
-    let buttons: any[] = [ ...this.scorelinks.map(link => {
+    let buttons: any[] = [ ...this.scorelinks().map(link => {
       if (''+link.published === 'true') {
         return {
           text: `${link.name} anzeigen ...`,

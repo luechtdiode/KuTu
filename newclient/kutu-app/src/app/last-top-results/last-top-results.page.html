@@ -40,7 +40,7 @@
 </ion-header>
 
 <ion-content>
-  @if (items.length > 0 && getColumnSpec() === 6) {
+  @if (items().length > 0 && getColumnSpec() === 6) {
     <ion-grid no-padding>
       @for (p of getProgramme(); track p) {
         <ion-row>
@@ -55,7 +55,7 @@
       }
     </ion-grid>
   }
-  @if (items.length > 0 && 6 !== getColumnSpec()) {
+  @if (items().length > 0 && 6 !== getColumnSpec()) {
     <ion-grid no-padding>
       @for (p of getProgramme(); track p) {
         <ion-row>

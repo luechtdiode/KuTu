@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef, OnDestroy, OnInit } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ToastController, NavController, ModalController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -42,29 +42,28 @@ interface StepperDg {
 export class PlaybookPage implements OnInit, OnDestroy {
   uuid = '';
   secret = '';
-  wettkampfTitle = '';
-  wettkampfDatum = '';
-  logoUrl = '';
+  wettkampfTitle = signal('');
+  wettkampfDatum = signal('');
+  logoUrl = signal('');
 
   playbook: PlaybookState | null = null;
-  groups: PlaybookGroup[] = [];
-  stepperDgs: StepperDg[] = [];
-  disziplinen: { id: number; name: string }[] = [];
-  savedScores: PublishedScoreView[] = [];
-  loading = false;
-  expandedGroups = new Set<string>();
+  groups = signal<PlaybookGroup[]>([]);
+  stepperDgs = signal<StepperDg[]>([]);
+  disziplinen = signal<{ id: number; name: string }[]>([]);
+  savedScores = signal<PublishedScoreView[]>([]);
+  loading = signal(false);
+  expandedGroups = signal<Set<string>>(new Set());
 
   private wsAcquired = false;
   private subscriptions: Subscription[] = [];
   private autoFinishedHalts = new Set<string>();
-  markedHalts = new Set<string>();
+  markedHalts = signal<Set<string>>(new Set());
 
-  wsLog: string[] = [];
-  wsEvents: string[] = [];
+  wsLog = signal<string[]>([]);
+  wsEvents = signal<string[]>([]);
   logExpanded = false;
   activeLogTab: 'events' | 'connection' = 'events';
 
-  private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
@@ -82,18 +81,16 @@ export class PlaybookPage implements OnInit, OnDestroy {
     const stored = this.secretService.getSecret(this.uuid);
     if (stored) {
       this.secret = stored.secret;
-      this.wettkampfTitle = stored.titel;
-      this.wettkampfDatum = stored.datum.substring(0, 10);
+      this.wettkampfTitle.set(stored.titel);
+      this.wettkampfDatum.set(stored.datum.substring(0, 10));
     }
     this.backend.getCompetitionDetails(this.uuid, this.secret).subscribe(details => {
-      this.wettkampfTitle = details.titel;
-      this.wettkampfDatum = details.datum.substring(0, 10);
-      this.cdr.detectChanges();
+      this.wettkampfTitle.set(details.titel);
+      this.wettkampfDatum.set(details.datum.substring(0, 10));
     });
     this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
       next: blob => {
-        this.logoUrl = URL.createObjectURL(blob);
-        this.cdr.detectChanges();
+        this.logoUrl.set(URL.createObjectURL(blob));
       },
       error: () => {}
     });
@@ -115,29 +112,33 @@ export class PlaybookPage implements OnInit, OnDestroy {
       this.wsAcquired = false;
     }
     this.subscriptions.forEach(s => s.unsubscribe());
-    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
   }
 
   private loadMarkedHalts() {
     try {
       const stored = localStorage.getItem('kutu-markedHalts-' + this.uuid);
       if (stored) {
-        this.markedHalts = new Set(JSON.parse(stored) as string[]);
+        this.markedHalts.set(new Set(JSON.parse(stored) as string[]));
       }
     } catch {}
   }
 
   private persistMarkedHalts() {
     try {
-      localStorage.setItem('kutu-markedHalts-' + this.uuid, JSON.stringify(Array.from(this.markedHalts)));
+      localStorage.setItem('kutu-markedHalts-' + this.uuid, JSON.stringify(Array.from(this.markedHalts())));
     } catch {}
   }
 
   private clearMarkedHaltsForDurchgang(durchgangName: string) {
     let changed = false;
-    for (const key of this.markedHalts) {
+    for (const key of this.markedHalts()) {
       if (key.startsWith(durchgangName + '-')) {
-        this.markedHalts.delete(key);
+        this.markedHalts.update(set => {
+          const next = new Set(set);
+          next.delete(key);
+          return next;
+        });
         changed = true;
       }
     }
@@ -145,17 +146,15 @@ export class PlaybookPage implements OnInit, OnDestroy {
   }
 
   loadPlaybook() {
-    this.loading = true;
+    this.loading.set(true);
     this.backend.getPlaybook(this.uuid, this.secret).subscribe({
       next: state => {
         this.playbook = state;
         this.buildTable(state);
-        this.loading = false;
-        this.cdr.detectChanges();
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
-        this.cdr.detectChanges();
+        this.loading.set(false);
       }
     });
   }
@@ -171,15 +170,15 @@ export class PlaybookPage implements OnInit, OnDestroy {
     }
     const ordinals = state.disziplinOrdinals || [];
     const ordinalIndex = new Map(ordinals.map((id, i) => [id, i]));
-    this.disziplinen = Array.from(disziplinMap.entries())
+    this.disziplinen.set(Array.from(disziplinMap.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => {
         const ia = ordinalIndex.has(a.id) ? ordinalIndex.get(a.id)! : ordinals.length;
         const ib = ordinalIndex.has(b.id) ? ordinalIndex.get(b.id)! : ordinals.length;
         return ia - ib;
-      });
+      }));
 
-    const prevExpanded = new Set(this.expandedGroups);
+    const prevExpanded = new Set(this.expandedGroups());
     const groupMap = new Map<string, PlaybookDurchgang[]>();
     for (const dg of state.durchgaenge) {
       const title = dg.title || dg.name;
@@ -188,29 +187,33 @@ export class PlaybookPage implements OnInit, OnDestroy {
       }
       groupMap.get(title)!.push(dg);
     }
-    this.groups = Array.from(groupMap.entries())
+    const groups = Array.from(groupMap.entries())
       .map(([title, rows]) => ({ title, rows: rows.sort((a, b) => a.name.localeCompare(b.name)) }))
       .sort((a, b) => a.title.localeCompare(b.title));
+    this.groups.set(groups);
 
     if (prevExpanded.size === 0) {
       // default: all collapsed
     } else {
-      this.expandedGroups.clear();
-      for (const g of this.groups) {
+      const expanded = new Set<string>();
+      for (const g of groups) {
         if (prevExpanded.has(g.title)) {
-          this.expandedGroups.add(g.title);
+          expanded.add(g.title);
         }
       }
+      this.expandedGroups.set(expanded);
     }
 
     this.buildStepper();
   }
 
   private buildStepper() {
-    const allFinished = this.groups.length > 0 && this.groups.every(g => g.rows.every(r => r.isFinished));
-    const visibleGroups = allFinished ? this.groups : this.groups.filter(g => g.rows.some(r => !r.isFinished));
+    const allGroups = this.groups();
+    const markedHalts = this.markedHalts();
+    const allFinished = allGroups.length > 0 && allGroups.every(g => g.rows.every(r => r.isFinished));
+    const visibleGroups = allFinished ? allGroups : allGroups.filter(g => g.rows.some(r => !r.isFinished));
 
-    this.stepperDgs = visibleGroups.map(g => {
+    const stepperDgs = visibleGroups.map(g => {
       const rows = g.rows;
       const ungrouped = rows.length === 1 && rows[0].name === rows[0].title;
       const displayName = ungrouped ? rows[0].name : g.title;
@@ -242,7 +245,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
       for (let i = 0; i < haltEntries.length; i++) {
         const [halt, stats] = haltEntries[i];
         const pct = stats.totalAthletes > 0 ? Math.round(100 * stats.completedAthletes / stats.totalAthletes) : 0;
-        const manuallyDone = this.markedHalts.has(this.milestoneKey(milestoneDgName, halt));
+        const manuallyDone = markedHalts.has(this.milestoneKey(milestoneDgName, halt));
         let hStatus: StepperHalt['status'] = 'pending';
         if (status === 'running') {
           if (pct === 100 || manuallyDone) {
@@ -258,9 +261,10 @@ export class PlaybookPage implements OnInit, OnDestroy {
         halts.push({ halt, totalAthletes: stats.totalAthletes, completedAthletes: stats.completedAthletes, pct, status: hStatus });
         if (hStatus === 'done') {
           const key = this.milestoneKey(milestoneDgName, halt);
-          if (!this.autoFinishedHalts.has(key) && !this.markedHalts.has(key)) {
+          if (!this.autoFinishedHalts.has(key) && !markedHalts.has(key)) {
             this.autoFinishedHalts.add(key);
-            this.markedHalts.add(key);
+            this.markedHalts.update(set => new Set(set).add(key));
+            markedHalts.add(key);
             this.persistMarkedHalts();
             this.backend.finishDurchgangStep(this.uuid, this.secret).subscribe({ error: () => {} });
           }
@@ -269,6 +273,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
 
       return { name: g.title, displayName, milestoneDgName, status, halts, planEinturnen: rows[0]?.planEinturnen || '', rows };
     });
+    this.stepperDgs.set(stepperDgs);
   }
 
   stepperDgClick(dg: StepperDg) {
@@ -280,9 +285,9 @@ export class PlaybookPage implements OnInit, OnDestroy {
   }
 
   isCurrentDg(dg: StepperDg): boolean {
-    const running = this.stepperDgs.find(d => d.status === 'running');
+    const running = this.stepperDgs().find(d => d.status === 'running');
     if (running) return dg === running;
-    return dg === this.stepperDgs.find(d => d.status === 'pending');
+    return dg === this.stepperDgs().find(d => d.status === 'pending');
   }
 
   haltStatusLabel(halt: StepperHalt, isFirstHalt: boolean, dgName?: string): string {
@@ -300,13 +305,13 @@ export class PlaybookPage implements OnInit, OnDestroy {
   }
 
   isMilestoneChecked(halt: StepperHalt, dgName: string): boolean {
-    return halt.pct === 100 || this.markedHalts.has(this.milestoneKey(dgName, halt.halt));
+    return halt.pct === 100 || this.markedHalts().has(this.milestoneKey(dgName, halt.halt));
   }
 
   toggleMilestone(halt: StepperHalt, dgName: string) {
     const key = this.milestoneKey(dgName, halt.halt);
-    if (this.markedHalts.has(key)) return;
-    this.markedHalts.add(key);
+    if (this.markedHalts().has(key)) return;
+    this.markedHalts.update(set => new Set(set).add(key));
     this.persistMarkedHalts();
     this.backend.finishDurchgangStep(this.uuid, this.secret).subscribe({
       error: () => {}
@@ -314,11 +319,15 @@ export class PlaybookPage implements OnInit, OnDestroy {
   }
 
   toggleGroup(group: PlaybookGroup) {
-    if (this.expandedGroups.has(group.title)) {
-      this.expandedGroups.delete(group.title);
-    } else {
-      this.expandedGroups.add(group.title);
-    }
+    this.expandedGroups.update(set => {
+      const next = new Set(set);
+      if (next.has(group.title)) {
+        next.delete(group.title);
+      } else {
+        next.add(group.title);
+      }
+      return next;
+    });
   }
 
   getStation(dg: PlaybookDurchgang, disziplinId: number): PlaybookStation | undefined {
@@ -335,8 +344,8 @@ export class PlaybookPage implements OnInit, OnDestroy {
   }
 
   formatTimestampFromOffset(offsetMillis: number): string {
-    if (offsetMillis <= 0 || !this.wettkampfDatum) return '—';
-    const wkDate = new Date(this.wettkampfDatum + 'T00:00:00');
+    if (offsetMillis <= 0 || !this.wettkampfDatum()) return '—';
+    const wkDate = new Date(this.wettkampfDatum() + 'T00:00:00');
     const ts = new Date(wkDate.getTime() + offsetMillis);
     const weekdays = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
     const wd = weekdays[ts.getDay()];
@@ -605,34 +614,30 @@ export class PlaybookPage implements OnInit, OnDestroy {
       this.wsState.playbookStateUpdated.subscribe((event) => {
         this.playbook = event.playbookState;
         this.buildTable(event.playbookState);
-        this.loading = false;
-        this.cdr.detectChanges();
+        this.loading.set(false);
       })
     );
 
     this.subscriptions.push(
       this.wsState.durchgangStartedEvent.subscribe((event) => {
         this.clearMarkedHaltsForDurchgang(event.durchgang);
-        this.cdr.detectChanges();
       })
     );
 
     this.subscriptions.push(
       this.wsState.durchgangResetted.subscribe((event) => {
         this.clearMarkedHaltsForDurchgang(event.durchgang);
-        this.cdr.detectChanges();
       })
     );
 
-    this.wsLog = this.wsState.getChannelLog({kind: 'competition', competitionId: this.uuid}).reverse();
-    this.wsEvents = this.wsState.getEventLog({kind: 'competition', competitionId: this.uuid}).reverse();
+    this.wsLog.set(this.wsState.getChannelLog({kind: 'competition', competitionId: this.uuid}).reverse());
+    this.wsEvents.set(this.wsState.getEventLog({kind: 'competition', competitionId: this.uuid}).reverse());
     this.subscriptions.push(
       this.wsState.connectionLog.subscribe(e => {
         if (e.keyId !== 'competition:' + this.uuid) {
           return;
         }
-        this.wsLog = [e.message, ...this.wsLog].slice(0, 50);
-        this.cdr.detectChanges();
+        this.wsLog.update(log => [e.message, ...log].slice(0, 50));
       })
     );
     this.subscriptions.push(
@@ -640,8 +645,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
         if (e.keyId !== 'competition:' + this.uuid) {
           return;
         }
-        this.wsEvents = [e.message, ...this.wsEvents].slice(0, 50);
-        this.cdr.detectChanges();
+        this.wsEvents.update(log => [e.message, ...log].slice(0, 50));
       })
     );
 
@@ -680,8 +684,7 @@ export class PlaybookPage implements OnInit, OnDestroy {
   loadSavedScores() {
     this.backend.getAdminScores(this.uuid, this.secret).subscribe({
       next: scores => {
-        this.savedScores = scores.sort((a, b) => a.title.localeCompare(b.title));
-        this.cdr.detectChanges();
+        this.savedScores.set(scores.sort((a, b) => a.title.localeCompare(b.title)));
       },
       error: () => {}
     });

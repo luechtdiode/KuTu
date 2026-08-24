@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { SecretService } from '../services/secret.service';
 import { AdminBackendService } from '../services/admin-backend.service';
@@ -16,15 +16,14 @@ export class AdminClubDetailPage implements OnDestroy {
   secret = '';
   regId = 0;
 
-  registration: ClubRegistration | null = null;
-  athletRegistrations: AthletRegistration[] = [];
-  programs: ProgrammRaw[] = [];
-  syncActions: SyncAction[] = [];
-  judgeRegistrations: JudgeRegistration[] = [];
-  teams: TeamItem[] = [];
-  loading = false;
+  registration = signal<ClubRegistration | null>(null);
+  athletRegistrations = signal<AthletRegistration[]>([]);
+  programs = signal<ProgrammRaw[]>([]);
+  syncActions = signal<SyncAction[]>([]);
+  judgeRegistrations = signal<JudgeRegistration[]>([]);
+  teams = signal<TeamItem[]>([]);
+  loading = signal(false);
 
-  private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
@@ -63,7 +62,7 @@ export class AdminClubDetailPage implements OnDestroy {
   }
 
   async loadData() {
-    this.loading = true;
+    this.loading.set(true);
     try {
       const [registration, athletes, programs, syncActions, judges, teams] = await Promise.all([
         firstValueFrom(this.backend.getRegistration(this.uuid, this.regId, this.secret)),
@@ -73,28 +72,27 @@ export class AdminClubDetailPage implements OnDestroy {
         firstValueFrom(this.backend.getJudgeRegistrations(this.uuid, this.regId, this.secret)).catch(() => [] as JudgeRegistration[]),
         firstValueFrom(this.backend.getTeams(this.uuid, this.regId, this.secret)).catch(() => [] as TeamItem[])
       ]);
-      this.registration = registration;
-      this.athletRegistrations = athletes;
-      this.programs = programs;
-      this.syncActions = syncActions;
-      this.judgeRegistrations = judges;
-      this.teams = teams;
+      this.registration.set(registration);
+      this.athletRegistrations.set(athletes);
+      this.programs.set(programs);
+      this.syncActions.set(syncActions);
+      this.judgeRegistrations.set(judges);
+      this.teams.set(teams);
     } catch {
-      this.registration = null;
-      this.athletRegistrations = [];
-      this.programs = [];
-      this.syncActions = [];
-      this.judgeRegistrations = [];
-      this.teams = [];
+      this.registration.set(null);
+      this.athletRegistrations.set([]);
+      this.programs.set([]);
+      this.syncActions.set([]);
+      this.judgeRegistrations.set([]);
+      this.teams.set([]);
     } finally {
-      this.loading = false;
-      this.cdr.detectChanges();
+      this.loading.set(false);
     }
   }
 
   getAthleteSyncStatusSimple(ath: AthletRegistration): string {
-    if (this.syncActions.length > 0) {
-      const action = this.syncActions.find(a => a.data.registrationId === ath.vereinregistrationId && a.caption.indexOf(ath.name) > -1 && a.caption.indexOf(ath.vorname) > -1);
+    if (this.syncActions().length > 0) {
+      const action = this.syncActions().find(a => a.data.registrationId === ath.vereinregistrationId && a.caption.indexOf(ath.name) > -1 && a.caption.indexOf(ath.vorname) > -1);
       if (action) {
         return 'pending';
       } else {
@@ -106,8 +104,8 @@ export class AdminClubDetailPage implements OnDestroy {
   }
 
   getAthleteSyncStatusDetail(ath: AthletRegistration): string {
-    if (this.syncActions.length > 0) {
-      const action = this.syncActions.find(a => a.data.registrationId === ath.vereinregistrationId && a.caption.indexOf(ath.name) > -1 && a.caption.indexOf(ath.vorname) > -1);
+    if (this.syncActions().length > 0) {
+      const action = this.syncActions().find(a => a.data.registrationId === ath.vereinregistrationId && a.caption.indexOf(ath.name) > -1 && a.caption.indexOf(ath.vorname) > -1);
       if (action) {
         return action.caption.substring(0, (action.caption + ':').indexOf(':'));
       } else {
@@ -120,9 +118,9 @@ export class AdminClubDetailPage implements OnDestroy {
 
   get groupedPrograms() {
     const byProgram = new Map<number, { id: number; name: string; athletes: AthletRegistration[] }>();
-    for (const ath of this.athletRegistrations) {
+    for (const ath of this.athletRegistrations()) {
       if (!byProgram.has(ath.programId)) {
-        const pgm = this.programs.find(p => p.id === ath.programId);
+        const pgm = this.programs().find(p => p.id === ath.programId);
         byProgram.set(ath.programId, {
           id: ath.programId,
           name: pgm?.name || 'Programm ' + ath.programId,
@@ -135,11 +133,12 @@ export class AdminClubDetailPage implements OnDestroy {
   }
 
   getTeamName(index: number): string {
-    const team = this.teams.find(t => t.index === index);
+    const team = this.teams().find(t => t.index === index);
     return team ? team.name : 'Team ' + index;
   }
 
   get isApproved(): boolean {
-    return this.registration?.vereinId != null && this.registration.vereinId > 0;
+    const reg = this.registration();
+    return reg?.vereinId != null && reg.vereinId > 0;
   }
 }
