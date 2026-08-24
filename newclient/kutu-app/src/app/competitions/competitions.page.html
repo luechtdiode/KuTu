@@ -10,15 +10,15 @@
     <ion-title>Wettkampf App - <small>Auswahl</small></ion-title>
   </ion-toolbar>
   <ion-searchbar placeholder="Search" showCancelButton="never"
-    [(ngModel)]="sMyQuery"
+    [ngModel]="sMyQuery()" (ngModelChange)="sMyQuery.set($event)"
     (ionInput)="reloadList($event)"
     (ionCancel)="reloadList($event)" />
   </ion-header>
 
   <ion-content>
-    @if (sFilteredWettkampfList && sFilteredWettkampfList.length > 0) {
+    @if (sFilteredWettkampfList().length > 0) {
       <ion-list>
-        @for (w of sFilteredWettkampfList; track w) {
+        @for (w of sFilteredWettkampfList(); track w) {
           <ion-item (click)="itemTapped($event, w)">
             <ion-avatar slot="start">
               <img src="assets/imgs/wettkampf.png">

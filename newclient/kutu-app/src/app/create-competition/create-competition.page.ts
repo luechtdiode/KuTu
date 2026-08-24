@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ToastController, NavController, ModalController } from '@ionic/angular';
 import { AdminBackendService } from '../services/admin-backend.service';
@@ -72,7 +72,8 @@ interface FormModel {
 
 @Component({
   templateUrl: 'create-competition.page.html',
-  standalone: false
+  standalone: false,
+  changeDetection: ChangeDetectionStrategy.Eager
 })
 export class CreateCompetitionPage {
   readonly PRESETS_ALTERSKLASSEN = PRESETS_ALTERSKLASSEN;
@@ -80,7 +81,7 @@ export class CreateCompetitionPage {
   readonly PRESETS_ROTATION = PRESETS_ROTATION;
   readonly PRESETS_TEAMREGEL = PRESETS_TEAMREGEL;
 
-  form: FormModel = {
+  form = signal<FormModel>({
     datum: new Date().toISOString().split('T')[0],
     titel: '',
     programmId: null,
@@ -96,14 +97,18 @@ export class CreateCompetitionPage {
     creatorAddress: '',
     creatorPhone: '',
     termsAccepted: false
-  };
+  });
 
-  programme: ProgrammRaw[] = [];
-  submitting = false;
+  patchForm(patch: Partial<FormModel>) {
+    this.form.update(f => ({ ...f, ...patch }));
+  }
+
+  programme = signal<ProgrammRaw[]>([]);
+  submitting = signal(false);
   disziplinen: string[] = [];
   kategorien: string[] = [];
   selectedLogo: File | null = null;
-  logoPreview: string | null = null;
+  logoPreview = signal<string | null>(null);
 
   altersklassenPreset = '';
   jahrgangsklassenPreset = '';
@@ -111,7 +116,6 @@ export class CreateCompetitionPage {
   rotationPreset = 'Einfach';
   teamrulePreset = '';
 
-  private cdr = inject(ChangeDetectorRef);
   private backend = inject(AdminBackendService);
   private secretService = inject(SecretService);
   private toastCtrl = inject(ToastController);
@@ -134,7 +138,7 @@ export class CreateCompetitionPage {
       this.copyFromUuid = params['copyFrom'] || null;
     });
     this.backend.getProgramme().subscribe(pgm => {
-      this.programme = pgm;
+      this.programme.set(pgm);
       if (this.editUuid) {
         const stored = this.secretService.getSecret(this.editUuid);
         if (!stored) {
@@ -144,53 +148,53 @@ export class CreateCompetitionPage {
         this.editSecret = stored.secret;
         this.backend.getCompetitionDetails(this.editUuid, stored.secret).subscribe(data => {
           this.editId = data.id;
-          this.form.datum = data.datum.split('T')[0];
-          this.form.titel = data.titel;
-          this.form.programmId = data.programmId;
-          this.form.notificationEMail = data.notificationEMail;
-          this.form.auszeichnung = data.auszeichnung > 100 ? data.auszeichnung / 100 : data.auszeichnung;
-          this.form.auszeichnungendnote = data.auszeichnungendnote;
-          this.form.altersklassen = data.altersklassen;
-          this.form.jahrgangsklassen = data.jahrgangsklassen;
-          this.form.punktegleichstandsregel = data.punktegleichstandsregel;
-          this.form.rotation = data.rotation;
-          this.form.teamrule = data.teamrule;
+          this.patchForm({
+            datum: data.datum.split('T')[0],
+            titel: data.titel,
+            programmId: data.programmId,
+            notificationEMail: data.notificationEMail,
+            auszeichnung: data.auszeichnung > 100 ? data.auszeichnung / 100 : data.auszeichnung,
+            auszeichnungendnote: data.auszeichnungendnote,
+            altersklassen: data.altersklassen,
+            jahrgangsklassen: data.jahrgangsklassen,
+            punktegleichstandsregel: data.punktegleichstandsregel,
+            rotation: data.rotation,
+            teamrule: data.teamrule
+          });
           this.onProgramChange();
           this.backend.getCompetitionLogo(this.editUuid!, stored.secret).subscribe({
             next: blob => {
-              if (this.logoPreview) URL.revokeObjectURL(this.logoPreview);
-              this.logoPreview = URL.createObjectURL(blob);
-              this.cdr.detectChanges();
+              if (this.logoPreview()) URL.revokeObjectURL(this.logoPreview()!);
+              this.logoPreview.set(URL.createObjectURL(blob));
             },
             error: () => { /* no logo exists — leave preview empty */ }
           });
-          this.cdr.detectChanges();
         });
       } else if (this.copyFromUuid) {
         const stored = this.secretService.getSecret(this.copyFromUuid);
         if (stored) {
           this.backend.getCompetitionDetails(this.copyFromUuid, stored.secret).subscribe(data => {
-            this.form.titel = data.titel;
-            this.form.programmId = data.programmId;
-            this.form.notificationEMail = data.notificationEMail;
-            this.form.auszeichnung = data.auszeichnung;
-            this.form.auszeichnungendnote = data.auszeichnungendnote;
-            this.form.altersklassen = data.altersklassen;
-            this.form.jahrgangsklassen = data.jahrgangsklassen;
-            this.form.punktegleichstandsregel = data.punktegleichstandsregel;
-            this.form.rotation = data.rotation;
-            this.form.teamrule = data.teamrule;
+            this.patchForm({
+              titel: data.titel,
+              programmId: data.programmId,
+              notificationEMail: data.notificationEMail,
+              auszeichnung: data.auszeichnung,
+              auszeichnungendnote: data.auszeichnungendnote,
+              altersklassen: data.altersklassen,
+              jahrgangsklassen: data.jahrgangsklassen,
+              punktegleichstandsregel: data.punktegleichstandsregel,
+              rotation: data.rotation,
+              teamrule: data.teamrule
+            });
             this.onProgramChange();
             this.backend.getCompetitionLogo(this.copyFromUuid!, stored.secret).subscribe({
               next: blob => {
                 this.selectedLogo = new File([blob], 'logo.png', { type: blob.type });
-                if (this.logoPreview) URL.revokeObjectURL(this.logoPreview);
-                this.logoPreview = URL.createObjectURL(blob);
-                this.cdr.detectChanges();
+                if (this.logoPreview()) URL.revokeObjectURL(this.logoPreview()!);
+                this.logoPreview.set(URL.createObjectURL(blob));
               },
               error: () => { /* no logo */ }
             });
-            this.cdr.detectChanges();
           });
         }
       }
@@ -198,22 +202,22 @@ export class CreateCompetitionPage {
   }
 
   findMatchingPresets() {
-    this.altersklassenPreset = PRESETS_ALTERSKLASSEN.find(p => p.value === this.form.altersklassen)?.value || (this.form.altersklassen ? '__custom__' : this.altersklassenPreset);
-    this.jahrgangsklassenPreset = PRESETS_ALTERSKLASSEN.find(p => p.value === this.form.jahrgangsklassen)?.value || (this.form.jahrgangsklassen ? '__custom__' : this.jahrgangsklassenPreset);
-    this.punktegleichstandsregelPreset = PRESETS_PUNKTEGLEICHSTANDSREGEL.find(p => p.value === this.form.punktegleichstandsregel)?.value || (this.punktegleichstandsregelPreset ? '__custom__' : this.punktegleichstandsregelPreset);
-    this.rotationPreset = PRESETS_ROTATION.find(p => p.value === this.form.rotation)?.value || (this.form.rotation ? '__custom__' : this.rotationPreset);
-    this.teamrulePreset = PRESETS_TEAMREGEL.find(p => p.value === this.form.teamrule)?.value || (this.form.altersklassen ? '__custom__' : this.teamrulePreset);
+    this.altersklassenPreset = PRESETS_ALTERSKLASSEN.find(p => p.value === this.form().altersklassen)?.value || (this.form().altersklassen ? '__custom__' : this.altersklassenPreset);
+    this.jahrgangsklassenPreset = PRESETS_ALTERSKLASSEN.find(p => p.value === this.form().jahrgangsklassen)?.value || (this.form().jahrgangsklassen ? '__custom__' : this.jahrgangsklassenPreset);
+    this.punktegleichstandsregelPreset = PRESETS_PUNKTEGLEICHSTANDSREGEL.find(p => p.value === this.form().punktegleichstandsregel)?.value || (this.punktegleichstandsregelPreset ? '__custom__' : this.punktegleichstandsregelPreset);
+    this.rotationPreset = PRESETS_ROTATION.find(p => p.value === this.form().rotation)?.value || (this.form().rotation ? '__custom__' : this.rotationPreset);
+    this.teamrulePreset = PRESETS_TEAMREGEL.find(p => p.value === this.form().teamrule)?.value || (this.form().altersklassen ? '__custom__' : this.teamrulePreset);
   }
 
   onProgramChange() {
     this.findMatchingPresets();
-    if (!this.form.programmId) {
+    if (!this.form().programmId) {
       this.disziplinen = [];
       this.kategorien = [];
       return;
     }
-    this.backend.getDisziplinenForProgram(this.form.programmId).subscribe(d => this.disziplinen = d);
-    this.backend.getKategorienForProgram(this.form.programmId).subscribe(k => this.kategorien = k);
+    this.backend.getDisziplinenForProgram(this.form().programmId!).subscribe(d => this.disziplinen = d);
+    this.backend.getKategorienForProgram(this.form().programmId!).subscribe(k => this.kategorien = k);
   }
 
   shortLabel(label: string): string {
@@ -226,25 +230,25 @@ export class CreateCompetitionPage {
     if (!preset) return;
     if (preset.value === '__custom__') return;
     console.log("setting " + preset.value + " on field " + field);
-    (this.form as any)[field] = preset.value;
+    this.patchForm({ [field]: preset.value } as Partial<FormModel>);
   }
 
   isValid(): boolean {
     if (this.isEditMode) {
       return !!(
-        this.form.titel.trim() &&
-        this.form.programmId &&
-        this.form.notificationEMail.trim()
+        this.form().titel.trim() &&
+        this.form().programmId &&
+        this.form().notificationEMail.trim()
       );
     }
     return !!(
-      this.form.titel.trim() &&
-      this.form.programmId &&
-      this.form.notificationEMail.trim() &&
-      this.form.creatorName.trim() &&
-      this.form.creatorAddress.trim() &&
-      this.form.creatorPhone.trim() &&
-      this.form.termsAccepted
+      this.form().titel.trim() &&
+      this.form().programmId &&
+      this.form().notificationEMail.trim() &&
+      this.form().creatorName.trim() &&
+      this.form().creatorAddress.trim() &&
+      this.form().creatorPhone.trim() &&
+      this.form().termsAccepted
     );
   }
 
@@ -255,8 +259,7 @@ export class CreateCompetitionPage {
     });
     modal.onDidDismiss().then(result => {
       if (result !== null && result !== undefined) {
-        this.form.termsAccepted = result.data;
-        this.cdr.detectChanges();
+        this.patchForm({ termsAccepted: result.data });
       }
     });
     await modal.present();
@@ -266,14 +269,13 @@ export class CreateCompetitionPage {
     const modal = await this.modalCtrl.create({
       component: AltersklassenEditorComponent,
       componentProps: {
-        initialFormula: this.form[field],
+        initialFormula: this.form()[field],
         title: field === 'altersklassen' ? 'Altersklassen bearbeiten' : 'Jahrgangs-Altersklassen bearbeiten'
       }
     });
     modal.onDidDismiss().then(result => {
       if (result.data !== null && result.data !== undefined) {
-        this.form[field] = result.data;
-        this.cdr.detectChanges();
+        this.patchForm({ [field]: result.data });
       }
     });
     await modal.present();
@@ -283,14 +285,13 @@ export class CreateCompetitionPage {
     const modal = await this.modalCtrl.create({
       component: PunktegleichstandsregelEditorComponent,
       componentProps: {
-        initialFormula: this.form.punktegleichstandsregel,
+        initialFormula: this.form().punktegleichstandsregel,
         availableDisziplinen: this.disziplinen
       }
     });
     modal.onDidDismiss().then(result => {
       if (result.data !== null && result.data !== undefined) {
-        this.form.punktegleichstandsregel = result.data;
-        this.cdr.detectChanges();
+        this.patchForm({ punktegleichstandsregel: result.data });
       }
     });
     await modal.present();
@@ -300,13 +301,12 @@ export class CreateCompetitionPage {
     const modal = await this.modalCtrl.create({
       component: RiegenRotationsregelEditorComponent,
       componentProps: {
-        initialFormula: this.form.rotation
+        initialFormula: this.form().rotation
       }
     });
     modal.onDidDismiss().then(result => {
       if (result.data !== null && result.data !== undefined) {
-        this.form.rotation = result.data;
-        this.cdr.detectChanges();
+        this.patchForm({ rotation: result.data });
       }
     });
     await modal.present();
@@ -316,14 +316,13 @@ export class CreateCompetitionPage {
     const modal = await this.modalCtrl.create({
       component: TeamregelEditorComponent,
       componentProps: {
-        initialFormula: this.form.teamrule,
+        initialFormula: this.form().teamrule,
         availableCategories: this.kategorien
       }
     });
     modal.onDidDismiss().then(result => {
       if (result.data !== null && result.data !== undefined) {
-        this.form.teamrule = result.data;
-        this.cdr.detectChanges();
+        this.patchForm({ teamrule: result.data });
       }
     });
     await modal.present();
@@ -333,24 +332,24 @@ export class CreateCompetitionPage {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.selectedLogo = input.files[0];
-      this.logoPreview = URL.createObjectURL(this.selectedLogo);
+      this.logoPreview.set(URL.createObjectURL(this.selectedLogo));
     }
   }
 
   removeLogo() {
     this.selectedLogo = null;
-    if (this.logoPreview) {
-      URL.revokeObjectURL(this.logoPreview);
-      this.logoPreview = null;
+    if (this.logoPreview()) {
+      URL.revokeObjectURL(this.logoPreview()!);
+      this.logoPreview.set(null);
     }
   }
 
   async submit() {
-    if (this.submitting) return;
-    this.submitting = true;
+    if (this.submitting()) return;
+    this.submitting.set(true);
 
     try {
-      const datumStr = formatDateForApi(new Date(this.form.datum + 'T12:00:00.000Z'));
+      const datumStr = formatDateForApi(new Date(this.form().datum + 'T12:00:00.000Z'));
 
       if (this.isEditMode && this.editUuid && this.editSecret && this.editId) {
         // if request.auszeichnung.isValidInt then request.auszeichnung.toInt else (request.auszeichnung * 100).toInt,
@@ -358,16 +357,16 @@ export class CreateCompetitionPage {
           this.backend.updateCompetition(this.editUuid, this.editSecret, {
             id: this.editId,
             datum: datumStr,
-            titel: this.form.titel,
-            programmId: this.form.programmId!,
-            notificationEMail: this.form.notificationEMail,
-            auszeichnung: Number.isInteger(this.form.auszeichnung) ? this.form.auszeichnung : Math.trunc(this.form.auszeichnung * 100) || 40,
-            auszeichnungendnote: this.form.auszeichnungendnote || 0,
-            altersklassen: this.form.altersklassen,
-            jahrgangsklassen: this.form.jahrgangsklassen,
-            punktegleichstandsregel: this.form.punktegleichstandsregel,
-            rotation: this.form.rotation,
-            teamrule: this.form.teamrule
+            titel: this.form().titel,
+            programmId: this.form().programmId!,
+            notificationEMail: this.form().notificationEMail,
+            auszeichnung: Number.isInteger(this.form().auszeichnung) ? this.form().auszeichnung : Math.trunc(this.form().auszeichnung * 100) || 40,
+            auszeichnungendnote: this.form().auszeichnungendnote || 0,
+            altersklassen: this.form().altersklassen,
+            jahrgangsklassen: this.form().jahrgangsklassen,
+            punktegleichstandsregel: this.form().punktegleichstandsregel,
+            rotation: this.form().rotation,
+            teamrule: this.form().teamrule
           })
         );
 
@@ -385,7 +384,7 @@ export class CreateCompetitionPage {
         }
 
         const toast = await this.toastCtrl.create({
-          message: `Wettkampf "${this.form.titel}" gespeichert.`,
+          message: `Wettkampf "${this.form().titel}" gespeichert.`,
           duration: 3000,
           color: 'success'
         });
@@ -397,19 +396,19 @@ export class CreateCompetitionPage {
       const response = await firstValueFrom(
         this.backend.createCompetition({
           datum: datumStr,
-          titel: this.form.titel,
-          programmId: this.form.programmId!,
-          notificationEMail: this.form.notificationEMail,
-          auszeichnung: this.form.auszeichnung || 40,
-          auszeichnungendnote: this.form.auszeichnungendnote || 0,
-          altersklassen: this.form.altersklassen,
-          jahrgangsklassen: this.form.jahrgangsklassen,
-          punktegleichstandsregel: this.form.punktegleichstandsregel,
-          rotation: this.form.rotation,
-          teamrule: this.form.teamrule,
-          creatorName: this.form.creatorName,
-          creatorAddress: this.form.creatorAddress,
-          creatorPhone: this.form.creatorPhone,
+          titel: this.form().titel,
+          programmId: this.form().programmId!,
+          notificationEMail: this.form().notificationEMail,
+          auszeichnung: this.form().auszeichnung || 40,
+          auszeichnungendnote: this.form().auszeichnungendnote || 0,
+          altersklassen: this.form().altersklassen,
+          jahrgangsklassen: this.form().jahrgangsklassen,
+          punktegleichstandsregel: this.form().punktegleichstandsregel,
+          rotation: this.form().rotation,
+          teamrule: this.form().teamrule,
+          creatorName: this.form().creatorName,
+          creatorAddress: this.form().creatorAddress,
+          creatorPhone: this.form().creatorPhone,
           termsAccepted: true,
           termsVersion: '1.0',
           copyFrom: this.copyFromUuid || undefined
@@ -466,7 +465,7 @@ export class CreateCompetitionPage {
       });
       await toast.present();
     } finally {
-      this.submitting = false;
+      this.submitting.set(false);
     }
   }
 }

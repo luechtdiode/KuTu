@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, OnDestroy, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -20,22 +20,24 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
   private wsState = inject(WsStateService);
-  private cdr = inject(ChangeDetectorRef);
   private wsAcquired = false;
   private wsSubscriptions: Subscription[] = [];
 
+  /** signal views for zoneless template bindings */
+  readonly competitionsList = this.backendService.competitionsList;
+
   busy = new BehaviorSubject(false);
-  currentRegistration: ClubRegistration;
-  teams: TeamItem[];
+  currentRegistration = signal<ClubRegistration>(undefined);
+  teams = signal<TeamItem[]>(undefined);
   currentRegId: number;
-  wkPgms: ProgrammRaw[];
+  wkPgms = signal<ProgrammRaw[]>(undefined);
   tMyQueryStream = new Subject<any>();
 
   sFilterTask: () => void = undefined;
-  sFilteredRegistrationList: Map<number, AthletRegistration[]>;
-  sAthletRegistrationList: AthletRegistration[];
+  sFilteredRegistrationList = signal<Map<number, AthletRegistration[]>>(undefined);
+  sAthletRegistrationList = signal<AthletRegistration[]>(undefined);
   sMyQuery: string;
-  sSyncActions: SyncAction[] = [];
+  sSyncActions = signal<SyncAction[]>([]);
 
   /** Inserted by Angular inject() migration for backwards compatibility */
   constructor(...args: unknown[]);
@@ -86,14 +88,13 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
     this.backendService.loadRegistrationSyncActions().pipe(
       take(1)
     ).subscribe(sa => {
-      this.sSyncActions = sa;
-      this.cdr.detectChanges();
+      this.sSyncActions.set(sa);
     });
   }
 
   getStatus(reg: AthletRegistration) {
-    if (this.sSyncActions) {
-      const action = this.sSyncActions.find(a => a.verein.id === reg.vereinregistrationId && a.caption.indexOf(reg.name) > -1 && a.caption.indexOf(reg.vorname) > -1)
+    if (this.sSyncActions()) {
+      const action = this.sSyncActions().find(a => a.verein.id === reg.vereinregistrationId && a.caption.indexOf(reg.name) > -1 && a.caption.indexOf(reg.vorname) > -1)
       if (action) {
         return "pending (" + action.caption.substring(0, (action.caption + ":").indexOf(":")) + ")";
       } else {
@@ -106,15 +107,14 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
 
   refreshList() {
     this.busy.next(true);
-    this.currentRegistration = undefined;
+    this.currentRegistration.set(undefined);
     this.getSyncActions();
     this.backendService.getClubRegistrations(this.competition).pipe(
       filter(regs => !!regs.find(reg => reg.id === this.currentRegId))
       , take(1)).subscribe(regs => {
-      this.currentRegistration = regs.find(reg => reg.id === this.currentRegId);
+      this.currentRegistration.set(regs.find(reg => reg.id === this.currentRegId));
       this.backendService.loadTeamsListForClub(this.competition, this.currentRegId).subscribe(teams => {
-        this.teams = teams;
-        this.cdr.detectChanges();
+        this.teams.set(teams);
       });
       console.log('ask athletes-list for registration');
       this.backendService.loadAthletRegistrations(this.competition, this.currentRegId).subscribe(athletRegs => {
@@ -131,19 +131,17 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
         );
 
         pipeBeforeAction.subscribe(filteredList => {
-          this.sFilteredRegistrationList = filteredList;
+          this.sFilteredRegistrationList.set(filteredList);
           this.busy.next(false);
-          this.cdr.detectChanges();
         });
       });
     });
   }
 
   set competition(competitionId: string) {
-    if (!this.currentRegistration || competitionId !== this.backendService.competition) {
+    if (!this.currentRegistration() || competitionId !== this.backendService.competition) {
       this.backendService.loadProgramsForCompetition(this.competition).subscribe(pgms => {
-        this.wkPgms = pgms;
-        this.cdr.detectChanges();
+        this.wkPgms.set(pgms);
       });
     }
   }
@@ -153,7 +151,7 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
   }
 
   getCompetitions(): Wettkampf[] {
-    return this.backendService.competitions || [];
+    return this.competitionsList();
   }
 
   competitionName(): string {
@@ -179,24 +177,24 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
     };
   }
   set athletregistrations(list: AthletRegistration[]) {
-    this.sAthletRegistrationList = list;
-    this.runQuery(list)('*').subscribe(l => this.sFilteredRegistrationList = l);
+    this.sAthletRegistrationList.set(list);
+    this.runQuery(list)('*').subscribe(l => this.sFilteredRegistrationList.set(l));
     this.reloadList(this.sMyQuery || '*');
   }
   get athletregistrations() {
-    return this.sAthletRegistrationList;
+    return this.sAthletRegistrationList();
   }
   get filteredPrograms(): ProgrammRaw[] {
-    return [...this.wkPgms.filter(pgm => this.sFilteredRegistrationList?.has(pgm.id))];
+    return [...this.wkPgms().filter(pgm => this.sFilteredRegistrationList()?.has(pgm.id))];
     //return [ ...this.sFilteredRegistrationList?.keys() ].map(id => this.wkPgms.filter(pgm => pgm.id==id)[0]);
   }
-  
+
   mapProgram(programId: number) {
-    return this.wkPgms.filter(pgm => pgm.id == programId)[0];
+    return this.wkPgms().filter(pgm => pgm.id == programId)[0];
   }
 
   filteredStartList(programId: number) {
-    return this.sFilteredRegistrationList?.get(programId) || this.sAthletRegistrationList || [];
+    return this.sFilteredRegistrationList()?.get(programId) || this.sAthletRegistrationList() || [];
   }
   reloadList(event: any) {
     this.tMyQueryStream.next(event);
@@ -213,15 +211,15 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
   }
 
   isLoggedInAsClub(): boolean {
-    return this.backendService.loggedIn && this.backendService.authenticatedClubId === this.currentRegId + '';
+    return this.backendService.loggedIn() && this.backendService.authenticatedClubId === this.currentRegId + '';
   }
 
   isLoggedInAsAdmin(): boolean {
-    return this.backendService.loggedIn && !!this.backendService.authenticatedClubId;
+    return this.backendService.loggedIn() && !!this.backendService.authenticatedClubId;
   }
 
   isLoggedIn(): boolean {
-    return this.backendService.loggedIn;
+    return this.backendService.loggedIn();
   }
 
   filter(query: string) {
@@ -234,7 +232,7 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
         if (tn.vorname.toUpperCase().indexOf(token) > -1) {
           return true;
         }
-        if (this.wkPgms.find(pgm => tn.programId === pgm.id && pgm.name === token)) {
+        if (this.wkPgms()?.find(pgm => tn.programId === pgm.id && pgm.name === token)) {
           return true;
         }
         if (tn.gebdat.indexOf(token) > -1) {
@@ -257,7 +255,7 @@ export class RegAthletlistPage implements OnInit, OnDestroy {
   }
 
   needsPGMChoice(): boolean {
-    const pgm = [...this.wkPgms][0];
+    const pgm = [...this.wkPgms()][0];
     return !(pgm.aggregate == 1 && pgm.riegenmode > 1);
   }
   similarRegistration(a: AthletRegistration, b: AthletRegistration): boolean {

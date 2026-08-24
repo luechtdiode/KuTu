@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NavController, AlertController } from '@ionic/angular';
 import { JudgeRegistration, ProgrammRaw } from 'src/app/backend-types';
@@ -18,7 +18,6 @@ export class RegJudgeEditorPage  implements OnInit {
   private route = inject(ActivatedRoute);
   backendService = inject(BackendService);
   private alertCtrl = inject(AlertController);
-  private cdr = inject(ChangeDetectorRef);
 
   /** Inserted by Angular inject() migration for backwards compatibility */
   constructor(...args: unknown[]);
@@ -27,9 +26,9 @@ export class RegJudgeEditorPage  implements OnInit {
   constructor() {
   }
 
-  waiting = false;
-  registration: JudgeRegistration;
-  wettkampf: string;
+  waiting = signal(false);
+  registration = signal<JudgeRegistration>(undefined);
+  wettkampf = signal<string>(undefined);
   regId: number;
   judgeId: number;
   wkId: string;
@@ -39,7 +38,7 @@ export class RegJudgeEditorPage  implements OnInit {
   private _selectedClubJudgeId: number;
 
   ngOnInit() {
-    this.waiting = true;
+    this.waiting.set(true);
     this.wkId = this.route.snapshot.paramMap.get('wkId');
     // tslint:disable-next-line: radix
     this.regId = parseInt(this.route.snapshot.paramMap.get('regId'));
@@ -73,19 +72,22 @@ export class RegJudgeEditorPage  implements OnInit {
   }
 
   editable() {
-    return this.backendService.loggedIn;
+    return this.backendService.loggedIn();
   }
 
   updateUI(registration: JudgeRegistration) {
-    this.waiting = false;
-    this.wettkampf = this.backendService.competitionName;
-    this.registration = registration;
-    this.cdr.detectChanges();
+    this.waiting.set(false);
+    this.wettkampf.set(this.backendService.competitionName);
+    this.registration.set(registration);
+  }
+
+  patchRegistration(patch: Partial<JudgeRegistration>) {
+    this.registration.update(reg => Object.assign({}, reg, patch));
   }
 
   save(form: NgForm) {
     if(!form.valid) return;
-    const reg = Object.assign({}, this.registration, form.value);
+    const reg = Object.assign({}, this.registration(), form.value);
     console.log(reg);
     if (this.judgeId === 0 || reg.id === 0) {
       this.backendService.createJudgeRegistration(this.wkId, this.regId, reg).subscribe(() => {
@@ -103,11 +105,11 @@ export class RegJudgeEditorPage  implements OnInit {
       header: 'Achtung',
       // tslint:disable-next-line:max-line-length
       subHeader: 'Löschen der Judge-Anmeldung am Wettkampf',
-      message: 'Hiermit wird die Anmeldung von ' + this.registration.name + ', ' + this.registration.vorname + ' am Wettkampf gelöscht.',
+      message: 'Hiermit wird die Anmeldung von ' + this.registration().name + ', ' + this.registration().vorname + ' am Wettkampf gelöscht.',
       buttons: [
         {text: 'ABBRECHEN', role: 'cancel', handler: () => {}},
         {text: 'OKAY', handler: () => {
-          this.backendService.deleteJudgeRegistration(this.wkId, this.regId, this.registration).subscribe(() => {
+          this.backendService.deleteJudgeRegistration(this.wkId, this.regId, this.registration()).subscribe(() => {
             this.navCtrl.pop();
           });
           }

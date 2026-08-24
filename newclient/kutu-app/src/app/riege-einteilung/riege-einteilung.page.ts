@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, signal } from '@angular/core';
 import { AlertController, ToastController, ModalController, NavController } from '@ionic/angular';
 import {ActivatedRoute} from '@angular/router';
 import {SecretService} from '../services/secret.service';
@@ -35,14 +35,14 @@ interface TableGroup {
 export class RiegeEinteilungPage implements OnDestroy {
   uuid = '';
   secret = '';
-  wettkampfTitle = '';
-  wettkampfDatum = '';
-  logoUrl = '';
+  wettkampfTitle = signal('');
+  wettkampfDatum = signal('');
+  logoUrl = signal('');
 
-  disziplinen: Geraet[] = [];
-  durchgangNames: string[] = [];
-  groups: TableGroup[] = [];
-  unassignedRiegen: CellRiege[] = [];
+  disziplinen = signal<Geraet[]>([]);
+  durchgangNames = signal<string[]>([]);
+  groups = signal<TableGroup[]>([]);
+  unassignedRiegen = signal<CellRiege[]>([]);
   generateParams: RiegeSuggestionRequest = {
     maxRiegenSize: 11,
     maxParallelDg: 0,
@@ -51,17 +51,16 @@ export class RiegeEinteilungPage implements OnDestroy {
     separateRiegen2Durchgaenge: true
   };
   selectedDisziplinIds = new Set<number>();
-  filterDurchgaenge: string[] = [];
+  filterDurchgaenge = signal<string[]>([]);
   selectedDgs = new Set<string>();
   showGeneratePanel = false;
   showAssignedOnly = false;
-  loading = false;
+  loading = signal(false);
   draggedRiege: { name: string; durchgang: string; startId: number | null } | null = null;
 
   private wsAcquired = false;
   private subscriptions: Subscription[] = [];
 
-  private cdr = inject(ChangeDetectorRef);
   private route = inject(ActivatedRoute);
   private secretService = inject(SecretService);
   private backend = inject(AdminBackendService);
@@ -77,14 +76,13 @@ export class RiegeEinteilungPage implements OnDestroy {
     const stored = this.secretService.getSecret(this.uuid);
     if (stored) {
       this.secret = stored.secret;
-      this.wettkampfTitle = stored.titel;
-      this.wettkampfDatum = stored.datum.substring(0, 10);
+      this.wettkampfTitle.set(stored.titel);
+      this.wettkampfDatum.set(stored.datum.substring(0, 10));
     }
     this.backend.getCompetitionDetails(this.uuid, this.secret).subscribe(details => {
-      this.wettkampfTitle = details.titel;
-      this.wettkampfDatum = details.datum.substring(0, 10);
+      this.wettkampfTitle.set(details.titel);
+      this.wettkampfDatum.set(details.datum.substring(0, 10));
       this.secretService.updateStoredSecretTitelDatum(this.uuid, details.titel, details.datum);
-      this.cdr.detectChanges();
     });
     await this.loadData();
     this.initWebSocket();
@@ -96,39 +94,37 @@ export class RiegeEinteilungPage implements OnDestroy {
       this.wsAcquired = false;
     }
     this.subscriptions.forEach(s => s.unsubscribe());
-    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
   }
 
   async loadData() {
-    this.loading = true;
+    this.loading.set(true);
     try {
       const [riegen, disziplinen, durations] = await Promise.all([
         firstValueFrom(this.backend.getRiegen(this.uuid, this.secret)),
         firstValueFrom(this.backend.getDisziplinen(this.uuid)),
         firstValueFrom(this.backend.getRiegeDuration(this.uuid, this.secret)).catch(() => [] as DurchgangDurationItem[])
       ]);
-      this.disziplinen = disziplinen;
+      this.disziplinen.set(disziplinen);
       if (this.selectedDisziplinIds.size === 0) {
         this.selectedDisziplinIds = new Set(disziplinen.map(d => d.id));
       }
       this.buildTable(riegen, durations);
     } catch {
-      this.groups = [];
-      this.disziplinen = [];
+      this.groups.set([]);
+      this.disziplinen.set([]);
     } finally {
-      this.loading = false;
-      this.cdr.detectChanges();
+      this.loading.set(false);
     }
     this.loadLogo();
   }
 
   private loadLogo() {
-    if (this.logoUrl) URL.revokeObjectURL(this.logoUrl);
-    this.logoUrl = '';
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
+    this.logoUrl.set('');
     this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
       next: blob => {
-        this.logoUrl = URL.createObjectURL(blob);
-        this.cdr.detectChanges();
+        this.logoUrl.set(URL.createObjectURL(blob));
       },
       error: () => {}
     });
@@ -140,13 +136,12 @@ export class RiegeEinteilungPage implements OnDestroy {
 
     this.subscriptions.push(
       this.wsState.riegeEinteilungStateUpdated.subscribe((event) => {
-        this.disziplinen = event.state.disziplinen;
+        this.disziplinen.set(event.state.disziplinen);
         if (this.selectedDisziplinIds.size === 0) {
           this.selectedDisziplinIds = new Set(event.state.disziplinen.map(d => d.id));
         }
         this.buildTable(event.state.riegen, event.state.duration);
-        this.loading = false;
-        this.cdr.detectChanges();
+        this.loading.set(false);
       })
     );
 
@@ -154,17 +149,17 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   private buildTable(riegen: RiegeItem[], durations: DurchgangDurationItem[]) {
-    this.unassignedRiegen = riegen
+    this.unassignedRiegen.set(riegen
       .filter(r => !r.durchgang)
-      .map(r => ({ name: r.name, kind: r.kind, athletCount: r.athletCount }));
+      .map(r => ({ name: r.name, kind: r.kind, athletCount: r.athletCount })));
 
     const durchgangNames = [...new Set(riegen.map(r => r.durchgang).filter(Boolean))] as string[];
-    this.durchgangNames = durchgangNames;
+    this.durchgangNames.set(durchgangNames);
     const durMap = new Map(durations.map(d => [d.name, d]));
 
     const rows = durchgangNames.map(dgName => {
       const cells: { [disziplinId: number]: CellRiege[] } = {};
-      for (const d of this.disziplinen) {
+      for (const d of this.disziplinen()) {
         cells[d.id] = [];
       }
       const dgRiegen = riegen.filter(r => r.durchgang === dgName);
@@ -188,37 +183,37 @@ export class RiegeEinteilungPage implements OnDestroy {
       groupMap.get(t)!.push(row);
     }
 
-    this.groups = [...groupMap.entries()]
+    this.groups.set([...groupMap.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([title, groupRows]) => {
         const sorted = groupRows.sort((a, b) => a.durchgangName.localeCompare(b.durchgangName));
         const duration = this.aggregateGroupDuration(sorted, title);
         return { title, rows: sorted, duration };
-      });
+      }));
   }
 
   get hasGroupedRiegen(): boolean {
-    return this.groups.map(tg => tg.rows.length).filter(l => l > 1).length > 0;
+    return this.groups().map(tg => tg.rows.length).filter(l => l > 1).length > 0;
   }
   async generate() {
-    this.loading = true;
+    this.loading.set(true);
     try {
-      const allSelected = this.selectedDisziplinIds.size === this.disziplinen.length;
+      const allSelected = this.selectedDisziplinIds.size === this.disziplinen().length;
       const request: RiegeSuggestionRequest = {
         ...this.generateParams,
         splitSexOption: this.generateParams.splitSexOption || undefined,
         onDisziplinIds: !allSelected ? [...this.selectedDisziplinIds] : undefined,
-        filterDurchgang: this.filterDurchgaenge.length > 0 ? this.filterDurchgaenge : undefined,
+        filterDurchgang: this.filterDurchgaenge().length > 0 ? this.filterDurchgaenge() : undefined,
       };
       await firstValueFrom(this.backend.suggestRiegen(this.uuid, request, this.secret));
-      this.filterDurchgaenge = [];
+      this.filterDurchgaenge.set([]);
       const toast = await this.toastCtrl.create({ message: 'Riegeneinteilung generiert', duration: 2000, color: 'success' });
       await toast.present();
     } catch (e) {
       const toast = await this.toastCtrl.create({ message: 'Fehler: ' + ((e as any).message || e), duration: 4000, color: 'danger' });
       await toast.present();
     } finally {
-      this.loading = false;
+      this.loading.set(false);
     }
   }
 
@@ -307,7 +302,7 @@ export class RiegeEinteilungPage implements OnDestroy {
         durchgang,
         startId,
         kind: item.kind,
-        disziplinen: this.disziplinen,
+        disziplinen: this.disziplinen(),
       }
     });
     modal.onDidDismiss().then(async (result) => {
@@ -346,7 +341,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   get allDgsSelected(): boolean {
-    return this.durchgangNames.length > 0 && this.durchgangNames.every(n => this.selectedDgs.has(n));
+    return this.durchgangNames().length > 0 && this.durchgangNames().every(n => this.selectedDgs.has(n));
   }
 
   toggleDg(name: string) {
@@ -361,7 +356,7 @@ export class RiegeEinteilungPage implements OnDestroy {
     if (this.allDgsSelected) {
       this.selectedDgs.clear();
     } else {
-      this.selectedDgs = new Set(this.durchgangNames);
+      this.selectedDgs = new Set(this.durchgangNames());
     }
   }
 
@@ -390,7 +385,7 @@ export class RiegeEinteilungPage implements OnDestroy {
           handler: async (data) => {
             const newName = data.newName?.trim();
             if (!newName || newName === dgName) return;
-            this.loading = true;
+            this.loading.set(true);
             try {
               await firstValueFrom(this.backend.renameDurchgang(this.uuid, this.secret, dgName, newName));
               this.selectedDgs.clear();
@@ -400,7 +395,7 @@ export class RiegeEinteilungPage implements OnDestroy {
               const toast = await this.toastCtrl.create({ message: 'Fehler beim Umbenennen', duration: 3000, color: 'danger' });
               await toast.present();
             } finally {
-              this.loading = false;
+              this.loading.set(false);
             }
           }
         }
@@ -411,7 +406,7 @@ export class RiegeEinteilungPage implements OnDestroy {
 
   async switchGroupSelected() {
     if (this.selectedDgs.size === 0) return;
-    const allTitles = [...new Set(this.groups.map(g => g.title))];
+    const allTitles = [...new Set(this.groups().map(g => g.title))];
     const options = allTitles.map(t => ({ label: t, type: 'radio' as const, name: 'title', value: t }));
     const alert = await this.alertCtrl.create({
       header: 'Gruppe wechseln',
@@ -424,7 +419,7 @@ export class RiegeEinteilungPage implements OnDestroy {
           handler: async (data) => {
             const selectedTitle = data;
             if (!selectedTitle) return;
-            this.loading = true;
+            this.loading.set(true);
             try {
               const request: GroupDurchgangRequest = { durchgangNames: [...this.selectedDgs], groupTitle: selectedTitle };
               await firstValueFrom(this.backend.moveDurchgangToGroup(this.uuid, this.secret, request));
@@ -435,7 +430,7 @@ export class RiegeEinteilungPage implements OnDestroy {
               const toast = await this.toastCtrl.create({ message: 'Fehler beim Ändern der Gruppe', duration: 3000, color: 'danger' });
               await toast.present();
             } finally {
-              this.loading = false;
+              this.loading.set(false);
             }
           }
         }
@@ -458,7 +453,7 @@ export class RiegeEinteilungPage implements OnDestroy {
           handler: async (data) => {
             const targetName = data.newName?.trim();
             if (!targetName) return;
-            this.loading = true;
+            this.loading.set(true);
             try {
               const request: MergeDurchgangRequest = { durchgangNames: [...this.selectedDgs], targetName };
               await firstValueFrom(this.backend.mergeDurchgang(this.uuid, this.secret, request));
@@ -469,7 +464,7 @@ export class RiegeEinteilungPage implements OnDestroy {
               const toast = await this.toastCtrl.create({ message: 'Fehler beim Zusammenführen', duration: 3000, color: 'danger' });
               await toast.present();
             } finally {
-              this.loading = false;
+              this.loading.set(false);
             }
           }
         }
@@ -479,7 +474,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   get hasGroupedSelection(): boolean {
-    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    const allRows = this.groups().reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
     return [...this.selectedDgs].some(dgName => {
       const row = allRows.find(r => r.durchgangName === dgName);
       return row && row.durchgangName !== row.durchgangTitle;
@@ -488,7 +483,7 @@ export class RiegeEinteilungPage implements OnDestroy {
 
   get canSetStartOffset(): boolean {
     if (this.selectedDgs.size === 0) return false;
-    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    const allRows = this.groups().reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
     const selectedRows = [...this.selectedDgs]
       .map(dg => allRows.find(r => r.durchgangName === dg))
       .filter(Boolean) as TableRow[];
@@ -504,13 +499,13 @@ export class RiegeEinteilungPage implements OnDestroy {
 
   async setStartOffsetForRow(row: TableRow) {
     const groupTitle = row.durchgangTitle;
-    const group = this.groups.find(g => g.title === groupTitle);
+    const group = this.groups().find(g => g.title === groupTitle);
     const currentOffset = group?.duration?.offsetMillis ?? row.duration?.offsetMillis ?? 0;
 
-    let defaultDate = this.wettkampfDatum;
+    let defaultDate = this.wettkampfDatum();
     let defaultTime = '';
-    if (currentOffset > 0 && this.wettkampfDatum) {
-      const wkDate = new Date(this.wettkampfDatum + 'T00:00:00');
+    if (currentOffset > 0 && this.wettkampfDatum()) {
+      const wkDate = new Date(this.wettkampfDatum() + 'T00:00:00');
       const ts = new Date(wkDate.getTime() + currentOffset);
       const y = ts.getFullYear();
       const mo = (ts.getMonth() + 1).toString().padStart(2, '0');
@@ -527,10 +522,10 @@ export class RiegeEinteilungPage implements OnDestroy {
       if (!result.data) return;
       const { date: dateStr, time: timeStr } = result.data;
       const [h, m] = timeStr.split(':').map(Number);
-      const wkMidnight = new Date(this.wettkampfDatum + 'T00:00:00').getTime();
+      const wkMidnight = new Date(this.wettkampfDatum() + 'T00:00:00').getTime();
       const entered = new Date(dateStr + 'T00:00:00').getTime() + (h * 3600 + m * 60) * 1000;
       const offsetMillis = entered - wkMidnight;
-      this.loading = true;
+      this.loading.set(true);
       try {
         const request: UpdateStartOffsetRequest = { title: groupTitle, offsetMillis };
         await firstValueFrom(this.backend.updateStartOffset(this.uuid, this.secret, request));
@@ -541,7 +536,7 @@ export class RiegeEinteilungPage implements OnDestroy {
         const toast = await this.toastCtrl.create({ message: 'Fehler beim Setzen der Startzeit', duration: 3000, color: 'danger' });
         await toast.present();
       } finally {
-        this.loading = false;
+        this.loading.set(false);
       }
     });
     await modal.present();
@@ -549,7 +544,7 @@ export class RiegeEinteilungPage implements OnDestroy {
 
   async ungroupSelected() {
     if (this.selectedDgs.size === 0) return;
-    this.loading = true;
+    this.loading.set(true);
     try {
       const request: UngroupDurchgangRequest = { durchgangNames: [...this.selectedDgs] };
       await firstValueFrom(this.backend.ungroupDurchgang(this.uuid, this.secret, request));
@@ -560,7 +555,7 @@ export class RiegeEinteilungPage implements OnDestroy {
       const toast = await this.toastCtrl.create({ message: 'Fehler beim Auflösen der Gruppe', duration: 3000, color: 'danger' });
       await toast.present();
     } finally {
-      this.loading = false;
+      this.loading.set(false);
     }
   }
 
@@ -578,7 +573,7 @@ export class RiegeEinteilungPage implements OnDestroy {
           handler: async (data) => {
             const groupTitle = data.groupTitle?.trim();
             if (!groupTitle) return;
-            this.loading = true;
+            this.loading.set(true);
             try {
               const request: GroupDurchgangRequest = { durchgangNames: [...this.selectedDgs], groupTitle };
               await firstValueFrom(this.backend.aggregateDurchgaenge(this.uuid, this.secret, request));
@@ -589,7 +584,7 @@ export class RiegeEinteilungPage implements OnDestroy {
               const toast = await this.toastCtrl.create({ message: 'Fehler beim Bilden der Gruppe', duration: 3000, color: 'danger' });
               await toast.present();
             } finally {
-              this.loading = false;
+              this.loading.set(false);
             }
           }
         }
@@ -599,7 +594,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   private resolveSelectedTitle(): string | null {
-    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    const allRows = this.groups().reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
     const selectedRows = [...this.selectedDgs]
       .map(dg => allRows.find(r => r.durchgangName === dg))
       .filter(Boolean) as TableRow[];
@@ -619,10 +614,10 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   private resolveCurrentOffsetMillis(): number {
-    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    const allRows = this.groups().reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
     const title = this.resolveSelectedTitle();
     if (!title) return 0;
-    const group = this.groups.find(g => g.title === title);
+    const group = this.groups().find(g => g.title === title);
     if (group?.duration) return group.duration.offsetMillis;
     const dgName = [...this.selectedDgs][0];
     const row = allRows.find(r => r.durchgangName === dgName);
@@ -634,10 +629,10 @@ export class RiegeEinteilungPage implements OnDestroy {
     if (!title) return;
     const currentOffset = this.resolveCurrentOffsetMillis();
 
-    let defaultDate = this.wettkampfDatum;
+    let defaultDate = this.wettkampfDatum();
     let defaultTime = '';
-    if (currentOffset > 0 && this.wettkampfDatum) {
-      const wkDate = new Date(this.wettkampfDatum + 'T00:00:00');
+    if (currentOffset > 0 && this.wettkampfDatum()) {
+      const wkDate = new Date(this.wettkampfDatum() + 'T00:00:00');
       const ts = new Date(wkDate.getTime() + currentOffset);
       const y = ts.getFullYear();
       const mo = (ts.getMonth() + 1).toString().padStart(2, '0');
@@ -654,10 +649,10 @@ export class RiegeEinteilungPage implements OnDestroy {
       if (!result.data) return;
       const { date: dateStr, time: timeStr } = result.data;
       const [h, m] = timeStr.split(':').map(Number);
-      const wkMidnight = new Date(this.wettkampfDatum + 'T00:00:00').getTime();
+      const wkMidnight = new Date(this.wettkampfDatum() + 'T00:00:00').getTime();
       const entered = new Date(dateStr + 'T00:00:00').getTime() + (h * 3600 + m * 60) * 1000;
       const offsetMillis = entered - wkMidnight;
-      this.loading = true;
+      this.loading.set(true);
       try {
         const request: UpdateStartOffsetRequest = { title, offsetMillis };
         await firstValueFrom(this.backend.updateStartOffset(this.uuid, this.secret, request));
@@ -668,7 +663,7 @@ export class RiegeEinteilungPage implements OnDestroy {
         const toast = await this.toastCtrl.create({ message: 'Fehler beim Setzen der Startzeit', duration: 3000, color: 'danger' });
         await toast.present();
       } finally {
-        this.loading = false;
+        this.loading.set(false);
       }
     });
     await modal.present();
@@ -690,7 +685,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   private suggestGroupTitle(): string {
-    const allRows = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
+    const allRows = this.groups().reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []);
     const selectedRows = [...this.selectedDgs].map(dg => allRows.find(r => r.durchgangName === dg)).filter(Boolean) as TableRow[];
 
     const categories = selectedRows.reduce<Set<string>>((set, r) => {
@@ -701,7 +696,7 @@ export class RiegeEinteilungPage implements OnDestroy {
     const categoryLabel = [...categories].sort().map(s => s.replace(/[()]/g, '')).join(', ');
 
     const abteilungPattern = /^Abteilung (\d+)/;
-    const usedNumbers = this.groups
+    const usedNumbers = this.groups()
       .map(g => g.title.match(abteilungPattern))
       .filter(Boolean)
       .map(m => parseInt(m![1], 10));
@@ -713,18 +708,17 @@ export class RiegeEinteilungPage implements OnDestroy {
 
   async regenerateSelected() {
     if (this.selectedDgs.size === 0) return;
-    this.filterDurchgaenge = [...this.selectedDgs];
+    this.filterDurchgaenge.set([...this.selectedDgs]);
     this.selectedDisziplinIds = new Set(
-      this.disziplinen.filter(d => {
+      this.disziplinen().filter(d => {
         for (const dgName of this.selectedDgs) {
-          const row = this.groups.reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []).find(r => r.durchgangName === dgName);
+          const row = this.groups().reduce<TableRow[]>((acc, g) => acc.concat(g.rows), []).find(r => r.durchgangName === dgName);
           if (row && row.cells[d.id]?.length > 0) return true;
         }
         return false;
       }).map(d => d.id)
     );
     this.showGeneratePanel = true;
-    this.cdr.detectChanges();
   }
 
   toggleDisziplin(id: number, event: any) {
@@ -736,7 +730,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   selectAllDisziplinen() {
-    this.selectedDisziplinIds = new Set(this.disziplinen.map(d => d.id));
+    this.selectedDisziplinIds = new Set(this.disziplinen().map(d => d.id));
   }
 
   selectNoneDisziplinen() {
@@ -767,8 +761,8 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   formatTimestampFromOffset(offsetMillis: number): string {
-    if (offsetMillis <= 0 || !this.wettkampfDatum) return '—';
-    const wkDate = new Date(this.wettkampfDatum + 'T00:00:00');
+    if (offsetMillis <= 0 || !this.wettkampfDatum()) return '—';
+    const wkDate = new Date(this.wettkampfDatum() + 'T00:00:00');
     const ts = new Date(wkDate.getTime() + offsetMillis);
     const weekdays = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
     const wd = weekdays[ts.getDay()];
@@ -792,7 +786,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   totalAthleten(): number {
-    return this.groups.reduce((sum, g) => sum + g.rows.reduce((s, r) => s + Object.values(r.cells).reduce((s2, c) => s2 + c.reduce((a, ri) => a + ri.athletCount, 0), 0), 0), 0);
+    return this.groups().reduce((sum, g) => sum + g.rows.reduce((s, r) => s + Object.values(r.cells).reduce((s2, c) => s2 + c.reduce((a, ri) => a + ri.athletCount, 0), 0), 0), 0);
   }
 
   groupAthletCountForGeraet(group: TableGroup, geraetId: number): number {
@@ -829,9 +823,9 @@ export class RiegeEinteilungPage implements OnDestroy {
   }
 
   get visibleDisziplinen(): Geraet[] {
-    if (!this.showAssignedOnly) return this.disziplinen;
-    return this.disziplinen.filter(d =>
-      this.groups.some(g =>
+    if (!this.showAssignedOnly) return this.disziplinen();
+    return this.disziplinen().filter(d =>
+      this.groups().some(g =>
         g.rows.some(r => r.cells[d.id]?.length > 0)
       )
     );
