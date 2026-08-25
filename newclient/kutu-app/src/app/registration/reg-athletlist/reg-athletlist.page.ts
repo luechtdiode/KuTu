@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -11,7 +11,6 @@ import { ClubRegistration, ProgrammRaw, AthletRegistration, Wettkampf, SyncActio
     selector: 'app-reg-athletlist',
     templateUrl: './reg-athletlist.page.html',
     styleUrls: ['./reg-athletlist.page.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class RegAthletlistPage implements OnInit, OnDestroy {

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostBinding, Input, OnInit, Output, input, viewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, HostBinding, Input, OnInit, Output, input, viewChild, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
@@ -12,7 +12,6 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
             useExisting: WertungAvgCalcComponent
         }
     ],
-    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class WertungAvgCalcComponent implements ControlValueAccessor { 
@@ -43,9 +42,9 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   }
 
   _compMethod: string = 'avg';
-  avgValue: number;
+  avgValue = signal<number>(undefined);
 
-  singleValues: {value:number}[] = [];
+  singleValues = signal<{value:number}[]>([]);
 
   get title(): string {
     return this.valueTitle();
@@ -60,11 +59,16 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   }
 
   get singleValueContainer() {
-    return this.singleValues[0]?.value || this.avgValue;
+    return this.singleValues()[0]?.value || this.avgValue();
   }
 
   set singleValueContainer(avgValue: number) {
-    this.singleValues = [{value: avgValue}];
+    if (this.avgValue() === avgValue
+      && this.singleValues().length === 1
+      && this.singleValues()[0]?.value === avgValue) {
+      return;
+    }
+    this.singleValues.set([{value: avgValue}]);
     this.calcAvg();
     this.markAsTouched();
   }
@@ -74,10 +78,13 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
     return this._compMethod;
   }
   set compMethod(value: string) {
+    if (value === this._compMethod) {
+      return;
+    }
     this._compMethod = value;
     localStorage.setItem(`comp-method-${this.valueTitle()}${localStorage.getItem('current_competition')}`, value);
     this.calcAvg();
-    this.markAsTouched();    
+    this.markAsTouched();
   }
 
   addKomma() {
@@ -99,41 +106,39 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   }
 
   add() {
-    if (!this.disabled) {
-      this.singleValues = [...this.singleValues, {value: 0.000}];
-      if (this.singleValues.length === 1) {
-        this.singleValues = [...this.singleValues, {value: 0.000}];
+    if (!this.disabled()) {
+      this.singleValues.update(singleValues => [...singleValues, {value: 0.000}]);
+      if (this.singleValues().length === 1) {
+        this.singleValues.update(singleValues => [...singleValues, {value: 0.000}]);
       }
       this.markAsTouched();
     }
-  }  
+  }
 
   remove(index) {
-    if (!this.disabled && index > -1) {
-      this.singleValues.splice(index, 1);
+    if (!this.disabled() && index > -1) {
+      this.singleValues.update(singleValues => singleValues.filter((_, i) => i !== index));
       this.calcAvg();
       this.markAsTouched();
     }
   }
 
   calcAvg(): number {
-    const avg1 = this.singleValues
+    const avg1 = this.singleValues()
       .filter(item => !!item.value)
       .map(item => Number(item.value))
       .filter(item => !isNaN(item))
       .filter(item => item > 0)
     if (avg1.length === 0) {
-      this.avgValue = undefined;
+      this.avgValue.set(undefined);
       this.onChange(undefined);
       //console.log('value updated: ' + undefined);
       return undefined;
     }
-    console.log('compMethod: ' + this.compMethod);
     const divider = this.compMethod === 'avg' ? avg1.length : 1;
-    console.log('divider: ' + divider);
     const avg2 = Number((avg1.reduce((sum, current) => sum + current, 0) / divider).toFixed(this.fixed));
-    if (!this.disabled && this.avgValue !== avg2 && !isNaN(avg2)) {
-      this.avgValue = avg2;
+    if (!this.disabled() && this.avgValue() !== avg2 && !isNaN(avg2)) {
+      this.avgValue.set(avg2);
       this.onChange(avg2);
       //console.log('value updated: ' + avg2);
     }
@@ -158,11 +163,11 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
 
   touched = false;
 
-  disabled = false;
+  disabled = signal(false);
 
   writeValue(avgValue: number) {
-    this.avgValue = avgValue;
-    this.singleValues = [{value: avgValue}];
+    this.avgValue.set(avgValue);
+    this.singleValues.set([{value: avgValue}]);
   }
 
   registerOnChange(onChange: any) {
@@ -181,7 +186,7 @@ export class WertungAvgCalcComponent implements ControlValueAccessor {
   }
 
   setDisabledState(disabled: boolean) {
-    this.disabled = disabled;
+    this.disabled.set(disabled);
   }
 
   public readonly noteInput = viewChild<{

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { Wettkampf, ClubRegistration, SyncAction } from '../backend-types';
 import { NavController, IonItemSliding, AlertController, ToastController } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
@@ -11,7 +11,6 @@ import { debounceTime, distinctUntilChanged, map, filter, switchMap, share, take
     selector: 'app-registration',
     templateUrl: './registration.page.html',
     styleUrls: ['./registration.page.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class RegistrationPage implements OnInit, OnDestroy {

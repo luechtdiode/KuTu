@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
 import { BackendService } from '../services/backend.service';
 import { Wettkampf, Geraet, WertungContainer } from '../backend-types';
@@ -10,7 +10,6 @@ import { gearMapping, encodeURIComponent2 } from '../utils';
     selector: 'app-station',
     templateUrl: './station.page.html',
     styleUrls: ['./station.page.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class StationPage {

@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ToastController, NavController, ModalController } from '@ionic/angular';
 import { AdminBackendService } from '../services/admin-backend.service';
@@ -72,8 +72,7 @@ interface FormModel {
 
 @Component({
   templateUrl: 'create-competition.page.html',
-  standalone: false,
-  changeDetection: ChangeDetectionStrategy.Eager
+  standalone: false
 })
 export class CreateCompetitionPage {
   readonly PRESETS_ALTERSKLASSEN = PRESETS_ALTERSKLASSEN;
