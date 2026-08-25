@@ -3,14 +3,14 @@
     <ion-title>{{ title() }}</ion-title>
   </ion-toolbar>
   <ion-toolbar>
-    <ion-searchbar (ionInput)="searchbarInput($event)" [ngModel]="$safeNavigationMigration(selected?.text)" />
+    <ion-searchbar (ionInput)="searchbarInput($event)" [ngModel]="selected?.text" />
   </ion-toolbar>
 </ion-header>
 
 <ion-content color="light" class="ion-padding">
   <ion-radio-group [(ngModel)]="selected">
     <ion-list>
-      @for (item of filteredItems; track item) {
+      @for (item of filteredItems(); track item) {
         <ion-item>
           <ion-radio class="alert-radio-label sc-ion-alert-md" [value]="item">{{item.text}}</ion-radio>
         </ion-item>

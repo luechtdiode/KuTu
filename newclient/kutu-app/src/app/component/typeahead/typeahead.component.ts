@@ -1,4 +1,4 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import type { OnInit } from '@angular/core';
 
 export interface TypeAheadItem<T> {
@@ -8,7 +8,6 @@ export interface TypeAheadItem<T> {
 @Component({
     selector: 'app-typeahead',
     templateUrl: 'typeahead.component.html',
-    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class TypeaheadComponent<T> implements OnInit {
@@ -19,15 +18,24 @@ export class TypeaheadComponent<T> implements OnInit {
   readonly selectionCancel = output<void>();
   readonly selectionChange = output<T>();
 
-  filteredItems: TypeAheadItem<T>[] = [];
-  workingSelectedValue: TypeAheadItem<T> = undefined;
+  query = signal('');
+
+  workingSelectedValue = signal<TypeAheadItem<T>>(undefined);
+
+  filteredItems = computed(() => {
+    const items = this.items() || [];
+    const normalizedQuery = this.query()?.toLowerCase();
+    if (!normalizedQuery) {
+      return [...items];
+    }
+    return items.filter(item => item.text.toLowerCase().includes(normalizedQuery));
+  });
 
   ngOnInit() {
-    this.filteredItems = [...this.items()];
-    this.workingSelectedValue = <TypeAheadItem<T>>{
+    this.workingSelectedValue.set(<TypeAheadItem<T>>{
       item: this.selectedItem(),
-      text: this.items().find(i => i.item === this.selectedItem())?.text
-    };
+      text: (this.items() || []).find(i => i.item === this.selectedItem())?.text
+    });
   }
 
   cancelChanges() {
@@ -35,45 +43,19 @@ export class TypeaheadComponent<T> implements OnInit {
   }
 
   confirmChanges() {
-    this.selectionChange.emit(this.workingSelectedValue?.item);
+    this.selectionChange.emit(this.workingSelectedValue()?.item);
   }
 
   searchbarInput(ev) {
-    this.filterList(ev.target.value);
+    this.query.set(ev.target.value);
   }
 
-  /**
-   * Update the rendered view with
-   * the provided search query. If no
-   * query is provided, all data
-   * will be rendered.
-   */
-  filterList(searchQuery: string | undefined) {
-    /**
-     * If no search query is defined,
-     * return all options.
-     */
-    if (searchQuery === undefined) {
-      this.filteredItems = [...this.items()];
-    } else {
-      /**
-       * Otherwise, normalize the search
-       * query and check to see which items
-       * contain the search query as a substring.
-       */
-      const normalizedQuery = searchQuery.toLowerCase();
-      this.filteredItems = this.items().filter((item) => {
-        return item.text.toLowerCase().includes(normalizedQuery);
-      });
-    }
-  }
-
-  get selected() {
-    return this.workingSelectedValue;
+  get selected(): TypeAheadItem<T> {
+    return this.workingSelectedValue();
   }
 
   set selected(item: TypeAheadItem<T>) {
-    this.workingSelectedValue = item;
+    this.workingSelectedValue.set(item);
   }
-  
+
 }
