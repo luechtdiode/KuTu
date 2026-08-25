@@ -1,4 +1,4 @@
-import { Component, inject, viewChild, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, inject, viewChild, signal } from '@angular/core';
 import { WertungContainer, Wertung, ScoreCalcVariable, ScoreCalcVariables, AthletMediaIsAtStart, AthletMediaIsFree, AthletMediaIsPaused, AthletMediaIsRunning } from '../backend-types';
 import { BehaviorSubject, Subject, Subscription, defer, of } from 'rxjs';
 import { NavController, Platform, ToastController, AlertController, IonItemSliding } from '@ionic/angular';
@@ -14,7 +14,6 @@ import { debounceTime, distinctUntilChanged, map, filter, switchMap, tap, share 
     selector: 'app-wertung-editor',
     templateUrl: './wertung-editor.page.html',
     styleUrls: ['./wertung-editor.page.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
   })
 export class WertungEditorPage {

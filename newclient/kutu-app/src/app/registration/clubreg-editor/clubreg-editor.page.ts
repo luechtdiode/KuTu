@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { ClubRegistration, NewClubRegistration, Verein } from 'src/app/backend-types';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -15,7 +15,6 @@ import { Subscription } from 'rxjs';
     selector: 'app-clubreg-editor',
     templateUrl: './clubreg-editor.page.html',
     styleUrls: ['./clubreg-editor.page.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class ClubregEditorPage implements OnInit, OnDestroy {

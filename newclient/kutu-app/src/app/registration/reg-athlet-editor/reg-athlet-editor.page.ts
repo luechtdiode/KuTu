@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { NavController, AlertController } from '@ionic/angular';
 import { ActivatedRoute } from '@angular/router';
 import { BackendService } from 'src/app/services/backend.service';
@@ -10,7 +10,6 @@ import { NgForm } from '@angular/forms';
     selector: 'app-reg-athlet-editor',
     templateUrl: './reg-athlet-editor.page.html',
     styleUrls: ['./reg-athlet-editor.page.scss'],
-    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class RegAthletEditorPage implements OnInit {

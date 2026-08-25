@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 
 import { Platform, AlertController, NavController, ModalController } from '@ionic/angular';
 import { BackendService } from './services/backend.service';
@@ -12,7 +12,6 @@ import { TermsModalComponent } from './create-competition/terms-modal.component'
 @Component({
     selector: 'app-root',
     templateUrl: 'app.component.html',
-    changeDetection: ChangeDetectionStrategy.Eager,
     standalone: false
 })
 export class AppComponent {
