@@ -590,6 +590,8 @@ export interface JudgeLink {
 export interface OverviewLinks {
   registrationUrl: string;
   registrationQr: string;
+  startListUrl: string;
+  startListQr: string;
   liveResultsUrl: string;
   liveResultsQr: string;
   adminAccessUrl: string;
