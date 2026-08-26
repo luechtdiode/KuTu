@@ -37,6 +37,7 @@ export class SearchAthletPage implements OnInit {
   sFilterTask: () => void = undefined;
 
   private busy = new BehaviorSubject(false);
+  private _selectedCompetitionId: string | undefined;
 
   /** Inserted by Angular inject() migration for backwards compatibility */
   constructor(...args: unknown[]);
@@ -60,6 +61,8 @@ export class SearchAthletPage implements OnInit {
         this.adminPlaybookMode = this.adminSecret.trim().length > 0;
       }
       this.competition = wkId;
+    } else if (this.backendService.competition) {
+      this.competition = this.backendService.competition;
     }
   }
 
@@ -68,12 +71,12 @@ export class SearchAthletPage implements OnInit {
   }
 
   set competition(competitionId: string) {
-    this.syncPath(this.sMyQuery);
-    if (!this.startlist || competitionId !== this.backendService.competition) {
+    if (!this.startlist || competitionId !== this._selectedCompetitionId) {
+      this._selectedCompetitionId = competitionId;
       this.busy.next(true);
       this.startlist = {} as StartList;
       this.backendService.getDurchgaenge(competitionId);
-      this.backendService.loadStartlist(undefined).subscribe(startlist => {
+      this.backendService.loadStartlist(undefined, competitionId).subscribe(startlist => {
         this.busy.next(false);
         const pipeBeforeAction = this.tMyQueryStream.pipe(
           //filter(event => !!event && !!event.target && !!event.target.value),
@@ -90,7 +93,6 @@ export class SearchAthletPage implements OnInit {
         ).subscribe(filteredList => {
           this.sFilteredStartList.set(filteredList);
           this.busy.next(false);
-          this.syncPath(this.sMyQuery);
         });
         this.startlist = startlist;
       });
@@ -98,7 +100,7 @@ export class SearchAthletPage implements OnInit {
   }
 
   get competition(): string {
-    return this.backendService.competition || '';
+    return this._selectedCompetitionId || '';
   }
   set startlist(startlist: StartList) {
     this.sStartList.set(startlist);
@@ -118,17 +120,18 @@ export class SearchAthletPage implements OnInit {
     return this.busy;
   }
 
-  syncPath(query: string = this.sMyQuery) {
+  syncPath(query: string = this.sMyQuery, competitionId?: string) {
+    const cid = competitionId || this.competition;
     if (query?.trim().length > 0) {
       this.router.navigate(
-        ['search-athlet', this.competition],
+        ['search-athlet', cid],
         {
           queryParams: {query: query}, // add query params to current url
           queryParamsHandling: 'merge', // remove to replace all query params by provided
         }
       );
     } else {
-      this.router.navigate(['search-athlet', this.competition]);
+      this.router.navigate(['search-athlet', cid]);
     }
   }
 
@@ -178,14 +181,14 @@ export class SearchAthletPage implements OnInit {
 
   followAthlet(item: Teilnehmer, slidingItem: IonItemSliding) {
     slidingItem.close();
-    this.navCtrl.navigateForward(`athlet-view/${this.backendService.competition}/${item.athletid}`);
+    this.navCtrl.navigateForward(`athlet-view/${this.competition}/${item.athletid}`);
   }
 
   followRiege(item: Teilnehmer, slidingItem: IonItemSliding) {
     slidingItem.close();
-    this.backendService.getGeraete(this.backendService.competition,
+    this.backendService.getGeraete(this.competition,
       item.durchgang).subscribe(geraete => {
-      this.backendService.getSteps(this.backendService.competition,
+      this.backendService.getSteps(this.competition,
         item.durchgang, geraete.find(gg => gg.name === item.start).id).subscribe(steps => {
         this.navCtrl.navigateForward('station');
       });
@@ -229,7 +232,7 @@ export class SearchAthletPage implements OnInit {
 
   private refreshStartList() {
     this.busy.next(true);
-    this.backendService.loadStartlist(undefined).subscribe({
+    this.backendService.loadStartlist(undefined, this.competition).subscribe({
       next: startlist => {
         this.busy.next(false);
         this.startlist = startlist;
@@ -255,13 +258,10 @@ export class SearchAthletPage implements OnInit {
   competitionName(): string {
     if (!this.backendService.competitions) { return ''; }
     const candidate = this.backendService.competitions
-      .filter(c => c.uuid === this.backendService.competition)
+      .filter(c => c.uuid === this._selectedCompetitionId)
       .map(c => c.titel + ', am ' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
 
     if (candidate.length === 1) {
-      if (!this.startlist) {
-        this.competition = this.backendService.competition;
-      }
       return candidate[0];
     } else {
       return '';

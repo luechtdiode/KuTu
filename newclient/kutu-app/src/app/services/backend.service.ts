@@ -1108,15 +1108,16 @@ export class BackendService {
       }
     }
 
-    loadStartlist(query: string): Observable<StartList> {
-      if (this._competition) {
+    loadStartlist(query: string, competitionId?: string): Observable<StartList> {
+      const wkId = competitionId || this._competition;
+      if (wkId) {
         if (query) {
           return this.startLoading('Teilnehmerliste wird geladen. Bitte warten ...',
-            this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist?q=' + query).pipe(share())
+            this.http.get<StartList>(backendUrl + 'api/report/' + wkId + '/startlist?q=' + query).pipe(share())
           );
         } else {
           return this.startLoading('Teilnehmerliste wird geladen. Bitte warten ...',
-            this.http.get<StartList>(backendUrl + 'api/report/' + this._competition + '/startlist').pipe(share())
+            this.http.get<StartList>(backendUrl + 'api/report/' + wkId + '/startlist').pipe(share())
           );
         }
       } else {
