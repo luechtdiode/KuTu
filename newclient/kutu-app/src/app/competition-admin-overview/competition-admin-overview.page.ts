@@ -109,6 +109,20 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
     await modal.present();
   }
 
+  async openStartListLinkModal() {
+    if (!this.overviewLinks()?.startListUrl) return;
+    const modal = await this.modalCtrl.create({
+      component: StandardLinkModalComponent,
+      componentProps: {
+        title: 'Link zur Online Startliste',
+        description: 'Scanne den QR-Code mit einem anderen Gerät oder öffne den Link, um dort Online Startliste zu öffnen.',
+        link: this.overviewLinks()!.startListUrl,
+        qrUrl: this.overviewLinks()!.startListQr
+      }
+    });
+    await modal.present();
+  }
+
   async openLiveViewLinkModal() {
     if (!this.overviewLinks()?.liveResultsUrl) return;
     const modal = await this.modalCtrl.create({
