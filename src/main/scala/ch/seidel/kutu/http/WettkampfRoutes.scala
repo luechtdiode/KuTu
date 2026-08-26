@@ -605,6 +605,8 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                     val enc = java.util.Base64.getUrlEncoder
                     val registrationUrl = s"$remoteBaseUrl/registration/$wkuuid"
                     val registrationQr = ServerPrintUtil.toQRCodeImage(registrationUrl)
+                    val startListUrl = s"$remoteBaseUrl/search-athlet/$wkuuid"
+                    val startListQr = ServerPrintUtil.toQRCodeImage(startListUrl)
                     val liveResultsUrl = s"$remoteBaseUrl/?" + new String(enc.encodeToString(s"last&c=$wkuuid".getBytes))
                     val liveResultsQr = ServerPrintUtil.toQRCodeImage(liveResultsUrl)
                     val wettkampf = readWettkampf(wkuuid.toString)
@@ -612,7 +614,7 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                     val adminPayload = s"admin&uuid=$wkuuid&secret=${java.net.URLEncoder.encode(adminJwt, "UTF-8")}&titel=${java.net.URLEncoder.encode(wettkampf.titel, "UTF-8")}&datum=${java.net.URLEncoder.encode(wettkampf.datum.toString, "UTF-8")}"
                     val adminAccessUrl = s"$remoteBaseUrl/?" + new String(enc.encodeToString(adminPayload.getBytes("UTF-8")))
                     val adminAccessQr = ServerPrintUtil.toQRCodeImage(adminAccessUrl)
-                    OverviewLinks(registrationUrl, registrationQr, liveResultsUrl, liveResultsQr, adminAccessUrl, adminAccessQr)
+                    OverviewLinks(registrationUrl, registrationQr, startListUrl, startListQr, liveResultsUrl, liveResultsQr, adminAccessUrl, adminAccessQr)
                   }
                 }
               } else {

@@ -235,7 +235,7 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given playbookDurchgangFormat: RootJsonFormat[PlaybookDurchgang] = jsonFormat17(PlaybookDurchgang.apply)
   given playbookStateFormat: RootJsonFormat[PlaybookState] = jsonFormat4(PlaybookState.apply)
   given judgeLinkFormat: RootJsonFormat[JudgeLink] = jsonFormat2(JudgeLink.apply)
-  given overviewLinksFormat: RootJsonFormat[OverviewLinks] = jsonFormat6(OverviewLinks.apply)
+  given overviewLinksFormat: RootJsonFormat[OverviewLinks] = jsonFormat8(OverviewLinks.apply)
   given playbookStateUpdatedFormat: RootJsonFormat[PlaybookStateUpdated] = jsonFormat2(PlaybookStateUpdated.apply)
   given riegenEinteilungStateFormat: RootJsonFormat[RiegenEinteilungState] = jsonFormat3(RiegenEinteilungState.apply)
   given riegenEinteilungStateUpdatedFormat: RootJsonFormat[RiegenEinteilungStateUpdated] = jsonFormat2(RiegenEinteilungStateUpdated.apply)

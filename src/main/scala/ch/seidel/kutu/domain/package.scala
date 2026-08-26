@@ -2117,6 +2117,8 @@ package object domain {
   case class OverviewLinks(
     registrationUrl: String,
     registrationQr: String,
+    startListUrl: String,
+    startListQr: String,
     liveResultsUrl: String,
     liveResultsQr: String,
     adminAccessUrl: String,
