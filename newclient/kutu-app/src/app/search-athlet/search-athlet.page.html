@@ -6,7 +6,9 @@
           <ion-icon slot="icon-only" name="menu" />
         </ion-button>
       </ion-menu-toggle>
-      <ion-back-button defaultHref="/" />
+      @if (adminPlaybookMode) {
+        <ion-back-button defaultHref="/" />
+      }
     </ion-buttons>
     <ion-title>
       <ion-grid no-padding>
