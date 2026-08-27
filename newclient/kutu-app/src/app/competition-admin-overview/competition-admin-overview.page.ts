@@ -141,9 +141,12 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
     if (!this.overviewLinks()?.adminAccessUrl) return;
     const modal = await this.modalCtrl.create({
       component: AdminAccessLinkModalComponent,
+      cssClass: 'admin-access-link-modal',
       componentProps: {
         link: this.overviewLinks()!.adminAccessUrl,
-        qrUrl: this.overviewLinks()!.adminAccessQr
+        qrUrl: this.overviewLinks()!.adminAccessQr,
+        uuid: this.uuid,
+        secret: this.secret
       }
     });
     await modal.present();

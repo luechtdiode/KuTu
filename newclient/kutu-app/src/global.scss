@@ -269,6 +269,10 @@ td.drag-over {
 .preset-row ion-button {
   flex-shrink: 0;
 }
+ion-modal.admin-access-link-modal {
+  --height: 90%;
+  --max-height: 92%;
+}
 .unassigned-card {
   --background: var(--ion-color-warning-tint, #fff3e0);
 }
