@@ -127,6 +127,15 @@ trait JwtSupport extends Directives {
     JwtClaimsSet(withAdmin)
   }
 
+  def setClaimsWithExpiry(userid: String, expiryEpochMillis: Long, isAdmin: Boolean = false): JwtClaimsSetMap = {
+    val base = Map(
+      userKey -> userid,
+      expiredAtKey -> expiryEpochMillis.toString
+    )
+    val withAdmin = if isAdmin then base + (adminKey -> "true") else base
+    JwtClaimsSet(withAdmin)
+  }
+
   def isExpiryInfinite(claims: Map[String, String]): Boolean = {
     claims.get(expiredAtKey).exists { value =>
       val remaining = value.toLong - System.currentTimeMillis()

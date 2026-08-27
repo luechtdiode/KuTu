@@ -2114,6 +2114,10 @@ package object domain {
 
   case class JudgeLink(link: String, qrImage: String)
 
+  case class AdminAccessLink(link: String, qrImage: String)
+
+  case class CreateAdminAccessLink(days: Long)
+
   case class OverviewLinks(
     registrationUrl: String,
     registrationQr: String,

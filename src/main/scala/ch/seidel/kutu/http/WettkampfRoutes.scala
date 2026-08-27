@@ -268,6 +268,27 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
 
   import DefaultJsonProtocol.*
 
+  private def buildAdminAccessLink(wkuuid: UUID, days: Long): (String, String) =
+    buildAdminAccessLinkAt(wkuuid, System.currentTimeMillis() + TimeUnit.DAYS.toMillis(days))
+
+  private def buildAdminAccessLinkAt(wkuuid: UUID, expiryEpochMillis: Long): (String, String) = {
+    val enc = java.util.Base64.getUrlEncoder
+    val wettkampf = readWettkampf(wkuuid.toString)
+    val adminJwt = JsonWebToken(jwtHeader, setClaimsWithExpiry(wkuuid.toString, expiryEpochMillis, isAdmin = true), jwtSecretKey)
+    val adminPayload = s"admin&uuid=$wkuuid&secret=${java.net.URLEncoder.encode(adminJwt, "UTF-8")}&titel=${java.net.URLEncoder.encode(wettkampf.titel, "UTF-8")}&datum=${java.net.URLEncoder.encode(wettkampf.datum.toString, "UTF-8")}"
+    val adminAccessUrl = s"$remoteBaseUrl/?" + new String(enc.encodeToString(adminPayload.getBytes("UTF-8")))
+    val adminAccessQr = ServerPrintUtil.toQRCodeImage(adminAccessUrl)
+    (adminAccessUrl, adminAccessQr)
+  }
+
+  private def cappedAdminLinkExpiry(requestedEpochMillis: Long, currentClaims: Option[Map[String, String]]): Long =
+    currentClaims.flatMap(_.get("expiredAtKey")) match {
+      case Some(currentExpiry) if !isExpiryInfinite(currentClaims.getOrElse(Map.empty)) =>
+        math.min(requestedEpochMillis, currentExpiry.toLong)
+      case _ =>
+        requestedEpochMillis
+    }
+
   lazy val wettkampfRoutes: Route = {
     handleCID { (clientId: String) =>
       pathLabeled("isTokenExpired", "isTokenExpired") {
@@ -609,16 +630,35 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                     val startListQr = ServerPrintUtil.toQRCodeImage(startListUrl)
                     val liveResultsUrl = s"$remoteBaseUrl/?" + new String(enc.encodeToString(s"last&c=$wkuuid".getBytes))
                     val liveResultsQr = ServerPrintUtil.toQRCodeImage(liveResultsUrl)
-                    val wettkampf = readWettkampf(wkuuid.toString)
-                    val adminJwt = JsonWebToken(jwtHeader, setClaims(wkuuid.toString, Int.MaxValue, isAdmin = true), jwtSecretKey)
-                    val adminPayload = s"admin&uuid=$wkuuid&secret=${java.net.URLEncoder.encode(adminJwt, "UTF-8")}&titel=${java.net.URLEncoder.encode(wettkampf.titel, "UTF-8")}&datum=${java.net.URLEncoder.encode(wettkampf.datum.toString, "UTF-8")}"
-                    val adminAccessUrl = s"$remoteBaseUrl/?" + new String(enc.encodeToString(adminPayload.getBytes("UTF-8")))
-                    val adminAccessQr = ServerPrintUtil.toQRCodeImage(adminAccessUrl)
+                    val (adminAccessUrl, adminAccessQr) = buildAdminAccessLink(wkuuid, 7L)
                     OverviewLinks(registrationUrl, registrationQr, startListUrl, startListQr, liveResultsUrl, liveResultsQr, adminAccessUrl, adminAccessQr)
                   }
                 }
               } else {
                 complete(StatusCodes.Conflict)
+              }
+            }
+          }
+        } ~
+        pathLabeled("admin-access-link", "admin-access-link") {
+          post {
+            authenticatedAdmin() { userId =>
+              currentJwtClaims { claims =>
+                if userId.equals(wkuuid.toString) then {
+                  entity(as[CreateAdminAccessLink]) { req =>
+                    complete {
+                      Future {
+                        val requestedExpiry = if req.days == 0 then
+                          System.currentTimeMillis() + TimeUnit.DAYS.toMillis(Int.MaxValue.toLong)
+                        else System.currentTimeMillis() + TimeUnit.DAYS.toMillis(req.days)
+                        val (link, qrImage) = buildAdminAccessLinkAt(wkuuid, cappedAdminLinkExpiry(requestedExpiry, claims))
+                        AdminAccessLink(link, qrImage)
+                      }
+                    }
+                  }
+                } else {
+                  complete(StatusCodes.Conflict)
+                }
               }
             }
           }

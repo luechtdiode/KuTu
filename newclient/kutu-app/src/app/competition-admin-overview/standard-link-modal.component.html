@@ -12,7 +12,7 @@
     @if (qrUrl) {
       <img [src]="qrUrl" style="max-width:300px" />
     }
-    <p style="word-break:break-all; font-size:0.70em; margin-top:12px">{{ link }}</p>
+    <p style="word-break:break-all; font-size:0.70em; margin-top:12px"><a href="{{ link }}" target="_blank">{{ link }}</a></p>
     <ion-button fill="outline" (click)="copyLink()">
       <ion-icon name="copy-outline" slot="start"></ion-icon>
       Link kopieren
