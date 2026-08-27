@@ -134,7 +134,7 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi-ooxml" % "5.5.1",
 
   // Additional Java libraries from pom.xml
-  "org.controlsfx" % "controlsfx" % "11.2.3",
+  "org.controlsfx" % "controlsfx" % "11.2.4",
   "org.simplejavamail" % "simple-java-mail" % "8.12.6",
   "org.apache.poi" % "poi-ooxml" % "5.5.1",
   "net.glxn" % "qrgen" % "1.4",
