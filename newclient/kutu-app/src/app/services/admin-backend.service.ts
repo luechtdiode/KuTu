@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks, TeamItem, ScoreCalcTemplate, ScoreCalcOptions, ScoreCalcPreviewRequest, ScoreCalcPreviewResponse } from '../backend-types';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks, AdminAccessLink, TeamItem, ScoreCalcTemplate, ScoreCalcOptions, ScoreCalcPreviewRequest, ScoreCalcPreviewResponse } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -232,6 +232,15 @@ export class AdminBackendService {
   getOverviewLinks(uuid: string, secret: string): Observable<OverviewLinks> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.get<OverviewLinks>(this.api + 'competition/' + uuid + '/overview-links', { headers });
+  }
+
+  createAdminAccessLink(uuid: string, secret: string, days: number): Observable<AdminAccessLink> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<AdminAccessLink>(
+      this.api + 'competition/' + uuid + '/admin-access-link',
+      { days },
+      { headers }
+    );
   }
 
   unassignAthletFromCompetition(uuid: string, athletId: number, secret: string): Observable<{ removedWertungen: number }> {

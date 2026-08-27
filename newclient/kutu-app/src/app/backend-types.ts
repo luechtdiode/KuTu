@@ -587,6 +587,11 @@ export interface JudgeLink {
   qrImage: string;
 }
 
+export interface AdminAccessLink {
+  link: string;
+  qrImage: string;
+}
+
 export interface OverviewLinks {
   registrationUrl: string;
   registrationQr: string;
