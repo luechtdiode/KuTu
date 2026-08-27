@@ -599,10 +599,14 @@ export class PlaybookPage implements OnInit, OnDestroy {
         const newToken = data.headers.get('x-access-token');
         if (newToken) {
           localStorage.setItem('auth_token', newToken);
+          this.bs.loggedIn.set(true);
         }
         refreshAndNavigate();
       },
-      error: () => refreshAndNavigate()
+      error: () => {
+        console.log('Token expired or error occurred, refreshing token...');
+        refreshAndNavigate();
+      }
     });
   }
 
