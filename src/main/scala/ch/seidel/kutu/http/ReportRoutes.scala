@@ -1,7 +1,6 @@
 package ch.seidel.kutu.http
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, GeraeteRiegeList, GetGeraeteRiegeList, KutuAppEvent}
 import ch.seidel.kutu.domain.{Kandidat, KutuService, encodeFileName}
 import ch.seidel.kutu.renderer.{AbuseListHTMLRenderer, KategorieTeilnehmerToHtmlRenderer, KategorieTeilnehmerToJSONRenderer}
@@ -22,7 +21,7 @@ import scala.concurrent.duration.DurationInt
 trait ReportRoutes extends SprayJsonSupport
   with JsonSupport with AuthSupport with RouterLogging
   with KutuService with IpToDeviceID
-  with AbuseListHTMLRenderer {
+  with CIDSupport with AbuseListHTMLRenderer {
   // Required by the `ask` (?) method below
   // usually we'd obtain the timeout from the system's configuration
   private implicit lazy val timeout: Timeout = Timeout(5.seconds)

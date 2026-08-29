@@ -1,7 +1,6 @@
 package ch.seidel.kutu.http
 
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.KuTuServer.handleCID
 import ch.seidel.kutu.actors.{CompetitionCoordinatorClientActor, MessageAck, ResponseMessage, StartedDurchgaenge}
 import ch.seidel.kutu.data.*
 import ch.seidel.kutu.domain.*
@@ -21,7 +20,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 
 trait
-ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID {
+ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with RouterLogging with KutuService with IpToDeviceID with CIDSupport {
   import spray.json.*
   import spray.json.DefaultJsonProtocol.*
 
