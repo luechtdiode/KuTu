@@ -12,9 +12,12 @@ import org.simplejavamail.api.mailer.config.TransportStrategy
 import org.simplejavamail.api.mailer.{CustomMailer, Mailer}
 import org.simplejavamail.email.EmailBuilder
 import org.simplejavamail.mailer.MailerBuilder
-
 import jakarta.activation.DataSource
-import java.io.ByteArrayInputStream
+import jakarta.mail.Message
+import org.simplejavamail.api.internal.general.MessageHeader.TO
+import org.simplejavamail.recipient.RecipientBuilder
+
+import java.io.{ByteArrayInputStream, OutputStream}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -144,24 +147,32 @@ class KuTuMailerActor(smtpHost: String, smtpPort: Int, smtpUsername: String, smt
       case SimpleMail(subject, messageText, to) =>
         mailer.sendMail(EmailBuilder.startingBlank()
           .from(appname, smtpMailerUser)
-          .to(to)
+          .withRecipients(new RecipientBuilder()
+            //.withName("Empfänger Name")
+            .withAddress(to)
+            .withType(Message.RecipientType.TO) // Hier definieren Sie das "TO"
+            .build())
           .withSubject(subject)
           .withPlainText(messageText)
           .buildEmail(), customMailer.isEmpty)
       case MultipartMail(subject, messageText, messageHTML, to, attachments) =>
         val builder = EmailBuilder.startingBlank()
           .from(appname, smtpMailerUser)
-          .to(to)
+          .withRecipients(new RecipientBuilder()
+            //.withName("Empfänger Name")
+            .withAddress(to)
+            .withType(Message.RecipientType.TO) // Hier definieren Sie das "TO"
+            .build())
           .withSubject(subject)
           .withPlainText(messageText)
           .withHTMLText(messageHTML)
         if attachments.nonEmpty then
           attachments.foreach { case (filename, data, contentType) =>
-            val ds = new DataSource {
+            val ds: DataSource = new DataSource {
               override def getInputStream = new ByteArrayInputStream(data)
-              override def getOutputStream = throw new UnsupportedOperationException
-              override def getContentType = contentType
-              override def getName = filename
+              override def getOutputStream: OutputStream = throw new UnsupportedOperationException
+              override def getContentType: String = contentType
+              override def getName: String = filename
             }
             builder.withAttachment(filename, ds)
           }
