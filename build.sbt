@@ -4,7 +4,7 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.4.0"
 
@@ -159,7 +159,7 @@ libraryDependencies ++= Seq(
   "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingV % Test,
   "io.gatling"            % "gatling-test-framework"    % gatlingV % Test,
   // Scala 3 std lib
-  "org.scala-lang" %% "scala3-library" % "3.8.4"
+  "org.scala-lang" %% "scala3-library" % "3.9.0"
 )
 
 enablePlugins(GatlingPlugin)
