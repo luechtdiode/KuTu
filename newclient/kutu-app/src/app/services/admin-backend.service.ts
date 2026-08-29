@@ -224,6 +224,15 @@ export class AdminBackendService {
       { wettkampfUUID: uuid, durchgang }, { headers });
   }
 
+  isTokenExpired(secret: string): Observable<HttpResponse<string>> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get(this.api + 'isTokenExpired', {
+      headers,
+      observe: 'response',
+      responseType: 'text'
+    });
+  }
+
   getJudgeLink(uuid: string, secret: string): Observable<JudgeLink> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.get<JudgeLink>(this.api + 'competition/' + uuid + '/judge-link', { headers });
