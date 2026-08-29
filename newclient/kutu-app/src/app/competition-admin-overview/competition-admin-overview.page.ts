@@ -48,7 +48,23 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
     this.datum.set(stored.datum);
     this.secret = stored.secret;
     this.loading.set(true);
-    this.loadDetails();
+    firstValueFrom(this.backend.isTokenExpired(this.secret)).then(() => {
+      this.loadDetails();
+    }).catch(() => {
+      this.loading.set(false);
+      this.secretService.removeSecret(this.uuid);
+      this.showExpiredMessage();
+    });
+  }
+
+  private async showExpiredMessage() {
+    const toast = await this.toastCtrl.create({
+      message: 'Die Berechtigung für diesen Wettkampf ist abgelaufen. Der Wettkampf wurde entfernt.',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+    this.nav.navigateRoot('/admin/competitions');
   }
 
   formatDate(d: string): string {
