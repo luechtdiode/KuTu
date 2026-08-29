@@ -70,10 +70,6 @@ const routes: Routes = [
     loadChildren: () => import('./create-competition/create-competition.module').then(m => m.CreateCompetitionPageModule)
   },
   {
-    path: 'admin/security',
-    loadChildren: () => import('./security/security.module').then(m => m.SecurityPageModule)
-  },
-  {
     path: 'admin/riege-einteilung/:uuid',
     loadChildren: () => import('./riege-einteilung/riege-einteilung.module').then(m => m.RiegeEinteilungPageModule)
   },
