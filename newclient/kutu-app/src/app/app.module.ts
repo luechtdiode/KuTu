@@ -16,7 +16,7 @@ import { TermsModalComponent } from './create-competition/terms-modal.component'
 
 @NgModule({ declarations: [AppComponent, TermsModalComponent],
     bootstrap: [AppComponent], imports: [BrowserModule,
-        IonicModule.forRoot(),
+        IonicModule.forRoot({ innerHTMLTemplatesEnabled: true }),
         AppRoutingModule], providers: [
         StationGuardService,
         { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },

@@ -43,8 +43,7 @@ export class AppComponent {
 
     this.adminPages = [
       { title: 'Meine Wettkämpfe', url: '/admin/competitions', icon: 'trophy' },
-      { title: 'Neuer Wettkampf', url: '/admin/competitions/create', icon: 'add-circle' },
-      { title: 'Sicherheit', url: '/admin/security', icon: 'shield-checkmark' }
+      { title: 'Neuer Wettkampf', url: '/admin/competitions/create', icon: 'add-circle' }
     ];
 
     this.checkAdminMode();

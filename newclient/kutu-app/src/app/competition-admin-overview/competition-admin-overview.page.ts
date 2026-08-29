@@ -267,21 +267,35 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
   async confirmDelete() {
     const alert = await this.alertCtrl.create({
       header: 'Wettkampf löschen',
-      message: `Soll "${this.titel()}" (${this.formatDate(this.datum())}) wirklich gelöscht werden?
-                Alle Daten werden unwiderruflich gelöscht.`,
+      message: `Soll "${this.titel()}" (${this.formatDate(this.datum())}) entfernt werden?<br><br><strong>"Nur aus dieser Liste entfernen"</strong> löscht den Eintrag nur in diesem Browser. Die Daten bleiben auf dem Server erhalten.<br><br><strong>"Auch vom Server löschen"</strong> entfernt den Eintrag aus dieser Liste und löscht alle Daten (Athleten, Wertungen, Anmeldungen) unwiderruflich vom Server.`,
       buttons: [
         { text: 'Abbrechen', role: 'cancel' },
         {
-          text: 'Löschen',
+          text: 'Nur aus dieser Liste entfernen',
+          handler: () => this.removeLocally()
+        },
+        {
+          text: 'Auch vom Server löschen',
           role: 'destructive',
-          handler: () => this.deleteCompetition()
+          handler: () => this.deleteFromServer()
         }
       ]
     });
     await alert.present();
   }
 
-  private async deleteCompetition() {
+  private async removeLocally() {
+    this.secretService.removeSecret(this.uuid);
+    const toast = await this.toastCtrl.create({
+      message: 'Wettkampf aus dieser Liste entfernt. Die Daten bleiben auf dem Server erhalten.',
+      duration: 2500,
+      color: 'success'
+    });
+    await toast.present();
+    this.nav.navigateRoot('/admin/competitions');
+  }
+
+  private async deleteFromServer() {
     try {
       await firstValueFrom(this.backend.deleteCompetition(this.uuid, this.secret));
     } catch (e) {
