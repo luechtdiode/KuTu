@@ -185,7 +185,7 @@ libraryDependencies ++= Seq(
 prepareJpackage := {
   // Extract all the necessary values using the modern slash syntax
   val log = streams.value.log
-  val t = target.value
+  val t = baseDirectory.value / "target"
   val packageJar = fileConverter.value.toPath((Compile / packageBin).value).toFile
   val upd = update.value
 
@@ -213,7 +213,7 @@ jpackageApp := {
   // Extract all the necessary values using the modern slash syntax
   val log = streams.value.log
   val baseDir = baseDirectory.value
-  val targetDir = target.value
+  val targetDir = baseDirectory.value / "target"
   val sourceDir = (Compile / sourceDirectory).value
   val appVersion = version.value
 
