@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export OS=Win64 #$(uname -s)
+export OS=MacOS #$(uname -s)
 export CODECOV_TOKEN='d03b4d79-1273-44ff-9206-69b56dbc4058'
 
 . ./prepare_jdk.sh

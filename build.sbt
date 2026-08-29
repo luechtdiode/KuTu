@@ -151,7 +151,7 @@ libraryDependencies ++= Seq(
   "org.apache.pekko" %% "pekko-slf4j" % pekkoV,
 
   // Prometheus metrics (via fr.davit plugin)
-  "fr.davit" %% "pekko-http-metrics-prometheus" % "2.1.0" exclude("org.scala-lang.modules", "scala-parser-combinators_2.13"),
+  ("fr.davit" %% "pekko-http-metrics-prometheus" % "2.1.0").exclude("org.scala-lang.modules", "scala-parser-combinators_2.13"),
 
   // Test libraries
   "org.scalatest" %% "scalatest" % scalatestV % Test,
@@ -178,7 +178,7 @@ dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_3" %
 
 // Add JavaFX platform-specific artifacts (classifier based on OS)
 libraryDependencies ++= Seq(
-  "org.openjfx" % "javafx-controls" % javafxV classifier BuildUtils.javafxClassifier
+  ("org.openjfx" % "javafx-controls" % javafxV).classifier(BuildUtils.javafxClassifier)
 )
 
 // Task: prepareJpackage - copies the compiled jar and all dependencies (including JavaFX) into target/package/libs
@@ -186,15 +186,12 @@ prepareJpackage := {
   // Extract all the necessary values using the modern slash syntax
   val log = streams.value.log
   val t = target.value
-  val packageJar = (Compile / packageBin).value
+  val packageJar = fileConverter.value.toPath((Compile / packageBin).value).toFile
   val upd = update.value
 
   // Call the extracted implementation function
   prepareJpackageImpl(log, t, packageJar, upd)
 }
-
-// Resource directories (keep same structure as Maven project)
-Compile / unmanagedResourceDirectories += baseDirectory.value / "src" / "main" / "resources"
 
 // Include scala source directories
 Compile / unmanagedSourceDirectories += baseDirectory.value / "src" / "main" / "scala"

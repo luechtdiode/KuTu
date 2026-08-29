@@ -54,6 +54,7 @@ object BuildUtils {
   }
 
   // A full custom task definition that can be imported into build.sbt
+  @transient
   val filterApplicationConfTask = taskKey[Seq[File]]("Filters application.conf and copies it to a managed location")
 
   def filterApplicationConfImpl(
