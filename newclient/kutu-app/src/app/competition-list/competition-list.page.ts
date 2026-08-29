@@ -237,9 +237,18 @@ export class CompetitionListPage implements OnDestroy {
     if (requests.length === 0) {
       return;
     }
-    forkJoin(requests.map(r => firstValueFrom(r).catch(() => null))).subscribe(results => {
+    forkJoin(requests.map(r => firstValueFrom(r).catch(() => null))).subscribe(async results => {
+      const toRemove: string[] = [];
       for (let i = 0; i < results.length; i++) {
+        const c = this.competitions()[i];
         const data = results[i];
+        if (!data) {
+          const expired = await this.isExpired(c.secret);
+          if (expired) {
+            toRemove.push(c.uuid);
+            continue;
+          }
+        }
         this.competitions.update(list => {
           const copy = [...list];
           copy[i] = data
@@ -249,7 +258,34 @@ export class CompetitionListPage implements OnDestroy {
         });
         this.loadLogo(i);
       }
+      if (toRemove.length > 0) {
+        for (const uuid of toRemove) {
+          this.secretService.removeSecret(uuid);
+        }
+        this.competitions.update(list => list.filter(c => !toRemove.includes(c.uuid)));
+        this.showRemovedMessage(toRemove.length);
+      }
     });
+  }
+
+  private async isExpired(secret: string): Promise<boolean> {
+    try {
+      await firstValueFrom(this.backend.isTokenExpired(secret));
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
+  private async showRemovedMessage(count: number) {
+    const toast = await this.toastCtrl.create({
+      message: count === 1
+        ? 'Die Berechtigung für einen Wettkampf ist abgelaufen. Der Wettkampf wurde entfernt.'
+        : `Die Berechtigungen für ${count} Wettkämpfe sind abgelaufen. Die Wettkämpfe wurden entfernt.`,
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
   }
 
   private loadLogo(index: number) {
