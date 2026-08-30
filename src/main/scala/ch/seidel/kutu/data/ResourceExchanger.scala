@@ -42,42 +42,11 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     val wkDiszs = listWettkampfDisziplineViews(wettkampf)
       .map(d => d.id -> d).toMap
 
-    def mapToLocal(athlet: AthletView, wettkampf: Option[Long]) = {
-      val mappedverein = athlet.verein match {
-        case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = v.verband))
-        case _ => None
-      }
-      val mappedAthlet = findAthleteLike(cache, wettkampf, exclusive = false)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
-      val mappedAthletView = athlet.updatedWith(mappedAthlet)
-      //println(mappedAthletView, mappedverein, cache)
-      mappedAthletView
-    }
-
     def opFn: (Option[T], KutuAppEvent) => Unit = {
       case (sender, LastResults(results)) =>
-        val mappedWertungen: Seq[AthletWertungUpdatedSequenced] = results.groupBy(_.athlet).flatMap { tuple =>
-          val (athlet, wertungen) = tuple
-          val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
-          wertungen.groupBy(_.wertung.wettkampfdisziplinId).map {
-            _._2.maxBy(_.sequenceId)
-          }.map { updatedSequenced =>
-            val programm = updatedSequenced.programm
-            val disz = wkDiszs.get(updatedSequenced.wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${updatedSequenced.wertung.wettkampfdisziplinId}")
-
-            val mappedWertung = updatedSequenced.wertung.copy(
-              athletId = mappedAthletView.id,
-              wettkampfId = wettkampf.id,
-              wettkampfUUID = updatedSequenced.wettkampfUUID)
-            logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${mappedWertung.resultatWithVariables}")
-            updatedSequenced.copy(athlet = mappedAthletView, wertung = mappedWertung)
-          }
-        }.toSeq
         try {
           KuTuApp.invokeWithBusyIndicator {
-            refresher(sender, LastResults(
-              mappedWertungen.zip(updateWertungenWithIDMapping(mappedWertungen.map(_.wertung), cache2)).map {
-                x => x._1.copy(wertung = x._2)
-              }.toList))
+            refresher(sender, LastResults(mapLastResults(wettkampf, cache, cache2, results)))
           }
         } catch {
           case e: Exception =>
@@ -118,7 +87,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         } else if wettkampf.uuid.contains(wettkampfUUID) then /*Future*/ {
           val disz = wkDiszs.get(uw.wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${uw.wertung.wettkampfdisziplinId}")
           logger.info(s"received for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${wertung.resultatWithVariables}")
-          val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
+          val mappedAthletView: AthletView = mapToLocalAthlet(cache, Some(wettkampf.id), athlet)
           val mappedWertung = wertung.copy(athletId = mappedAthletView.id, wettkampfId = wettkampf.id, wettkampfUUID = wettkampfUUID)
           wertung.mediafile.foreach(putMedia)
           try {
@@ -139,7 +108,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           refresher(sender, uw)
         } else if wettkampf.uuid.contains(uw.wertung.wettkampfUUID) then /*Future*/ {
           logger.info(s"received MediaAction for ${uw.athlet.vorname} ${uw.athlet.name} (${uw.athlet.verein})")
-          val mappedAthletView: AthletView = mapToLocal(uw.athlet, Some(wettkampf.id))
+          val mappedAthletView: AthletView = mapToLocalAthlet(cache, Some(wettkampf.id), uw.athlet)
           val mappedWertung = uw.wertung.copy(athletId = mappedAthletView.id)
           val mappedAction = uw match {
             case AthletMediaAquire(_, _, _) => AthletMediaAquire(uw.wertung.wettkampfUUID, mappedAthletView, mappedWertung)
@@ -172,7 +141,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
               val (athlet, media) = aa
               logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse(() => "")}) " +
                 s"to be added to competition ${awm.wettkampfUUID} to Program-Id:$programm, to team: $team")
-              val mappedAthletView: AthletView = mapToLocal(athlet, None)
+              val mappedAthletView: AthletView = mapToLocalAthlet(cache, None, athlet)
               if mappedAthletView.id == 0 then {
                 (insertAthlete(mappedAthletView.toAthlet).id, media)
               } else {
@@ -188,7 +157,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
         if wettkampf.uuid.contains(wettkampfUUID) then /*Future*/ {
           logger.info(s"received for ${awm.athlet.vorname} ${awm.athlet.name} (${awm.athlet.verein.getOrElse(() => "")}) " +
             s"to be moved in competition ${awm.wettkampfUUID} to Program-Id:$programm, to Team: $team/$reserve")
-          val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
+          val mappedAthletView: AthletView = mapToLocalAthlet(cache, Some(wettkampf.id), athlet)
           val mappedEvent = awm.copy(athlet = mappedAthletView)
           for durchgang <- moveToProgram(mappedEvent) do {
             logger.info(s"durchgang $durchgang changed competition $wettkampfUUID")
@@ -203,7 +172,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
           logger.info(s"received for ${arw.athlet.vorname} ${arw.athlet.name} (${arw.athlet.verein.getOrElse(() => "")}) " +
             s"to be removed from competition ${arw.wettkampfUUID}")
           cache.clear()
-          val mappedAthletView: AthletView = mapToLocal(athlet, Some(wettkampf.id))
+          val mappedAthletView: AthletView = mapToLocalAthlet(cache, Some(wettkampf.id), athlet)
           val mappedEvent = arw.copy(athlet = mappedAthletView)
           for durchgang <- unassignAthletFromWettkampf(mappedEvent) do {
             logger.info(s"durchgang $durchgang changed competition $wettkampfUUID")
@@ -221,6 +190,40 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
     }
 
     opFn
+  }
+
+  private[data] def mapToLocalAthlet(cache: java.util.ArrayList[MatchCode], wettkampf: Option[Long], athlet: AthletView): AthletView = {
+    val mappedverein = athlet.verein match {
+      case Some(v) => findVereinLike(Verein(id = 0, name = v.name, verband = v.verband))
+      case _ => None
+    }
+    val mappedAthlet = findAthleteLike(cache, wettkampf, exclusive = false)(athlet.toAthlet.copy(id = 0, verein = mappedverein))
+    athlet.updatedWith(mappedAthlet)
+  }
+
+  private[data] def mapLastResults(wettkampf: Wettkampf, cache: java.util.ArrayList[MatchCode], cache2: scala.collection.mutable.Map[Long, List[ScoreCalcTemplate]], results: List[AthletWertungUpdatedSequenced]): List[AthletWertungUpdatedSequenced] = {
+    val wkDiszs = listWettkampfDisziplineViews(wettkampf)
+      .map(d => d.id -> d).toMap
+    val mappedWertungen: Seq[AthletWertungUpdatedSequenced] = results.groupBy(_.athlet).flatMap { tuple =>
+      val (athlet, wertungen) = tuple
+      val mappedAthletView: AthletView = mapToLocalAthlet(cache, Some(wettkampf.id), athlet)
+      wertungen.groupBy(_.wertung.wettkampfdisziplinId).map {
+        _._2.maxBy(_.sequenceId)
+      }.map { updatedSequenced =>
+        val programm = updatedSequenced.programm
+        val disz = wkDiszs.get(updatedSequenced.wertung.wettkampfdisziplinId).map(_.disziplin.easyprint).getOrElse(s"Disz${updatedSequenced.wertung.wettkampfdisziplinId}")
+
+        val mappedWertung = updatedSequenced.wertung.copy(
+          athletId = mappedAthletView.id,
+          wettkampfId = wettkampf.id,
+          wettkampfUUID = updatedSequenced.wettkampfUUID)
+        logger.info(s"received for ${athlet.vorname} ${athlet.name} (${athlet.verein.getOrElse("")}) im Pgm $programm Disz $disz: ${mappedWertung.resultatWithVariables}")
+        updatedSequenced.copy(athlet = mappedAthletView, wertung = mappedWertung)
+      }
+    }.toSeq
+    mappedWertungen.zip(updateWertungenWithIDMapping(mappedWertungen.map(_.wertung), cache2)).map {
+      x => x._1.copy(wertung = x._2)
+    }.toList
   }
 
   def saveMediaFile(file: InputStream, wettkampf: Wettkampf, media: Media): MediaAdmin = {
