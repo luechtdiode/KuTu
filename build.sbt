@@ -237,3 +237,11 @@ Compile / mainClass := Some("ch.seidel.kutu.KuTuApp")
 
 // Enable recommended forked test reporter for better compatibility
 Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
+
+// Scala 3 native coverage (scala.runtime.coverage.Invoker) never creates its data dir and
+// writes one measurement file per thread. sbt 2's forked test runner spawns fresh pool threads,
+// so ensure scoverage-data exists before suites start to avoid FileNotFoundException/ExceptionInInitializerError.
+Test / testOptions += {
+  val scoverageDir = crossTarget.value / "scoverage-data"
+  Tests.Setup(() => IO.createDirectory(scoverageDir))
+}
