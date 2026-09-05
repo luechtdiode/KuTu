@@ -1,0 +1,248 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button defaultHref="/admin/competitions"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ isEditMode ? 'Wettkampf bearbeiten' : 'Neuen Wettkampf anlegen' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-list>
+
+    <ion-item>
+      <ion-label position="stacked">Tag, an dem der Wettkampf startet</ion-label>
+      <ion-input label="Wettkampf-Datum" required placeholder="Wettkampf-Datum" type="date" display-timezone="utc" [disabled]="false" [ngModel]="form().datum" (ngModelChange)="patchForm({ datum: $event })" name="datum" required />
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Titel</ion-label>
+      <ion-input [ngModel]="form().titel" (ngModelChange)="patchForm({ titel: $event })" placeholder="z.B. Basler GeTu Cup"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Logo</ion-label>
+      @if (logoPreview()) {
+        <div class="logo-preview">
+          <img [src]="logoPreview()" alt="Logo Vorschau" />
+          <ion-button fill="clear" size="small" color="danger" (click)="removeLogo()">
+            <ion-icon name="close" slot="icon-only"></ion-icon>
+          </ion-button>
+        </div>
+      }
+      <input #fileInput type="file" accept="image/*" hidden (change)="onLogoSelected($event)" />
+      <ion-button fill="outline" size="small" (click)="fileInput.click()">
+        <ion-icon slot="start" name="image-outline"></ion-icon>
+        {{ logoPreview() ? 'Ersetzen' : 'Auswählen' }}
+      </ion-button>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Programm</ion-label>
+      <ion-select
+        [ngModel]="form().programmId"
+        placeholder="Wähle ein Programm"
+        interface="popover"
+        (ngModelChange)="patchForm({ programmId: $event }); onProgramChange()"
+      >
+        @for (p of programme(); track p.id) {
+          <ion-select-option [value]="p.id">{{ p.name }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Benachrichtigungs-Email</ion-label>
+      <ion-input
+        type="email"
+        [ngModel]="form().notificationEMail" (ngModelChange)="patchForm({ notificationEMail: $event })"
+        placeholder="email@beispiel.com"
+      ></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Auszeichnung (%)</ion-label>
+      <ion-input
+        type="number"
+        [ngModel]="form().auszeichnung" (ngModelChange)="patchForm({ auszeichnung: $event })"
+        placeholder="40"
+        step="0.1"
+      ></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Auszeichnung Endnote</ion-label>
+      <ion-input
+        type="number"
+        step="0.1"
+        [ngModel]="form().auszeichnungendnote" (ngModelChange)="patchForm({ auszeichnungendnote: $event })"
+        placeholder="0"
+      ></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Altersklassen-Regel</ion-label>
+      <div class="preset-row">
+        <ion-input [ngModel]="form().altersklassen" (ngModelChange)="patchForm({ altersklassen: $event })" placeholder="z.B. AK6,AK7,AK9-10"></ion-input>
+        <ion-button fill="clear" (click)="altersklassenSelect.open()">
+          <ion-icon name="list-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" (click)="openAltersklassenEditor('altersklassen')">
+          <ion-icon name="create" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+      <ion-select #altersklassenSelect style="display:none"
+        interface="alert"
+        [value]="altersklassenPreset"
+        (ionChange)="applyPreset('altersklassen', $event.detail.value, PRESETS_ALTERSKLASSEN)"
+      >
+        @for (p of PRESETS_ALTERSKLASSEN; track p.label) {
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Jahrgangs-Altersklassen-Regel</ion-label>
+      <div class="preset-row">
+        <ion-input [ngModel]="form().jahrgangsklassen" (ngModelChange)="patchForm({ jahrgangsklassen: $event })" placeholder="z.B. AK6,AK7,AK9-10"></ion-input>
+        <ion-button fill="clear" (click)="jahrgangsklassenSelect.open()">
+          <ion-icon name="list-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" (click)="openAltersklassenEditor('jahrgangsklassen')">
+          <ion-icon name="create" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+      <ion-select #jahrgangsklassenSelect style="display:none"
+        interface="alert"
+        [value]="jahrgangsklassenPreset"
+        (ionChange)="applyPreset('jahrgangsklassen', $event.detail.value, PRESETS_ALTERSKLASSEN)"
+      >
+        @for (p of PRESETS_ALTERSKLASSEN; track p.label) {
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Punktegleichstands-Regel</ion-label>
+      <div class="preset-row">
+        <ion-input [ngModel]="form().punktegleichstandsregel" (ngModelChange)="patchForm({ punktegleichstandsregel: $event })" placeholder="z.B. E-Note-Summe/D-Note-Summe"></ion-input>
+        <ion-button fill="clear" (click)="punktegleichstandsregelSelect.open()">
+          <ion-icon name="list-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" (click)="openPunktegleichstandsregelEditor()">
+          <ion-icon name="create" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+      <ion-select #punktegleichstandsregelSelect style="display:none"
+        interface="alert"
+        [value]="punktegleichstandsregelPreset"
+        (ionChange)="applyPreset('punktegleichstandsregel', $event.detail.value, PRESETS_PUNKTEGLEICHSTANDSREGEL)"
+      >
+        @for (p of PRESETS_PUNKTEGLEICHSTANDSREGEL; track p.label) {
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Riegen-Rotations-Regel</ion-label>
+      <div class="preset-row">
+        <ion-input [ngModel]="form().rotation" (ngModelChange)="patchForm({ rotation: $event })" placeholder="z.B. Einfach/Rotierend"></ion-input>
+        <ion-button fill="clear" (click)="rotationSelect.open()">
+          <ion-icon name="list-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" (click)="openRiegenRotationsregelEditor()">
+          <ion-icon name="create" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+      <ion-select #rotationSelect style="display:none"
+        interface="alert"
+        [value]="rotationPreset"
+        (ionChange)="applyPreset('rotation', $event.detail.value, PRESETS_ROTATION)"
+      >
+        @for (p of PRESETS_ROTATION; track p.label) {
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Team-Regel</ion-label>
+      <div class="preset-row">
+        <ion-input [ngModel]="form().teamrule" (ngModelChange)="patchForm({ teamrule: $event })" placeholder="z.B. VereinGerät(3/4)"></ion-input>
+        <ion-button fill="clear" (click)="teamruleSelect.open()">
+          <ion-icon name="list-outline" slot="icon-only"></ion-icon>
+        </ion-button>
+        <ion-button fill="clear" (click)="openTeamregelEditor()">
+          <ion-icon name="create" slot="icon-only"></ion-icon>
+        </ion-button>
+      </div>
+      <ion-select #teamruleSelect style="display:none"
+        interface="alert"
+        [value]="teamrulePreset"
+        (ionChange)="applyPreset('teamrule', $event.detail.value, PRESETS_TEAMREGEL)"
+      >
+        @for (p of PRESETS_TEAMREGEL; track p.label) {
+          <ion-select-option [value]="p.value">{{ p.label }}</ion-select-option>
+        }
+      </ion-select>
+    </ion-item>
+
+    @if (!isEditMode) {
+      <ion-item-divider>
+        <ion-label>Ersteller-Informationen</ion-label>
+      </ion-item-divider>
+
+      <ion-item>
+        <ion-label position="stacked">Name *</ion-label>
+        <ion-input [ngModel]="form().creatorName" (ngModelChange)="patchForm({ creatorName: $event })" placeholder="Vor- und Nachname"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Adresse *</ion-label>
+        <ion-textarea
+          [ngModel]="form().creatorAddress" (ngModelChange)="patchForm({ creatorAddress: $event })"
+          placeholder="Strasse, PLZ, Ort"
+          rows="2"
+        ></ion-textarea>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Telefon *</ion-label>
+        <ion-input
+          type="tel"
+          [ngModel]="form().creatorPhone" (ngModelChange)="patchForm({ creatorPhone: $event })"
+          placeholder="+49 123 456789"
+        ></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label>
+          <p>Ich akzeptiere die <a href="#" (click)="showTerms($event)">Nutzungsbedingungen</a> *</p>
+        </ion-label>
+        <ion-checkbox
+          slot="end"
+          [ngModel]="form().termsAccepted" (ngModelChange)="patchForm({ termsAccepted: $event })"
+        ></ion-checkbox>
+      </ion-item>
+    }
+  </ion-list>
+
+  <ion-button
+    expand="block"
+    class="ion-margin-top"
+    [disabled]="!isValid() || submitting()"
+    (click)="submit()"
+  >
+    {{ isEditMode ? 'Speichern' : 'Wettkampf anlegen' }}
+  </ion-button>
+
+  @if (!isEditMode) {
+    <ion-note color="medium" class="ion-padding-top" style="display:block;">
+      Nach dem Anlegen wird eine Bestätigungs-Email an die angegebene Adresse gesendet.
+      Der Wettkampf wird erst nach Bestätigung aktiv (24h Timeout).
+    </ion-note>
+  }
+</ion-content>

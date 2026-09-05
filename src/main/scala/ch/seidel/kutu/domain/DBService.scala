@@ -95,6 +95,7 @@ object DBService {
       , "AddWKProgrammBestOfCount-sqllite.sql"
       , "AddScoreTemplateTable-sqllite.sql"
       , "AddWertugMediaFile-sqllite.sql"
+      , "AddCreatorMetaToWettkampf-sqllite.sql"
     )
 
     (!dbfile.exists() || dbfile.length() == 0, Config.importDataFrom) match {
@@ -194,6 +195,7 @@ object DBService {
         , "AddWKProgrammBestOfCount-pg.sql"
         , "AddScoreTemplateTable-pg.sql"
         , "AddWertugMediaFile-pg.sql"
+        , "AddCreatorMetaToWettkampf-pg.sql"
       )
       installDB(db, sqlScripts)
       /*Config.importDataFrom match {

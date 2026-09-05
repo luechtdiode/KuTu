@@ -57,6 +57,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given scoreCalcTemplateFormat: RootJsonFormat[ScoreCalcTemplate] = jsonFormat(ScoreCalcTemplate.apply,
     "id", "wettkampfId", "disziplinId", "wettkampfdisziplinId", "dFormula", "eFormula", "pFormula", "aggregateFn")
   given scoreCalcTemplateViewFormat: RootJsonFormat[ScoreCalcTemplateView] = jsonFormat10(ScoreCalcTemplateView.apply)
+  given scoreCalcPreviewRequestFormat: RootJsonFormat[ScoreCalcPreviewRequest] = jsonFormat3(ScoreCalcPreviewRequest.apply)
+  given scoreCalcPreviewResponseFormat: RootJsonFormat[ScoreCalcPreviewResponse] = jsonFormat8(ScoreCalcPreviewResponse.apply)
   given mediaFormat: RootJsonFormat[Media] = jsonFormat3(Media.apply)
   given mediaAdminFormat: RootJsonFormat[MediaAdmin] = jsonFormat7(MediaAdmin.apply)
 
@@ -151,6 +153,22 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
 
   given resultatFormat: RootJsonFormat[Resultat] = jsonFormat(Resultat.apply, "noteD", "noteE", "endnote", "isStreichwertung", "teilresultateD", "teilresultateE", "teilresultateP")
 
+  given adminCreateCompetitionRequestFormat: RootJsonFormat[AdminCreateCompetitionRequest] = jsonFormat(AdminCreateCompetitionRequest.apply, "datum", "titel", "programmId", "notificationEMail", "auszeichnung", "auszeichnungendnote", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule", "creatorName", "creatorAddress", "creatorPhone", "termsAccepted", "termsVersion", "copyFrom")
+  given adminCreateCompetitionResponseFormat: RootJsonFormat[AdminCreateCompetitionResponse] = jsonFormat(AdminCreateCompetitionResponse.apply, "uuid", "titel", "datum", "secret")
+  given adminUpdateCompetitionRequestFormat: RootJsonFormat[AdminUpdateCompetitionRequest] = jsonFormat(AdminUpdateCompetitionRequest.apply, "id", "datum", "titel", "programmId", "notificationEMail", "auszeichnung", "auszeichnungendnote", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
+  given adminGetCompetitionResponseFormat: RootJsonFormat[AdminGetCompetitionResponse] = jsonFormat(AdminGetCompetitionResponse.apply, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
+  given adminScoreRequestFormat: RootJsonFormat[AdminScoreRequest] = jsonFormat3(AdminScoreRequest.apply)
+
+  given riegeSuggestionRequestFormat: RootJsonFormat[RiegeSuggestionRequest] = jsonFormat(RiegeSuggestionRequest.apply, "maxRiegenSize", "maxParallelDg", "splitPgm", "splitSexOption", "onDisziplinIds", "separateRiegen2Durchgaenge", "filterDurchgang")
+  given updateRiegeRequestFormat: RootJsonFormat[UpdateRiegeRequest] = jsonFormat4(UpdateRiegeRequest.apply)
+  given updateDurchgangRequestFormat: RootJsonFormat[UpdateDurchgangRequest] = jsonFormat2(UpdateDurchgangRequest.apply)
+  given mergeDurchgangRequestFormat: RootJsonFormat[MergeDurchgangRequest] = jsonFormat2(MergeDurchgangRequest.apply)
+  given groupDurchgangRequestFormat: RootJsonFormat[GroupDurchgangRequest] = jsonFormat2(GroupDurchgangRequest.apply)
+  given ungroupDurchgangRequestFormat: RootJsonFormat[UngroupDurchgangRequest] = jsonFormat1(UngroupDurchgangRequest.apply)
+  given updateStartOffsetRequestFormat: RootJsonFormat[UpdateStartOffsetRequest] = jsonFormat2(UpdateStartOffsetRequest.apply)
+  given riegeItemFormat: RootJsonFormat[RiegeItem] = jsonFormat6(RiegeItem.apply)
+  given durchgangDurationItemFormat: RootJsonFormat[DurchgangDurationItem] = jsonFormat7(DurchgangDurationItem.apply)
+
   given dataObjectFormat: RootJsonWriter[DataObject] = (p: DataObject) => {
     p.easyprint.toJson
   }
@@ -211,6 +229,20 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given athletMediaIsRunningFormat: RootJsonFormat[AthletMediaIsRunning] = jsonFormat2(AthletMediaIsRunning.apply)
   given athletMediaIsPausedFormat: RootJsonFormat[AthletMediaIsPaused] = jsonFormat2(AthletMediaIsPaused.apply)
 
+  // playbook models
+  given playbookStepFormat: RootJsonFormat[PlaybookStep] = jsonFormat3(PlaybookStep.apply)
+  given playbookStationFormat: RootJsonFormat[PlaybookStation] = jsonFormat4(PlaybookStation.apply)
+  given playbookDurchgangFormat: RootJsonFormat[PlaybookDurchgang] = jsonFormat17(PlaybookDurchgang.apply)
+  given playbookStateFormat: RootJsonFormat[PlaybookState] = jsonFormat4(PlaybookState.apply)
+  given judgeLinkFormat: RootJsonFormat[JudgeLink] = jsonFormat2(JudgeLink.apply)
+  given adminAccessLinkFormat: RootJsonFormat[AdminAccessLink] = jsonFormat2(AdminAccessLink.apply)
+  given createAdminAccessLinkFormat: RootJsonFormat[CreateAdminAccessLink] = jsonFormat1(CreateAdminAccessLink.apply)
+  given overviewLinksFormat: RootJsonFormat[OverviewLinks] = jsonFormat8(OverviewLinks.apply)
+  given playbookStateUpdatedFormat: RootJsonFormat[PlaybookStateUpdated] = jsonFormat2(PlaybookStateUpdated.apply)
+  given riegenEinteilungStateFormat: RootJsonFormat[RiegenEinteilungState] = jsonFormat3(RiegenEinteilungState.apply)
+  given riegenEinteilungStateUpdatedFormat: RootJsonFormat[RiegenEinteilungStateUpdated] = jsonFormat2(RiegenEinteilungStateUpdated.apply)
+  given registrationSyncUpdatedFormat: RootJsonFormat[RegistrationSyncUpdated] = jsonFormat1(RegistrationSyncUpdated.apply)
+
   // support for websocket incoming json-messages
   private val caseClassesJsonFormatter: Map[String, JsonFormat[? <: KutuAppEvent]] = Map(
     classOf[DurchgangStarted].getSimpleName -> durchgangStartedFormat,
@@ -241,6 +273,9 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     classOf[AthletMediaIsAtStart].getSimpleName -> athletMediaIsAtStartFormat,
     classOf[AthletMediaIsRunning].getSimpleName -> athletMediaIsRunningFormat,
     classOf[AthletMediaIsPaused].getSimpleName -> athletMediaIsPausedFormat,
+    classOf[PlaybookStateUpdated].getSimpleName -> playbookStateUpdatedFormat,
+    classOf[RiegenEinteilungStateUpdated].getSimpleName -> riegenEinteilungStateUpdatedFormat,
+    classOf[RegistrationSyncUpdated].getSimpleName -> registrationSyncUpdatedFormat,
   )
 
   given messagesFormatter: RootJsonFormat[KutuAppEvent] = new RootJsonFormat[KutuAppEvent] {
@@ -296,14 +331,58 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
     override def write(obj: SyncAction): JsValue = {
       obj match {
         case be: SyncAction =>
+          val dataMap = collection.mutable.Map(
+            "registrationId" -> JsNumber(be.verein.id),
+            "type" -> JsString(obj.getClass.getSimpleName)
+          )
+          obj match {
+            case rv: RenameVereinAction => dataMap += ("oldVereinId" -> JsNumber(rv.oldVerein.id))
+            case ar: AddRegistration =>
+              dataMap += ("athletId" -> JsNumber(ar.suggestion.id))
+              if (ar.athletRegistrationId > 0) dataMap += ("athletRegistrationId" -> JsNumber(ar.athletRegistrationId))
+            case mr: MoveRegistration =>
+              dataMap += ("athletId" -> JsNumber(mr.suggestion.id))
+              if (mr.athletRegistrationId > 0) dataMap += ("athletRegistrationId" -> JsNumber(mr.athletRegistrationId))
+            case rr: RemoveRegistration =>
+              dataMap += ("athletId" -> JsNumber(rr.suggestion.id))
+              if (rr.athletRegistrationId > 0) dataMap += ("athletRegistrationId" -> JsNumber(rr.athletRegistrationId))
+            case ra: RenameAthletAction => ra.athletReg.athletId.foreach(id => dataMap += ("athletId" -> JsNumber(id)))
+            case am: AddMedia => am.athletReg.athletId.foreach(id => dataMap += ("athletId" -> JsNumber(id)))
+            case um: UpdateAthletMediaAction => um.athletReg.athletId.foreach(id => dataMap += ("athletId" -> JsNumber(id)))
+            case _ =>
+          }
           val jv = JsObject()
           jv.addFields(Map(
             "caption" -> JsString(be.caption),
-            "verein" -> registrationFormat.write(be.verein)
+            "verein" -> registrationFormat.write(be.verein),
+            "data" -> JsObject(dataMap.toMap)
           ))
         case null => throw new Exception(s"Unable to find jsonFormatter for $obj")
       }
     }
   }
   given baseSyncActionListFormat: RootJsonFormat[List[SyncAction]] = listFormat(using syncActionFormatter)
+
+  given syncActionKeyFormat: RootJsonFormat[SyncActionKey] = new RootJsonFormat[SyncActionKey] {
+    override def read(json: JsValue): SyncActionKey = {
+      val fields = json.asJsObject.fields
+      SyncActionKey(
+        registrationId = fields("registrationId").convertTo[Long],
+        athletId = fields.get("athletId").flatMap(_.convertTo[Option[Long]]),
+        oldVereinId = fields.get("oldVereinId").flatMap(_.convertTo[Option[Long]]),
+        actionType = fields.get("actionType").flatMap(_.convertTo[Option[String]]).getOrElse(""),
+        caption = fields.get("caption").flatMap(_.convertTo[Option[String]])
+      )
+    }
+    override def write(obj: SyncActionKey): JsValue = {
+      val m: collection.mutable.Map[String, JsValue] = collection.mutable.Map("registrationId" -> JsNumber(obj.registrationId))
+      obj.athletId.foreach(v => m += ("athletId" -> JsNumber(v)))
+      obj.oldVereinId.foreach(v => m += ("oldVereinId" -> JsNumber(v)))
+      if (obj.actionType.nonEmpty) m += ("actionType" -> JsString(obj.actionType))
+      obj.caption.foreach(v => m += ("caption" -> JsString(v)))
+      JsObject(m.toMap)
+    }
+  }
+  given syncApplyRequestFormat: RootJsonFormat[SyncApplyRequest] = jsonFormat1(SyncApplyRequest.apply)
+  given syncApplyResponseFormat: RootJsonFormat[SyncApplyResponse] = jsonFormat2(SyncApplyResponse.apply)
 }

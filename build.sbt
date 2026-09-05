@@ -4,9 +4,9 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 ThisBuild / organization := "ch.seidel"
-ThisBuild / version := "2.3.26"
+ThisBuild / version := "2.4.0"
 
 // logLevel := Level.Error
 
@@ -16,8 +16,8 @@ name := "KuTu"
 val scalafxV     = "26.0.0-R38"
 val javafxV      = "27-ea+21" // current issues with macos - see https://youtrack.jetbrains.com/articles/SUPPORT-A-860/How-to-fix-JavaFX-running-crash-issue-NSInternalInconsistencyException-on-macOS?_gl=1*173yxy7*_ga*NTcyODg1ODk1LjE3NjczMDM1MTc.*_ga_9J976DJZ68*czE3NjczMDM1MTYkbzEkZzAkdDE3NjczMDM1MTgkajYwJGwwJGgw*_gcl_au*MjI4ODI3MTEwLjE3NjczMDM1MTk.*FPAU*MjI4ODI3MTEwLjE3NjczMDM1MTk.&_cl=MTsxOzE7V0dydFNwb0tnM2w0eHZuUUdzMUxiVjFYS1JaV3NIQjNMQmxKcHViMUtaUDNRYjlkcFFjUjBaa0NVczdwOWZtbjs=
                               // 25.0.1 runs stable on macOS but has other issues with Treetable JavaFX controls
-val pekkoHttpV   = "1.3.0"
-val pekkoV       = "1.6.0"
+val pekkoHttpV   = "1.4.0"
+val pekkoV       = "1.7.0"
 val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
 val gatlingV     = "3.15.1"
@@ -116,17 +116,17 @@ libraryDependencies ++= Seq(
 
   // JSON / Jackson / Spray
   "com.fasterxml.jackson.core" % "jackson-core" % "2.22.2",
-  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.1",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.2",
 
   // Database drivers / utils
-  "org.xerial" % "sqlite-jdbc" % "3.53.2.1",
+  "org.xerial" % "sqlite-jdbc" % "3.53.4.0",
   "org.postgresql" % "postgresql" % "42.7.13",
   "com.zaxxer" % "HikariCP" % "7.1.0",
 
   // Utilities
   "org.slf4j" % "slf4j-api" % slf4jV,
   "ch.qos.logback" % "logback-classic" % logbackV,
-  "commons-codec" % "commons-codec" % "1.22.0",
+  "commons-codec" % "commons-codec" % "1.22.1",
   "org.apache.commons" % "commons-lang3" % "3.20.0",
   "org.apache.commons" % "commons-text" % "1.15.0",
   "technology.tabula" % "tabula" % "1.0.5",
@@ -135,17 +135,17 @@ libraryDependencies ++= Seq(
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.4",
-  "org.simplejavamail" % "simple-java-mail" % "8.12.6",
+  "org.simplejavamail" % "simple-java-mail" % "9.3.2",
   "org.apache.poi" % "poi-ooxml" % "5.5.1",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
-  "org.javadelight" % "delight-nashorn-sandbox" % "0.5.5",
+  "org.javadelight" % "delight-nashorn-sandbox" % "0.5.6",
   "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8",
   "org.iq80.leveldb" % "leveldb" % "0.12",
 
   // Pekko persistence & Kryo
   "org.apache.pekko" %% "pekko-persistence" % pekkoV,
-  "io.altoo" %% "pekko-kryo-serialization" % "1.5.1",
+  "io.altoo" %% "pekko-kryo-serialization" % "1.5.2",
 
   // Pekko SLF4J logging
   "org.apache.pekko" %% "pekko-slf4j" % pekkoV,
@@ -159,7 +159,7 @@ libraryDependencies ++= Seq(
   "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingV % Test,
   "io.gatling"            % "gatling-test-framework"    % gatlingV % Test,
   // Scala 3 std lib
-  "org.scala-lang" %% "scala3-library" % "3.8.4"
+  "org.scala-lang" %% "scala3-library" % "3.9.0"
 )
 
 enablePlugins(GatlingPlugin)

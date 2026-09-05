@@ -1,0 +1,124 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/admin/competitions"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Wettkampf</ion-title>
+  </ion-toolbar>
+</ion-header>
+@if (isDownloading() || isUploading()) {
+<ion-progress-bar type="indeterminate" ></ion-progress-bar>
+}
+<ion-content class="ion-padding">
+  @if (loading()) {
+  <div class="ion-padding">
+    <ion-skeleton-text animated style="width: 60%; height: 24px"></ion-skeleton-text>
+    <ion-skeleton-text animated style="width: 40%; height: 16px; margin-top: 8px"></ion-skeleton-text>
+  </div>
+  } @else {
+  <ion-card>
+    <ion-card-header>
+      <ion-item lines="none" class="ion-no-padding">
+        @if (logoUrl()) {
+        <img class="wk-logo" [src]="logoUrl()" alt="Logo"/>
+        } @else {
+        <img class="wk-logo" src="assets/imgs/wettkampf.png" alt="Logo"/>
+        }
+        <ion-card-title>{{ titel() }}<br>
+          <ion-card-subtitle>am {{ formatDate(datum()) }}</ion-card-subtitle>
+        </ion-card-title>
+      </ion-item>
+      <ion-card-subtitle></ion-card-subtitle>
+    </ion-card-header>
+    <ion-card-content>
+      <!--p class="ion-text-wrap" style="font-size: 0.75em; opacity: 0.6;">UUID: {{ uuid }}</p-->
+    </ion-card-content>
+  </ion-card>
+
+  <ion-list-header>
+    <ion-label>Verwaltung</ion-label>
+  </ion-list-header>
+  <ion-list>
+    <ion-item button (click)="openScoreCalc()">
+      <ion-icon name="calculator" slot="start"></ion-icon>
+      <ion-label>Formulare (Notenerfassung)</ion-label>
+    </ion-item>
+    <ion-item button (click)="openRegistrations()">
+      <ion-icon name="people" slot="start"></ion-icon>
+      <ion-label>Anmeldungen</ion-label>
+    </ion-item>
+    <ion-item button (click)="openRiegen()">
+      <ion-icon name="git-network" slot="start"></ion-icon>
+      <ion-label>Riegeneinteilung</ion-label>
+    </ion-item>
+    <ion-item button (click)="openPlaybook()">
+      <ion-icon name="play" slot="start"></ion-icon>
+      <ion-label>Wettkampf Drehbuch</ion-label>
+    </ion-item>
+    <ion-item button (click)="openRankings()">
+      <ion-icon name="podium" slot="start"></ion-icon>
+      <ion-label>Ranglisten</ion-label>
+    </ion-item>
+  </ion-list>
+  <ion-list-header>
+    <ion-label>Links</ion-label>
+  </ion-list-header>
+  <ion-list>
+    <ion-item button (click)="openRegistratinoLinkModal()">
+      <ion-icon name="person-add" slot="start"></ion-icon>
+      <ion-label>
+        <h2>Online-Anmeldung</h2>
+        <p>Öffnet die öffentliche Anmeldeseite</p>
+      </ion-label>
+    </ion-item>
+    <ion-item button (click)="openStartListLinkModal()">
+      <ion-icon name="list" slot="start"></ion-icon>
+      <ion-label>
+        <h2>Startliste</h2>
+        <p>Öffnet die öffentliche Startliste</p>
+      </ion-label>
+    </ion-item>
+    <ion-item button (click)="openLiveViewLinkModal()">
+      <ion-icon name="pulse" slot="start"></ion-icon>
+      <ion-label>
+        <h2>Live-Resultate</h2>
+        <p>Öffnet die Live-Ansicht</p>
+      </ion-label>
+    </ion-item>
+    <ion-item button (click)="openAdminAccess()">
+      <ion-icon name="phone-portrait" slot="start"></ion-icon>
+      <ion-label>
+        <h2>Admin-Zugang übertragen</h2>
+        <p>Link & QR-Code zum Öffnen auf einem anderen Gerät</p>
+      </ion-label>
+    </ion-item>
+  </ion-list>
+
+  <ion-list-header>
+    <ion-label>Wettkampf</ion-label>
+  </ion-list-header>
+  <ion-list>
+    <ion-item button (click)="openEdit()">
+      <ion-icon name="create" slot="start"></ion-icon>
+      <ion-label>Bearbeiten</ion-label>
+    </ion-item>
+    <ion-item button (click)="downloadZip()" [disabled]="isDownloading() || isUploading()">
+      <ion-icon name="download" slot="start"></ion-icon>
+      <ion-label>Backup als ZIP herunterladen</ion-label>
+    </ion-item>
+    <ion-item button (click)="triggerUpload()" [disabled]="isUploading() || isDownloading()">
+      <ion-icon name="cloud-upload" slot="start"></ion-icon>
+      <ion-label>Restore mit ZIP Backup hochladen</ion-label>
+    </ion-item>
+    <ion-item button (click)="copyCompetition()">
+      <ion-icon name="copy" slot="start"></ion-icon>
+      <ion-label>Wettkampf kopieren</ion-label>
+    </ion-item>
+    <ion-item button (click)="confirmDelete()" color="danger">
+      <ion-icon name="trash" slot="start"></ion-icon>
+      <ion-label>Wettkampf löschen</ion-label>
+    </ion-item>
+  </ion-list>
+  }
+  <input #fileInput type="file" accept=".zip" hidden (change)="onFileSelected($event)">
+</ion-content>

@@ -3,7 +3,7 @@ package ch.seidel.kutu.actors
 import ch.seidel.kutu.domain.*
 import org.apache.pekko.actor.ActorRef
 
-case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option[String], lastSequenceId: Option[Long])
+case class Subscribe(clientSource: ActorRef, deviceId: String, durchgang: Option[String], lastSequenceId: Option[Long], isAdmin: Boolean = false, isRegistrationSync: Boolean = false)
 case class StopDevice(deviceId: String)
 case class CreateClient(deviceID: String, wettkampfUUID: String)
 
@@ -40,8 +40,11 @@ case class UpdateAthletWertung(athlet: AthletView, wertung: Wertung, override va
 case class FinishDurchgangStation(override val wettkampfUUID: String, durchgang: String, geraet: Long, step: Int) extends KutuAppAction
 case class FinishDurchgang(override val wettkampfUUID: String, durchgang: String) extends KutuAppAction
 case class FinishDurchgangStep(override val wettkampfUUID: String) extends KutuAppAction
+case class GetPlaybookState(override val wettkampfUUID: String) extends KutuAppAction
+case class GetRiegenEinteilungState(override val wettkampfUUID: String) extends KutuAppAction
 case class Delete(override val wettkampfUUID: String) extends KutuAppAction
 case class PublishScores(override val wettkampfUUID: String, title: String, query: String, published: Boolean) extends KutuAppAction
+case class NotifyRegistrationSyncUpdated(override val wettkampfUUID: String) extends KutuAppAction
 
 sealed trait KutuAppEvent extends KutuAppProtokoll
 case class BulkEvent(wettkampfUUID: String, events: List[? <: KutuAppEvent]) extends KutuAppEvent
@@ -83,4 +86,7 @@ case class NewLastResults(resultsPerWkDisz: Map[String, WertungContainer], resul
 case class LastResults(results: List[AthletWertungUpdatedSequenced]) extends KutuAppEvent
 case class MessageAck(msg: String) extends KutuAppEvent
 case class ResponseMessage(data: Object) extends KutuAppEvent
+case class PlaybookStateUpdated(wettkampfUUID: String, playbookState: PlaybookState) extends KutuAppEvent
+case class RiegenEinteilungStateUpdated(wettkampfUUID: String, state: RiegenEinteilungState) extends KutuAppEvent
+case class RegistrationSyncUpdated(wettkampfUUID: String) extends KutuAppEvent
 case class Err(e: Exception) extends KutuAppEvent

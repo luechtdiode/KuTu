@@ -1,0 +1,257 @@
+import { Component, inject, signal, OnDestroy } from '@angular/core';
+import { AlertController, ToastController } from '@ionic/angular';
+import { ActivatedRoute, Router } from '@angular/router';
+import { SecretService } from '../services/secret.service';
+import { AdminBackendService } from '../services/admin-backend.service';
+import { WsStateService } from '../services/ws-state.service';
+import { ClubRegistration, SyncAction, SyncActionKey, Verein, RiegeItem, JudgeRegistration, RegistrationSyncUpdated } from '../backend-types';
+import { firstValueFrom, Subscription } from 'rxjs';
+
+export interface JudgeWithClub extends JudgeRegistration {
+  vereinname: string;
+}
+
+@Component({
+  templateUrl: 'admin-registrations.page.html',
+  standalone: false
+})
+export class AdminRegistrationsPage implements OnDestroy {
+  uuid = '';
+  secret = '';
+  wettkampfTitle = '';
+  logoUrl = signal('');
+  registrationUrl = '';
+  registrations = signal<ClubRegistration[]>([]);
+  syncActions = signal<SyncAction[]>([]);
+  judgeRegistrations = signal<JudgeWithClub[]>([]);
+  selectedSyncIndices = signal<Set<number>>(new Set());
+  applying = signal(false);
+  loading = signal(false);
+  unassignedRiegenCount = signal(0);
+
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private secretService = inject(SecretService);
+  private backend = inject(AdminBackendService);
+  private alertCtrl = inject(AlertController);
+  private toastCtrl = inject(ToastController);
+  private wsState = inject(WsStateService);
+  private wsAcquired = false;
+  private wsSubscriptions: Subscription[] = [];
+
+  async ionViewWillEnter() {
+    this.uuid = this.route.snapshot.paramMap.get('uuid') || '';
+    const stored = this.secretService.getSecret(this.uuid);
+    if (stored) {
+      this.secret = stored.secret;
+      this.wettkampfTitle = stored.titel;
+    }
+    this.registrationUrl = window.location.origin + '/registration/' + this.uuid;
+    await this.loadData();
+    this.initWebSocket();
+  }
+
+  ngOnDestroy() {
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
+    this.wsSubscriptions.forEach(s => s.unsubscribe());
+    if (this.wsAcquired) {
+      this.wsState.release({kind: 'competition', competitionId: this.uuid});
+      this.wsAcquired = false;
+    }
+  }
+
+  private initWebSocket() {
+    if (this.wsAcquired) return;
+    this.wsAcquired = true;
+    this.wsSubscriptions.push(
+      this.wsState.registrationSyncUpdated.subscribe(() => {
+        this.loadData();
+      })
+    );
+    this.wsState.acquire({kind: 'competition', competitionId: this.uuid});
+  }
+
+  async loadData() {
+    this.loading.set(true);
+    try {
+      const [registrations, syncActions, riegen] = await Promise.all([
+        firstValueFrom(this.backend.getRegistrations(this.uuid, this.secret)),
+        firstValueFrom(this.backend.getSyncActions(this.uuid, this.secret)).catch(() => [] as SyncAction[]),
+        firstValueFrom(this.backend.getRiegen(this.uuid, this.secret)).catch(() => [] as RiegeItem[])
+      ]);
+      this.registrations.set(registrations);
+      this.syncActions.set(syncActions);
+      this.unassignedRiegenCount.set(riegen.filter(r => !r.durchgang).length);
+
+      const judgeResults = await Promise.all(
+        registrations.map(reg =>
+          firstValueFrom(this.backend.getJudgeRegistrations(this.uuid, reg.id, this.secret))
+            .then(judges => judges.map(j => ({ ...j, vereinname: reg.vereinname } as JudgeWithClub)))
+            .catch(() => [] as JudgeWithClub[])
+        )
+      );
+      this.judgeRegistrations.set(judgeResults.reduce<JudgeWithClub[]>((acc, list) => acc.concat(list), []));
+    } catch {
+      this.registrations.set([]);
+      this.syncActions.set([]);
+      this.unassignedRiegenCount.set(0);
+      this.judgeRegistrations.set([]);
+    } finally {
+      this.loading.set(false);
+      this.selectedSyncIndices.set(new Set());
+    }
+    this.loadLogo();
+  }
+
+  private loadLogo() {
+    if (this.logoUrl()) URL.revokeObjectURL(this.logoUrl());
+    this.logoUrl.set('');
+    this.backend.getCompetitionLogo(this.uuid, this.secret).subscribe({
+      next: blob => {
+        this.logoUrl.set(URL.createObjectURL(blob));
+      },
+      error: () => {}
+    });
+  }
+
+  toggleSyncAction(index: number) {
+    if (this.selectedSyncIndices().has(index)) {
+      this.selectedSyncIndices.update(s => { const next = new Set(s); next.delete(index); return next; });
+    } else {
+      this.selectedSyncIndices.update(s => new Set(s).add(index));
+    }
+  }
+
+  toggleAllSyncAction() {
+    if (this.selectedSyncIndices().size < this.syncActions().length) {
+      for(const index of [...this.syncActions().map((v,i)=>i)]) {
+        if (!this.selectedSyncIndices().has(index)) {
+          this.selectedSyncIndices.update(s => new Set(s).add(index));
+        }
+      }
+    } else {
+      this.selectedSyncIndices.set(new Set());
+    }
+  }
+
+  isAllSelected(): boolean {
+    return this.selectedSyncIndices().size > 0 && this.selectedSyncIndices().size === this.syncActions().length;
+  }
+
+  isSelected(index: number): boolean {
+    return this.selectedSyncIndices().has(index);
+  }
+
+  get selectedCount(): number {
+    return this.selectedSyncIndices().size;
+  }
+
+  private actionToKey(action: SyncAction): SyncActionKey {
+    return {
+      registrationId: action.data.registrationId,
+      actionType: action.data.type,
+      caption: action.caption,
+      athletId: action.data.athletId,
+      oldVereinId: action.data.oldVereinId
+    };
+  }
+
+  async applySelected() {
+    if (this.selectedSyncIndices().size === 0) return;
+    this.applying.set(true);
+    const keys = Array.from(this.selectedSyncIndices())
+      .map(i => this.syncActions()[i])
+      .filter(a => a?.data)
+      .map(a => this.actionToKey(a));
+    try {
+      const result = await firstValueFrom(this.backend.applySyncActions(this.uuid, keys, this.secret));
+      const toast = await this.toastCtrl.create({
+        message: `${result.processed} Aktionen verarbeitet.${result.messages.length > 0 ? ' ' + result.messages.join(', ') : ''}`,
+        duration: 3000,
+        color: result.processed > 0 ? 'success' : 'warning'
+      });
+      await toast.present();
+      await this.loadData();
+    } catch (e: any) {
+      const toast = await this.toastCtrl.create({ message: 'Fehler: ' + (e.message || e), duration: 3000, color: 'danger' });
+      await toast.present();
+    } finally {
+      this.applying.set(false);
+    }
+  }
+
+  isApproved(reg: ClubRegistration): boolean {
+    return reg.vereinId != null && reg.vereinId > 0;
+  }
+
+  async approveRegistration(reg: ClubRegistration) {
+    const alert = await this.alertCtrl.create({
+      header: 'Verein annehmen',
+      message: `Möchtest du die Anmeldung von "${reg.vereinname}" annehmen?`,
+      inputs: [
+        { name: 'vereinname', type: 'text', value: reg.vereinname, placeholder: 'Vereinsname' },
+        { name: 'verband', type: 'text', value: reg.verband || '', placeholder: 'Verband' }
+      ],
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Annehmen',
+          handler: async (data) => {
+            try {
+              const verein: Verein = { id: 0, name: data.vereinname, verband: data.verband || '' };
+              await firstValueFrom(this.backend.approveRegistration(this.uuid, reg.id, verein, this.secret));
+              await this.loadData();
+              const toast = await this.toastCtrl.create({ message: `${data.vereinname} angenommen`, duration: 2000, color: 'success' });
+              await toast.present();
+            } catch (e: any) {
+              const toast = await this.toastCtrl.create({ message: 'Fehler: ' + (e.message || e), duration: 3000, color: 'danger' });
+              await toast.present();
+            }
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  async deleteRegistration(reg: ClubRegistration) {
+    const alert = await this.alertCtrl.create({
+      header: 'Anmeldung löschen',
+      message: `Soll die Anmeldung von "${reg.vereinname}" gelöscht werden?`,
+      buttons: [
+        { text: 'Abbrechen', role: 'cancel' },
+        {
+          text: 'Löschen', role: 'destructive',
+          handler: async () => {
+            try {
+              await firstValueFrom(this.backend.deleteRegistration(this.uuid, reg.id, this.secret));
+              await this.loadData();
+              const toast = await this.toastCtrl.create({ message: 'Anmeldung gelöscht', duration: 2000, color: 'success' });
+              await toast.present();
+            } catch {
+              const toast = await this.toastCtrl.create({ message: 'Fehler beim Löschen', duration: 3000, color: 'danger' });
+              await toast.present();
+            }
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  getStatusBadge(reg: ClubRegistration): string {
+    return this.isApproved(reg) ? 'Angenommen' : 'Neu';
+  }
+
+  getStatusColor(reg: ClubRegistration): string {
+    return this.isApproved(reg) ? 'success' : 'warning';
+  }
+
+  goToRiegenEinteilung() {
+    this.router.navigate(['/admin/riege-einteilung', this.uuid]);
+  }
+
+  openClubDetail(reg: ClubRegistration) {
+    this.router.navigate(['/admin/club-detail', this.uuid, reg.id]);
+  }
+}

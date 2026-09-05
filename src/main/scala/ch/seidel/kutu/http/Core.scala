@@ -4,7 +4,8 @@ import ch.seidel.kutu.Config
 import ch.seidel.kutu.Config.*
 import ch.seidel.kutu.actors.{AthletIndexActor, CompetitionCoordinatorClientActor, ResyncIndex}
 import ch.seidel.kutu.domain.DBService
-import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.Done
+import org.apache.pekko.actor.{ActorSystem, CoordinatedShutdown}
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.Http.ServerBinding
 import org.apache.pekko.http.scaladsl.server.Route
@@ -12,8 +13,9 @@ import org.apache.pekko.stream.Materializer
 import org.slf4j.LoggerFactory
 
 import java.net.{DatagramSocket, InetAddress, NetworkInterface}
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.Success
 
 object Core extends KuTuSSLContext {
   //  val logger = LoggerFactory.getLogger(this.getClass)
@@ -40,16 +42,12 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   import Core.*
+  private implicit val executionContext: ExecutionContext = system.dispatcher
   import fr.davit.pekko.http.metrics.core.HttpMetrics.* // import extension methods
 
   def startServer(): Future[ServerBinding] = {
     serverBinding match {
       case None =>
-
-        /**
-         * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
-         */
-        sys.addShutdownHook(shutDown(getClass.getName))
 
         DBService.startDB()
         val route: Route = allroutes(id => vereinSecretHashLookup(id), id => extractRegistrationId(id))
@@ -69,6 +67,11 @@ trait KuTuAppHTTPServer extends ApiService with JsonSupport {
           b
         }
         serverBinding = Some(binding)
+        binding.foreach { b =>
+          CoordinatedShutdown(system).addTask(CoordinatedShutdown.PhaseServiceUnbind, "kutu-http-server") { () =>
+            b.unbind().map(_ => Done)
+          }
+        }
         AthletIndexActor.publish(ResyncIndex)
         binding
       case Some(binding) => binding

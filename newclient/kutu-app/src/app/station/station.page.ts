@@ -1,0 +1,277 @@
+import { Component, inject, signal } from '@angular/core';
+import { NavController, AlertController, IonItemSliding } from '@ionic/angular';
+import { BackendService } from '../services/backend.service';
+import { Wettkampf, Geraet, WertungContainer } from '../backend-types';
+import { map, tap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { gearMapping, encodeURIComponent2 } from '../utils';
+
+@Component({
+    selector: 'app-station',
+    templateUrl: './station.page.html',
+    styleUrls: ['./station.page.scss'],
+    standalone: false
+})
+export class StationPage {
+  navCtrl = inject(NavController);
+  backendService = inject(BackendService);
+  private alertCtrl = inject(AlertController);
+
+  /** signal views for zoneless template bindings */
+  readonly competitionsList = this.backendService.competitionsList;
+  readonly durchgaengeList = this.backendService.durchgaengeList;
+  readonly geraeteList = this.backendService.geraeteList;
+  readonly stepsList = this.backendService.stepsList;
+
+  durchgangopen = signal(false);
+
+  /** Inserted by Angular inject() migration for backwards compatibility */
+  constructor(...args: unknown[]);
+
+  constructor() {
+    this.backendService.durchgangStarted.pipe(
+      map(dgl =>
+      dgl.filter(dg =>
+        encodeURIComponent2(dg.durchgang) === encodeURIComponent2(this.backendService.durchgang)
+        && dg.wettkampfUUID === this.backendService.competition).length > 0 ? true : false
+    )).subscribe(dg => {
+      this.durchgangopen.set(dg);
+    });
+  }
+
+  ionViewWillEnter() {
+    if (this.geraeteList().length > 0 && !this.backendService.captionmode()) {
+      this.backendService.activateCaptionMode();
+    }
+  }
+
+  durchgangstate() {
+    const connected = this.backendService.isWebsocketConnected() ? (this.durchgangopen() ? 'gestartet' : 'gesperrt') : 'offline';
+    return connected;
+  }
+  get durchgangstateClass() {
+    const classes = {
+      open: this.backendService.isWebsocketConnected() && this.durchgangopen(),
+      closed: this.backendService.isWebsocketConnected() && !this.durchgangopen(),
+      offline: !this.backendService.isWebsocketConnected()
+    };
+    return classes;
+  }
+
+  set competition(competitionId: string) {
+    if (!this.stationFreezed) {
+      this.backendService.getDurchgaenge(competitionId);
+    }
+  }
+  get competition(): string {
+    return this.backendService.competition;
+  }
+
+  set durchgang(d: string) {
+    if (!this.stationFreezed) {
+      this.backendService.getGeraete(this.competition, d);
+    }
+  }
+  get durchgang(): string {
+    return this.backendService.durchgang;
+  }
+
+  set geraet(geraetId: number) {
+    if (!this.stationFreezed) {
+      this.backendService.getSteps(this.competition, this.durchgang, geraetId);
+    }
+  }
+  get geraet(): number {
+    return this.backendService.geraet;
+  }
+
+  set step(s) {
+    this.backendService.getWertungen(this.competition, this.durchgang, this.geraet, s);
+  }
+  get step() {
+    return this.backendService.step;
+  }
+
+  get stationFreezed(): boolean {
+    return this.backendService.stationFreezed();
+  }
+  isLoggedIn() {
+    return this.backendService.loggedIn();
+  }
+
+  get nextStepCaption(): string {
+    if (this.isLoggedIn()) {
+      return 'Nächste Riege';
+    } else {
+      return 'Nächstes Gerät';
+    }
+  }
+
+  get prevStepCaption(): string {
+    if (this.isLoggedIn()) {
+      return 'Vorherige Riege';
+    } else {
+      return 'Vorheriges Gerät';
+    }
+  }
+
+  itemTapped(slidingItem: IonItemSliding) {
+    slidingItem.getOpenAmount().then(amount => {
+        if (amount > 10 || amount < -10) {
+        slidingItem.close();
+      } else {
+        slidingItem.open('end');
+      }
+    });
+  }
+
+  nextStep(slidingItem: IonItemSliding) {
+    this.backendService.nextGeraet().subscribe(step => {
+      this.step = step;
+      slidingItem.close();
+    });
+  }
+
+  prevStep(slidingItem: IonItemSliding) {
+    this.backendService.prevGeraet().subscribe(step => {
+      this.step = step;
+      slidingItem.close();
+    });
+  }
+
+  get station() {
+    if (this.isLoggedIn()) {
+      return this.geraetName() + ' - ' + this.step + '. Riege von ' + this.getSteps()?.length + ', ' + this.durchgang;
+    } else {
+      return this.geraetName() + ' - ' + this.step + '. Gerät von ' + this.getGeraete()?.length + ', ' + this.durchgang;
+    }
+  }
+  
+  get previousGearImage() {
+    return this.isLoggedIn() ? undefined : gearMapping[this.backendService.getPrevGeraet()] || undefined;
+  }
+
+  get nextGearImage() {
+    return this.isLoggedIn() ? undefined : gearMapping[this.backendService.getNextGeraet()] || undefined;
+  }
+
+  get gearImage() {
+    return gearMapping[this.backendService.geraet] || undefined;
+  }
+
+  async showCompleteAlert() {
+    const alert = this.alertCtrl.create({
+      header: 'Achtung',
+      message: 'Nach dem Abschliessen der Station "'
+                + this.station
+                + '" können die erfassten Wertungen nur noch im Wettkampf-Büro korrigiert werden.',
+      buttons: [
+        {text: 'Abbrechen', role: 'cancel', handler: () => {}},
+        {text: 'OKAY', handler: () => {
+          const navTransition = alert.then(a => a.dismiss());
+          this.backendService.finishStation(this.competition, this.durchgang, this.geraet, this.step)
+          .subscribe(nextSteps => {
+            if (nextSteps.length === 0) {
+              navTransition.then(() => {
+                this.navCtrl.pop();
+              });
+            }
+          });
+          return false;
+        }
+        }
+      ]
+    });
+    alert.then(a => a.present());
+  }
+
+  async toastMissingResult(undefinedItems: WertungContainer[]) {
+    const firstUndefinedAthlet = undefinedItems[0].vorname.toUpperCase() + ' '
+      + undefinedItems[0].name.toUpperCase()
+      + ' (' + undefinedItems[0].verein + ')';
+
+    const alert = await this.alertCtrl.create({
+      header: 'Achtung',
+      subHeader: 'Fehlendes Resultat!',
+      message: 'In dieser Riege gibt es noch ' + undefinedItems.length + ' leere Wertungen! - '
+                + 'Bitte prüfen, ob ' + firstUndefinedAthlet + ' geturnt hat.',
+      buttons:  [
+        {text: 'Abbrechen', role: 'cancel', handler: () => {}},
+        {
+          text: firstUndefinedAthlet + ' hat nicht geturnt',
+          role: 'edit',
+          handler: () => {
+            undefinedItems.splice(0, 1);
+            if (undefinedItems.length > 0) {
+              this.toastMissingResult(undefinedItems);
+            } else {
+              this.showCompleteAlert();
+            }
+          }
+        },
+        {
+          text: 'Korrigieren',
+          role: 'edit',
+          handler: () => {
+            this.navCtrl.navigateForward('wertung-editor/' + undefinedItems[0].id);
+          }
+        }
+      ]
+    });
+    alert.present();
+  }
+
+  finish() {
+    const undefinedItems = this.backendService.wertungen.filter(w => w.wertung.endnote === undefined);
+    if (undefinedItems.length === 0) {
+      this.showCompleteAlert();
+      return;
+    } else {
+      this.toastMissingResult(undefinedItems);
+    }
+  }
+
+  getCompetitions(): Wettkampf[] {
+    return this.competitionsList();
+  }
+  competitionName() {
+    if (!this.competitionsList()) { return ''; }
+    const candidate = this.competitionsList()
+      .filter(c => c.uuid === this.backendService.competition)
+      .map(c => c.titel + '<br>' + (c.datum + 'T').split('T')[0].split('-').reverse().join('-'));
+
+    if (candidate.length === 1) {
+      return candidate[0];
+    } else {
+      return '';
+    }
+  }
+
+  geraetName(): string {
+    const candidate = this.geraeteList()
+      .filter(c => c.id === this.backendService.geraet)
+      .map(c => c.name);
+
+    if (candidate.length === 1) {
+      return candidate[0];
+    } else {
+      return '';
+    }
+  }
+  getDurchgaenge(): string[] {
+    return this.durchgaengeList();
+  }
+
+  getGeraete(): Geraet[] {
+    return this.geraeteList();
+  }
+
+  getSteps(): number[] {
+    return this.stepsList();
+  }
+
+  getWertungen(): Observable<WertungContainer[]> {
+    return this.backendService.wertungenSubject;
+  }
+
+}
