@@ -108,7 +108,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     geraeteRigeListe.flatMap(_.findDurchgangForWertung(wertung)).headOption.getOrElse("")
   }
 
-  private def recomputePlaybookState(): Unit = {
+  private def recomputePlaybookState(): Boolean = {
     val wkDate = wettkampf.datum.toLocalDate
     val geraeteRiegenFiltered = geraeteRigeListe.filter(gr => gr.durchgang.nonEmpty)
     val grouped = geraeteRiegenFiltered.groupBy(gr => gr.durchgang.get)
@@ -184,19 +184,24 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       )
     }.toList.sortBy(_.name)
     val activeList = dgStates.filter(_.isRunning).map(_.name)
-    playbookState = Some(PlaybookState(wettkampfUUID, dgStates, activeList, disziplinOrdinals.toList.sortBy(_._2).map(_._1)))
+    val newState = Some(PlaybookState(wettkampfUUID, dgStates, activeList, disziplinOrdinals.toList.sortBy(_._2).map(_._1)))
+    val changed = playbookState != newState
+    if changed then playbookState = newState
+
+    changed
   }
 
   private def publishPlaybookState(): Unit = {
-    recomputePlaybookState()
-    playbookState.foreach { ps =>
+    val changed = recomputePlaybookState()
+    if changed then playbookState.foreach { ps =>
       notifyAdminClients(PlaybookStateUpdated(wettkampfUUID, ps))
     }
   }
 
   private def recomputeRiegenEinteilungState(): Unit = {
     val riegen = selectRiegen(wettkampf.id)
-    val counts = listRiegenZuWettkampf(wettkampf.id).groupMap(_._1)(_._2).view.mapValues(_.sum)
+    val riegenZuWettkampf = listRiegenZuWettkampf(wettkampf.id)
+    val counts = riegenZuWettkampf.groupMap(_._1)(_._2).view.mapValues(_.sum)
     val riegeItems = riegen.map(r => RiegeItem(
       name = r.r,
       durchgang = r.durchgang,
@@ -206,7 +211,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       athletCount = counts.getOrElse(r.r, 0)
     ))
 
-    val athleteCountsByDurchgang = listRiegenZuWettkampf(wettkampf.id)
+    val athleteCountsByDurchgang = riegenZuWettkampf
       .groupBy(_._3).view.mapValues(_.map(_._2).sum)
     val durationItems = durchgaenge.values.map(d => DurchgangDurationItem(
       name = d.name, title = d.title,
