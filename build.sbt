@@ -145,7 +145,7 @@ libraryDependencies ++= Seq(
 
   // Pekko persistence & Kryo
   "org.apache.pekko" %% "pekko-persistence" % pekkoV,
-  "io.altoo" %% "pekko-kryo-serialization" % "1.5.1",
+  "io.altoo" %% "pekko-kryo-serialization" % "1.5.2",
 
   // Pekko SLF4J logging
   "org.apache.pekko" %% "pekko-slf4j" % pekkoV,
