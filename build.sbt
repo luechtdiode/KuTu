@@ -139,7 +139,7 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi-ooxml" % "5.5.1",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
-  "org.javadelight" % "delight-nashorn-sandbox" % "0.5.5",
+  "org.javadelight" % "delight-nashorn-sandbox" % "0.5.6",
   "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8",
   "org.iq80.leveldb" % "leveldb" % "0.12",
 
