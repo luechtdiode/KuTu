@@ -30,7 +30,7 @@ object JpackageExecutor {
     sourceDir: File,
     appVersion: String
   ): Unit = {
-    
+    log.info(s"initializing jpackage...")
     val appName = grabBuildContextvariables(appVersion).appName
     // Determine OS and bundler type
     val osName = sys.props.getOrElse("os.name", "").toLowerCase

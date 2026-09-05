@@ -182,7 +182,8 @@ libraryDependencies ++= Seq(
 )
 
 // Task: prepareJpackage - copies the compiled jar and all dependencies (including JavaFX) into target/package/libs
-prepareJpackage := {
+// Def.uncached: side-effecting task; sbt 2.0 would otherwise serve a disk-cache hit and skip the body.
+prepareJpackage := Def.uncached {
   // Extract all the necessary values using the modern slash syntax
   val log = streams.value.log
   val t = baseDirectory.value / "target"
@@ -209,7 +210,8 @@ Test / javaOptions ++= Seq(
 // ============================================================================
 
 
-jpackageApp := {
+// Def.uncached: side-effecting task; sbt 2.0 would otherwise serve a disk-cache hit and skip the body.
+jpackageApp := Def.uncached {
   // Extract all the necessary values using the modern slash syntax
   val log = streams.value.log
   val baseDir = baseDirectory.value
