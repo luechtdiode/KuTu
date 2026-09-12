@@ -1,0 +1,324 @@
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { backendUrl } from '../utils';
+import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks, AdminAccessLink, TeamItem, ScoreCalcTemplate, ScoreCalcOptions, ScoreCalcPreviewRequest, ScoreCalcPreviewResponse } from '../backend-types';
+import {map} from "rxjs/operators";
+
+@Injectable()
+export class AdminBackendService {
+  private api = backendUrl + 'api/';
+
+  constructor(private http: HttpClient) {}
+
+  getProgramme(): Observable<ProgrammRaw[]> {
+    return this.http.get<ProgrammRaw[]>(this.api + 'competition/programmlist');
+  }
+
+  listWettkaempfe(): Observable<WettkampfPublic[]> {
+    return this.http.get<WettkampfPublic[]>(this.api + 'competition');
+  }
+
+  createCompetition(request: AdminCreateCompetitionRequest): Observable<AdminCreateCompetitionResponse> {
+    return this.http.post<AdminCreateCompetitionResponse>(this.api + 'admin/competition', request);
+  }
+
+  downloadCompetitionZip(uuid: string, secret: string): Observable<Blob> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get(this.api + 'competition/' + uuid, {
+      headers,
+      responseType: 'blob'
+    });
+  }
+
+  deleteCompetition(uuid: string, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete(this.api + 'competition/' + uuid, { headers });
+  }
+
+  getDisziplinenForProgram(programId: number): Observable<string[]> {
+    return this.http.get<string[]>(this.api + 'competition/programmdisziplinen/' + programId);
+  }
+
+  getKategorienForProgram(programId: number): Observable<string[]> {
+    return this.http.get<string[]>(this.api + 'competition/programmkategorien/' + programId);
+  }
+
+  getRiegen(uuid: string, secret: string): Observable<RiegeItem[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<RiegeItem[]>(this.api + 'competition/' + uuid + '/riege', { headers });
+  }
+
+  updateRiege(uuid: string, request: UpdateRiegeRequest, secret: string): Observable<number> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put<number>(this.api + 'competition/' + uuid + '/riege', request, { headers });
+  }
+
+  deleteRiege(uuid: string, request: UpdateRiegeRequest, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete(this.api + 'competition/' + uuid + '/riege', { headers, body: request });
+  }
+
+  suggestRiegen(uuid: string, request: RiegeSuggestionRequest, secret: string): Observable<void> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<void>(this.api + 'competition/' + uuid + '/riege/generate', request, { headers });
+  }
+
+  resetRiegen(uuid: string, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post(this.api + 'competition/' + uuid + '/riege/reset', null, { headers });
+  }
+
+  getRiegeDuration(uuid: string, secret: string): Observable<DurchgangDurationItem[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<DurchgangDurationItem[]>(this.api + 'competition/' + uuid + '/riege/duration', { headers });
+  }
+
+  getDisziplinen(uuid: string): Observable<Geraet[]> {
+    return this.http.get<Geraet[]>(this.api + 'durchgang/' + uuid + '/geraete');
+  }
+
+  getRegistrations(uuid: string, secret: string): Observable<ClubRegistration[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ClubRegistration[]>(this.api + 'registrations/' + uuid, { headers });
+  }
+
+  getRegistration(uuid: string, regId: number, secret: string): Observable<ClubRegistration> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ClubRegistration>(this.api + 'registrations/' + uuid + '/' + regId, { headers });
+  }
+
+  approveRegistration(uuid: string, regId: number, verein: Verein, secret: string): Observable<ClubRegistration> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put<ClubRegistration>(this.api + 'registrations/' + uuid + '/' + regId, verein, { headers });
+  }
+
+  deleteRegistration(uuid: string, regId: number, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete(this.api + 'registrations/' + uuid + '/' + regId, { headers, responseType: 'text' });
+  }
+
+  getSyncActions(uuid: string, secret: string): Observable<SyncAction[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<SyncAction[]>(this.api + 'registrations/' + uuid + '/syncactionsadmin', { headers});
+  }
+  applySyncActions(uuid: string, keys: SyncActionKey[], secret: string): Observable<SyncApplyResponse> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<SyncApplyResponse>(this.api + 'registrations/' + uuid + '/sync', { actions: keys }, { headers});
+  }
+
+  getAthletRegistrations(uuid: string, regId: number, secret: string): Observable<AthletRegistration[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<AthletRegistration[]>(this.api + 'registrations/' + uuid + '/' + regId + '/athletes', { headers });
+  }
+
+  getJudgeRegistrations(uuid: string, regId: number, secret: string): Observable<JudgeRegistration[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<JudgeRegistration[]>(this.api + 'registrations/' + uuid + '/' + regId + '/judges', { headers });
+  }
+
+  getProgramList(uuid: string, secret: string): Observable<ProgrammRaw[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ProgrammRaw[]>(this.api + 'registrations/' + uuid + '/programmlist', { headers });
+  }
+
+  getTeams(uuid: string, regId: number, secret: string): Observable<TeamItem[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<TeamItem[]>(this.api + 'registrations/' + uuid + '/' + regId + '/teams', { headers });
+  }
+
+  uploadLogo(uuid: string, secret: string, file: File): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    const formData = new FormData();
+    formData.append('logo', file, file.name);
+    return this.http.post(this.api + 'competition/' + uuid + '/logo', formData, { headers });
+  }
+
+  uploadCompetitionZip(uuid: string, secret: string, file: File): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    const formData = new FormData();
+    formData.append('zip', file, file.name);
+    return this.http.put(this.api + 'competition/' + uuid, formData, { headers, responseType: 'text' });
+  }
+
+  uploadCompetitionZipPost(uuid: string, file: File): Observable<HttpResponse<string>> {
+    const formData = new FormData();
+    formData.append('zip', file, file.name);
+    return this.http.post(this.api + 'competition/' + uuid, formData, {
+      responseType: 'text',
+      observe: 'response'
+    });
+  }
+
+  getCompetitionDetails(uuid: string, secret: string): Observable<AdminGetCompetitionResponse> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<AdminGetCompetitionResponse>(this.api + 'admin/competition/' + uuid, { headers });
+  }
+
+  getCompetitionLogo(uuid: string, secret: string): Observable<Blob> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get(this.api + 'competition/' + uuid + '/logo', { headers, responseType: 'blob' });
+  }
+
+  updateCompetition(uuid: string, secret: string, request: AdminUpdateCompetitionRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'admin/competition/' + uuid, request, { headers });
+  }
+
+  renameDurchgang(uuid: string, secret: string, oldTitle: string, newTitle: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/renamedg', { oldTitle, newTitle }, { headers });
+  }
+
+  moveDurchgangToGroup(uuid: string, secret: string, request: GroupDurchgangRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/movegroup', request, { headers });
+  }
+
+  mergeDurchgang(uuid: string, secret: string, request: MergeDurchgangRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/mergedg', request, { headers });
+  }
+
+  ungroupDurchgang(uuid: string, secret: string, request: UngroupDurchgangRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/ungroup', request, { headers });
+  }
+
+  aggregateDurchgaenge(uuid: string, secret: string, request: GroupDurchgangRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/aggregate', request, { headers });
+  }
+
+  updateStartOffset(uuid: string, secret: string, request: UpdateStartOffsetRequest): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put(this.api + 'competition/' + uuid + '/riege/startoffset', request, { headers });
+  }
+
+  getPlaybook(uuid: string, secret: string): Observable<PlaybookState> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<PlaybookState>(this.api + 'competition/' + uuid + '/playbook', { headers });
+  }
+
+  startDurchgang(uuid: string, secret: string, durchgang: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post(this.api + 'competition/' + uuid + '/start',
+      { wettkampfUUID: uuid, durchgang }, { headers });
+  }
+
+  finishDurchgang(uuid: string, secret: string, durchgang: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post(this.api + 'competition/' + uuid + '/stop',
+      { wettkampfUUID: uuid, durchgang }, { headers });
+  }
+
+  finishDurchgangStep(uuid: string, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post(this.api + 'competition/' + uuid + '/finishedStep',
+      { wettkampfUUID: uuid }, { headers });
+  }
+
+  resetDurchgang(uuid: string, secret: string, durchgang: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post(this.api + 'competition/' + uuid + '/reset',
+      { wettkampfUUID: uuid, durchgang }, { headers });
+  }
+
+  isTokenExpired(secret: string): Observable<HttpResponse<string>> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get(this.api + 'isTokenExpired', {
+      headers,
+      observe: 'response',
+      responseType: 'text'
+    });
+  }
+
+  getJudgeLink(uuid: string, secret: string): Observable<JudgeLink> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<JudgeLink>(this.api + 'competition/' + uuid + '/judge-link', { headers });
+  }
+
+  getOverviewLinks(uuid: string, secret: string): Observable<OverviewLinks> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<OverviewLinks>(this.api + 'competition/' + uuid + '/overview-links', { headers });
+  }
+
+  createAdminAccessLink(uuid: string, secret: string, days: number): Observable<AdminAccessLink> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<AdminAccessLink>(
+      this.api + 'competition/' + uuid + '/admin-access-link',
+      { days },
+      { headers }
+    );
+  }
+
+  unassignAthletFromCompetition(uuid: string, athletId: number, secret: string): Observable<{ removedWertungen: number }> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete<{ removedWertungen: number }>(this.api + 'competition/' + uuid + '/athlet/' + athletId, { headers });
+  }
+
+  getAdminScores(uuid: string, secret: string): Observable<PublishedScoreView[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<PublishedScoreView[]>(this.api + 'admin/scores/' + uuid, { headers });
+  }
+
+  createAdminScore(uuid: string, request: AdminScoreRequest, secret: string): Observable<PublishedScoreView> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<PublishedScoreView>(this.api + 'admin/scores/' + uuid, request, { headers });
+  }
+
+  updateAdminScore(uuid: string, scoreId: string, request: AdminScoreRequest, secret: string): Observable<PublishedScoreView> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put<PublishedScoreView>(this.api + 'admin/scores/' + uuid + '/' + scoreId, request, { headers });
+  }
+
+  deleteAdminScore(uuid: string, scoreId: string, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete(this.api + 'admin/scores/' + uuid + '/' + scoreId, { headers });
+  }
+
+  getScoreToken(uuid: string, scoreId: string, secret: string): Observable<string> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post(this.api + 'admin/scores/' + uuid + '/scoretoken',
+      { scoreId }, { headers, responseType: 'text' });
+  }
+
+  getAvailableGroupers(uuid: string): Observable<string[]> {
+    return this.http.get<string[]>(this.api + 'scores/' + uuid + '/grouper');
+  }
+
+  getAvailableFilters(uuid: string, groupby: string): Observable<string[]> {
+    return this.http.get<string[]>(this.api + 'scores/' + uuid + '/filter?groupby=' + encodeURIComponent(groupby));
+  }
+
+  getScoreCalcTemplates(uuid: string, secret: string): Observable<ScoreCalcTemplate[]> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ScoreCalcTemplate[]>(this.api + 'admin/competition/' + uuid + '/scorecalc', { headers });
+  }
+
+  createScoreCalcTemplate(uuid: string, template: ScoreCalcTemplate, secret: string): Observable<ScoreCalcTemplate> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<ScoreCalcTemplate>(this.api + 'admin/competition/' + uuid + '/scorecalc', template, { headers });
+  }
+
+  updateScoreCalcTemplate(uuid: string, id: number, template: ScoreCalcTemplate, secret: string): Observable<ScoreCalcTemplate> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.put<ScoreCalcTemplate>(this.api + 'admin/competition/' + uuid + '/scorecalc/' + id, template, { headers });
+  }
+
+  deleteScoreCalcTemplate(uuid: string, id: number, secret: string): Observable<any> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.delete(this.api + 'admin/competition/' + uuid + '/scorecalc/' + id, { headers });
+  }
+
+  getScoreCalcOptions(uuid: string, secret: string): Observable<ScoreCalcOptions> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.get<ScoreCalcOptions>(this.api + 'admin/competition/' + uuid + '/scorecalc/options', { headers });
+  }
+
+  previewScoreCalc(uuid: string, request: ScoreCalcPreviewRequest, secret: string): Observable<ScoreCalcPreviewResponse> {
+    const headers = new HttpHeaders({ 'x-access-token': secret });
+    return this.http.post<ScoreCalcPreviewResponse>(this.api + 'admin/competition/' + uuid + '/scorecalc/preview', request, { headers });
+  }
+
+}

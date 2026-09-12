@@ -1,10 +1,12 @@
 package ch.seidel.kutu.actors
 
+import ch.seidel.jwt.JsonWebToken
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.data.RegistrationAdmin
+import ch.seidel.kutu.actors.CompetitionCoordinatorClientActor
+import ch.seidel.kutu.data.{RegistrationAdmin, ResourceExchanger}
 import ch.seidel.kutu.domain.*
 import ch.seidel.kutu.http.Core.system
-import ch.seidel.kutu.http.JsonSupport
+import ch.seidel.kutu.http.{JsonSupport, JwtSupport}
 import ch.seidel.kutu.renderer.MailTemplates
 import ch.seidel.kutu.view.WettkampfInfo
 import org.apache.pekko.actor.SupervisorStrategy.Restart
@@ -47,7 +49,11 @@ case class RegistrationSyncActions(syncActions: List[SyncAction]) extends Regist
 
 case class RegistrationActionWithContext(action: RegistrationAction, context: String) extends RegistrationProtokoll
 
-class CompetitionRegistrationClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with KutuService {
+case class ApplySyncActions(override val wettkampfUUID: String, actions: List[SyncActionKey]) extends RegistrationAction
+case class ApplySyncActionsResponse(processed: Int, messages: List[String]) extends RegistrationEvent
+case class ApplySyncActionsComplete(replyTo: ActorRef, count: Int, messages: List[String], actions: List[SyncAction])
+
+class CompetitionRegistrationClientActor(wettkampfUUID: String) extends PersistentActor with JsonSupport with JwtSupport with KutuService {
   def shortName: String = self.toString().split("/").last.split("#").head + "/" + clientId()
 
   lazy val l: LoggingAdapter = Logging(system, this)
@@ -136,8 +142,22 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       if notificationEMail.equals(mail) then {
         if !syncState.emailApproved then {
           syncState = syncState.approved
+          val wk = readWettkampf(wettkampfUUID)
+          try {
+            val adminJwt = Some(JsonWebToken(Config.jwtHeader, setClaims(wk.uuid.toString, Int.MaxValue, isAdmin = true), Config.jwtSecretKey))
+            val bos = new java.io.ByteArrayOutputStream()
+            ResourceExchanger.exportWettkampfToStream(wk, bos, withSecret = true, adminJwt = adminJwt, adminOrigin = None)
+            val data = bos.toByteArray
+            // for debug reasons: new BufferedOutputStream(new FileOutputStream("./exported.zip")).write(data)
+            KuTuMailerActor.send(
+              MailTemplates.createBackupMail(wk, data)
+            )
+            log.info(s"EMail approved $mail: Backup EMail sent")
+          } catch {
+            case e: Exception =>
+              log.warning(s"EMail approved $mail but could not send backup: ${e.getMessage}")
+          }
           sender() ! EMailApproved(s"EMail $mail erfolgreich verifiziert", success = true)
-          log.info(s"EMail approved $mail")
         } else {
           sender() ! EMailApproved(s"EMail $mail wurde bereits verifiziert", success = true)
           log.info(s"EMail $mail was already approved")
@@ -181,6 +201,31 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
         syncActionReceivers.foreach(_ ! a)
         syncActionReceivers = List()
       }
+      CompetitionCoordinatorClientActor.publish(NotifyRegistrationSyncUpdated(wettkampfUUID), "Registration")
+
+    case ApplySyncActions(_, actionKeys) =>
+      val replyTo = sender()
+      val matched = matchActionsByKeys(actionKeys, syncState.syncActions)
+      Future {
+        val msgs = RegistrationAdmin.processSyncActionsLocally(wettkampfInfo, this, matched)
+        (matched.size, msgs)
+      }.flatMap { case (count, msgs) =>
+        RegistrationAdmin.computeSyncActions(wettkampfInfo, this).map { actions =>
+          ApplySyncActionsComplete(replyTo, count, msgs, actions)
+        }
+      }.onComplete {
+        case Success(result) => self ! result
+        case Failure(e) =>
+          log.error("Error applying sync actions", e)
+          replyTo ! ApplySyncActionsResponse(0, List(s"Error: ${e.getMessage}"))
+      }
+
+    case ApplySyncActionsComplete(replyTo, count, messages, actions) =>
+      this.syncState = syncState.resynced(actions, loadAllJudgesOfCompetition(UUID.fromString(wettkampf.uuid.get)).flatMap(_._2).toList)
+      this.syncActions = Some(syncState)
+      rescheduleSyncActionNotifier()
+      CompetitionCoordinatorClientActor.publish(NotifyRegistrationSyncUpdated(wettkampfUUID), "Registration")
+      replyTo ! ApplySyncActionsResponse(count, messages)
 
     case CheckSyncChangedForNotifier =>
       notifyChangesToEMail()
@@ -230,6 +275,30 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
     val wk = readWettkampf(wettkampfUUID)
     if wk.datum.toLocalDate.plusDays(1).isAfter(LocalDate.now()) then {
       this.rescheduleSyncNotificationCheck = context.system.scheduler.scheduleOnce(notifierInterval, self, CheckSyncChangedForNotifier)
+    }
+  }
+
+  private def matchActionsByKeys(keys: List[SyncActionKey], actions: List[SyncAction]): List[SyncAction] = {
+    keys.flatMap { key =>
+      def matchesRegistration(action: SyncAction): Boolean = action.verein.id == key.registrationId
+      def matchesCaption(action: SyncAction): Boolean = key.caption.contains(action.caption)
+      def matchesAthletId(action: SyncAction): Boolean = key.athletId.exists(id => action match {
+        case ar: AddRegistration => id == ar.suggestion.id || (ar.athletRegistrationId > 0 && id == ar.athletRegistrationId)
+        case mr: MoveRegistration => id == mr.suggestion.id || (mr.athletRegistrationId > 0 && id == mr.athletRegistrationId)
+        case rr: RemoveRegistration => id == rr.suggestion.id || (rr.athletRegistrationId > 0 && id == rr.athletRegistrationId)
+        case ra: RenameAthletAction => ra.athletReg.athletId.contains(id)
+        case am: AddMedia => am.athletReg.athletId.contains(id)
+        case um: UpdateAthletMediaAction => um.athletReg.athletId.contains(id)
+        case _ => false
+      })
+      actions.find {
+        case av: AddVereinAction => matchesRegistration(av)
+        case av: ApproveVereinAction => matchesRegistration(av)
+        case rv: RenameVereinAction => matchesRegistration(rv) && key.oldVereinId.contains(rv.oldVerein.id)
+        case action =>
+          val typeOk = key.actionType.isEmpty || key.actionType == action.getClass.getSimpleName
+          typeOk && matchesRegistration(action) && (matchesAthletId(action) || matchesCaption(action))
+      }
     }
   }
 }

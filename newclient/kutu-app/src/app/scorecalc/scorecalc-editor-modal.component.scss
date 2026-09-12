@@ -1,0 +1,31 @@
+.sc-result {
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.sc-endnote {
+  font-size: 1.3em;
+  color: #1a5276;
+}
+
+.sc-valid {
+  font-size: 0.8em;
+  word-break: break-all;
+}
+
+.preview-variable-item {
+  --padding-start: 8px;
+}
+
+.preview-variable-item ion-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  min-width: 110px;
+  margin-right: 8px;
+}
+
+.preview-variable-item ion-input {
+  flex: 1 1 auto;
+  min-width: 80px;
+  text-align: right;
+}

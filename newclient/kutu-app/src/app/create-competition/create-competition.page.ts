@@ -1,0 +1,470 @@
+import { Component, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { ToastController, NavController, ModalController } from '@ionic/angular';
+import { AdminBackendService } from '../services/admin-backend.service';
+import { SecretService } from '../services/secret.service';
+import { ProgrammRaw } from '../backend-types';
+import { formatDateForApi } from '../utils';
+import { firstValueFrom } from 'rxjs';
+import { AltersklassenEditorComponent } from '../editors/altersklassen-editor.component';
+import { RiegenRotationsregelEditorComponent } from '../editors/riegenrotationsregel-editor.component';
+import { PunktegleichstandsregelEditorComponent } from '../editors/punktegleichstandsregel-editor.component';
+import { TeamregelEditorComponent } from '../editors/teamregel-editor.component';
+import { TermsModalComponent } from './terms-modal.component';
+
+const PRESETS_ALTERSKLASSEN = [
+  { label: 'Ohne', value: '' },
+  { label: 'Turn10®', value: 'AK(BS)9-10,AK(BS)11-16,AK(OS)11-16/2,AK(BS+OS)17,AK(BS+OS)20,AK(BS+OS)25,AK(BS+OS)35,AK(BS+OS)50,AK(BS+OS)70' },
+  { label: 'DTB', value: 'AK6,AK18,AK22,AK25' },
+  { label: 'DTB Pflicht', value: 'AK8-9,AK11-19/2' },
+  { label: 'DTB Kür', value: 'AK13-19/2' },
+  { label: 'Individuell', value: '__custom__' },
+];
+
+const PRESETS_PUNKTEGLEICHSTANDSREGEL = [
+  { label: 'Ohne - Punktgleichstand => gleicher Rang', value: '' },
+  { label: 'GeTu Punktgleichstandsregel', value: 'Disziplin(Schaukelringe,Sprung,Reck)' },
+  { label: 'KuTu Punktgleichstandsregel', value: 'E-Note-Summe/D-Note-Summe/JugendVorAlter' },
+  { label: 'KuTu STV Punktgleichstandsregel', value: 'StreichWertungen(Endnote,Min)/StreichWertungen(E-Note,Min)/StreichWertungen(D-Note,Min)' },
+  { label: 'Individuell', value: '__custom__' },
+];
+
+const PRESETS_ROTATION = [
+  { label: 'Einfache Rotation', value: 'Einfach' },
+  { label: 'Verschiebende Rotation', value: 'Einfach/Rotierend' },
+  { label: 'Verschiebende Rotation alternierend invers', value: 'Einfach/Rotierend/AltInvers' },
+  { label: 'Individuell', value: '__custom__' },
+];
+
+const PRESETS_TEAMREGEL = [
+  { label: 'Keine Teams', value: '' },
+  { label: 'Aus Verein, drei Bestnoten pro Gerät, unbeschränkt', value: 'VereinGerät(3/*)' },
+  { label: 'Aus Verein, drei Bestnoten pro Gerät, max vier', value: 'VereinGerät(3/4)' },
+  { label: 'Aus Verein, drei Bestnoten pro Gerät, max vier, Kategorien K6+K7+KH+KD', value: 'VereinGerät[K6+K7+KD+KH](3/4)' },
+  { label: 'Aus Verein, drei Gesamt-Bestnoten, unbeschränkt', value: 'VereinGesamt(3/*)' },
+  { label: 'Aus Verein, drei Gesamt-Bestnoten, max vier', value: 'VereinGesamt(3/4)' },
+  { label: 'Aus Verein, Durchschnitt pro Gerät, unbeschränkt (M/W)', value: 'VereinGerät[M+W](avg/*/*)' },
+  { label: 'Aus Verein, Median pro Gerät, unbeschränkt (M/W)', value: 'VereinGerät[M+W](median/*/*)' },
+  { label: 'Aus Verband, drei Bestnoten pro Gerät, unbeschränkt', value: 'VerbandGerät(3/*)' },
+  { label: 'Aus Verband, drei Bestnoten pro Gerät, max vier', value: 'VerbandGerät(3/4)' },
+  { label: 'Aus Verband, drei Gesamt-Bestnoten, unbeschränkt', value: 'VerbandGesamt(3/*)' },
+  { label: 'Aus Verband, drei Gesamt-Bestnoten, max vier', value: 'VerbandGesamt(3/4)' },
+  { label: 'Individuell', value: '__custom__' },
+];
+
+interface FormModel {
+  datum: string;
+  titel: string;
+  programmId: number | null;
+  notificationEMail: string;
+  auszeichnung: number;
+  auszeichnungendnote: number;
+  altersklassen: string;
+  jahrgangsklassen: string;
+  punktegleichstandsregel: string;
+  rotation: string;
+  teamrule: string;
+  creatorName: string;
+  creatorAddress: string;
+  creatorPhone: string;
+  termsAccepted: boolean;
+}
+
+@Component({
+  templateUrl: 'create-competition.page.html',
+  standalone: false
+})
+export class CreateCompetitionPage {
+  readonly PRESETS_ALTERSKLASSEN = PRESETS_ALTERSKLASSEN;
+  readonly PRESETS_PUNKTEGLEICHSTANDSREGEL = PRESETS_PUNKTEGLEICHSTANDSREGEL;
+  readonly PRESETS_ROTATION = PRESETS_ROTATION;
+  readonly PRESETS_TEAMREGEL = PRESETS_TEAMREGEL;
+
+  form = signal<FormModel>({
+    datum: new Date().toISOString().split('T')[0],
+    titel: '',
+    programmId: null,
+    notificationEMail: '',
+    auszeichnung: 40,
+    auszeichnungendnote: 0,
+    altersklassen: '',
+    jahrgangsklassen: '',
+    punktegleichstandsregel: '',
+    rotation: '',
+    teamrule: '',
+    creatorName: '',
+    creatorAddress: '',
+    creatorPhone: '',
+    termsAccepted: false
+  });
+
+  patchForm(patch: Partial<FormModel>) {
+    this.form.update(f => ({ ...f, ...patch }));
+  }
+
+  programme = signal<ProgrammRaw[]>([]);
+  submitting = signal(false);
+  disziplinen: string[] = [];
+  kategorien: string[] = [];
+  selectedLogo: File | null = null;
+  logoPreview = signal<string | null>(null);
+
+  altersklassenPreset = '';
+  jahrgangsklassenPreset = '';
+  punktegleichstandsregelPreset = '';
+  rotationPreset = 'Einfach';
+  teamrulePreset = '';
+
+  private backend = inject(AdminBackendService);
+  private secretService = inject(SecretService);
+  private toastCtrl = inject(ToastController);
+  private nav = inject(NavController);
+  private modalCtrl = inject(ModalController);
+  private route = inject(ActivatedRoute);
+
+  get isEditMode(): boolean {
+    return !!this.editUuid;
+  }
+
+  editUuid: string | null = null;
+  private editSecret: string | null = null;
+  private editId: number | null = null;
+  private copyFromUuid: string | null = null;
+
+  ionViewWillEnter() {
+    this.editUuid = this.route.snapshot.paramMap.get('uuid');
+    this.route.queryParams.subscribe(params => {
+      this.copyFromUuid = params['copyFrom'] || null;
+    });
+    this.backend.getProgramme().subscribe(pgm => {
+      this.programme.set(pgm);
+      if (this.editUuid) {
+        const stored = this.secretService.getSecret(this.editUuid);
+        if (!stored) {
+          this.nav.navigateRoot('/admin/competitions');
+          return;
+        }
+        this.editSecret = stored.secret;
+        this.backend.getCompetitionDetails(this.editUuid, stored.secret).subscribe(data => {
+          this.editId = data.id;
+          this.patchForm({
+            datum: data.datum.split('T')[0],
+            titel: data.titel,
+            programmId: data.programmId,
+            notificationEMail: data.notificationEMail,
+            auszeichnung: data.auszeichnung > 100 ? data.auszeichnung / 100 : data.auszeichnung,
+            auszeichnungendnote: data.auszeichnungendnote,
+            altersklassen: data.altersklassen,
+            jahrgangsklassen: data.jahrgangsklassen,
+            punktegleichstandsregel: data.punktegleichstandsregel,
+            rotation: data.rotation,
+            teamrule: data.teamrule
+          });
+          this.onProgramChange();
+          this.backend.getCompetitionLogo(this.editUuid!, stored.secret).subscribe({
+            next: blob => {
+              if (this.logoPreview()) URL.revokeObjectURL(this.logoPreview()!);
+              this.logoPreview.set(URL.createObjectURL(blob));
+            },
+            error: () => { /* no logo exists — leave preview empty */ }
+          });
+        });
+      } else if (this.copyFromUuid) {
+        const stored = this.secretService.getSecret(this.copyFromUuid);
+        if (stored) {
+          this.backend.getCompetitionDetails(this.copyFromUuid, stored.secret).subscribe(data => {
+            this.patchForm({
+              titel: data.titel,
+              programmId: data.programmId,
+              notificationEMail: data.notificationEMail,
+              auszeichnung: data.auszeichnung,
+              auszeichnungendnote: data.auszeichnungendnote,
+              altersklassen: data.altersklassen,
+              jahrgangsklassen: data.jahrgangsklassen,
+              punktegleichstandsregel: data.punktegleichstandsregel,
+              rotation: data.rotation,
+              teamrule: data.teamrule
+            });
+            this.onProgramChange();
+            this.backend.getCompetitionLogo(this.copyFromUuid!, stored.secret).subscribe({
+              next: blob => {
+                this.selectedLogo = new File([blob], 'logo.png', { type: blob.type });
+                if (this.logoPreview()) URL.revokeObjectURL(this.logoPreview()!);
+                this.logoPreview.set(URL.createObjectURL(blob));
+              },
+              error: () => { /* no logo */ }
+            });
+          });
+        }
+      }
+    });
+  }
+
+  findMatchingPresets() {
+    this.altersklassenPreset = PRESETS_ALTERSKLASSEN.find(p => p.value === this.form().altersklassen)?.value || (this.form().altersklassen ? '__custom__' : this.altersklassenPreset);
+    this.jahrgangsklassenPreset = PRESETS_ALTERSKLASSEN.find(p => p.value === this.form().jahrgangsklassen)?.value || (this.form().jahrgangsklassen ? '__custom__' : this.jahrgangsklassenPreset);
+    this.punktegleichstandsregelPreset = PRESETS_PUNKTEGLEICHSTANDSREGEL.find(p => p.value === this.form().punktegleichstandsregel)?.value || (this.punktegleichstandsregelPreset ? '__custom__' : this.punktegleichstandsregelPreset);
+    this.rotationPreset = PRESETS_ROTATION.find(p => p.value === this.form().rotation)?.value || (this.form().rotation ? '__custom__' : this.rotationPreset);
+    this.teamrulePreset = PRESETS_TEAMREGEL.find(p => p.value === this.form().teamrule)?.value || (this.form().altersklassen ? '__custom__' : this.teamrulePreset);
+  }
+
+  onProgramChange() {
+    this.findMatchingPresets();
+    if (!this.form().programmId) {
+      this.disziplinen = [];
+      this.kategorien = [];
+      return;
+    }
+    this.backend.getDisziplinenForProgram(this.form().programmId!).subscribe(d => this.disziplinen = d);
+    this.backend.getKategorienForProgram(this.form().programmId!).subscribe(k => this.kategorien = k);
+  }
+
+  shortLabel(label: string): string {
+    if (label.length <= 25) return label;
+    return label.substring(0, 22) + '...';
+  }
+
+  applyPreset(field: keyof FormModel, presetValue: string, presets: { label: string; value: string }[]) {
+    const preset = presets.find(p => p.value === presetValue);
+    if (!preset) return;
+    if (preset.value === '__custom__') return;
+    console.log("setting " + preset.value + " on field " + field);
+    this.patchForm({ [field]: preset.value } as Partial<FormModel>);
+  }
+
+  isValid(): boolean {
+    if (this.isEditMode) {
+      return !!(
+        this.form().titel.trim() &&
+        this.form().programmId &&
+        this.form().notificationEMail.trim()
+      );
+    }
+    return !!(
+      this.form().titel.trim() &&
+      this.form().programmId &&
+      this.form().notificationEMail.trim() &&
+      this.form().creatorName.trim() &&
+      this.form().creatorAddress.trim() &&
+      this.form().creatorPhone.trim() &&
+      this.form().termsAccepted
+    );
+  }
+
+  async showTerms(event: Event) {
+    event.preventDefault();
+    const modal = await this.modalCtrl.create({
+      component: TermsModalComponent
+    });
+    modal.onDidDismiss().then(result => {
+      if (result !== null && result !== undefined) {
+        this.patchForm({ termsAccepted: result.data });
+      }
+    });
+    await modal.present();
+  }
+
+  async openAltersklassenEditor(field: 'altersklassen' | 'jahrgangsklassen') {
+    const modal = await this.modalCtrl.create({
+      component: AltersklassenEditorComponent,
+      componentProps: {
+        initialFormula: this.form()[field],
+        title: field === 'altersklassen' ? 'Altersklassen bearbeiten' : 'Jahrgangs-Altersklassen bearbeiten'
+      }
+    });
+    modal.onDidDismiss().then(result => {
+      if (result.data !== null && result.data !== undefined) {
+        this.patchForm({ [field]: result.data });
+      }
+    });
+    await modal.present();
+  }
+
+  async openPunktegleichstandsregelEditor() {
+    const modal = await this.modalCtrl.create({
+      component: PunktegleichstandsregelEditorComponent,
+      componentProps: {
+        initialFormula: this.form().punktegleichstandsregel,
+        availableDisziplinen: this.disziplinen
+      }
+    });
+    modal.onDidDismiss().then(result => {
+      if (result.data !== null && result.data !== undefined) {
+        this.patchForm({ punktegleichstandsregel: result.data });
+      }
+    });
+    await modal.present();
+  }
+
+  async openRiegenRotationsregelEditor() {
+    const modal = await this.modalCtrl.create({
+      component: RiegenRotationsregelEditorComponent,
+      componentProps: {
+        initialFormula: this.form().rotation
+      }
+    });
+    modal.onDidDismiss().then(result => {
+      if (result.data !== null && result.data !== undefined) {
+        this.patchForm({ rotation: result.data });
+      }
+    });
+    await modal.present();
+  }
+
+  async openTeamregelEditor() {
+    const modal = await this.modalCtrl.create({
+      component: TeamregelEditorComponent,
+      componentProps: {
+        initialFormula: this.form().teamrule,
+        availableCategories: this.kategorien
+      }
+    });
+    modal.onDidDismiss().then(result => {
+      if (result.data !== null && result.data !== undefined) {
+        this.patchForm({ teamrule: result.data });
+      }
+    });
+    await modal.present();
+  }
+
+  onLogoSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedLogo = input.files[0];
+      this.logoPreview.set(URL.createObjectURL(this.selectedLogo));
+    }
+  }
+
+  removeLogo() {
+    this.selectedLogo = null;
+    if (this.logoPreview()) {
+      URL.revokeObjectURL(this.logoPreview()!);
+      this.logoPreview.set(null);
+    }
+  }
+
+  async submit() {
+    if (this.submitting()) return;
+    this.submitting.set(true);
+
+    try {
+      const datumStr = formatDateForApi(new Date(this.form().datum + 'T12:00:00.000Z'));
+
+      if (this.isEditMode && this.editUuid && this.editSecret && this.editId) {
+        // if request.auszeichnung.isValidInt then request.auszeichnung.toInt else (request.auszeichnung * 100).toInt,
+        await firstValueFrom(
+          this.backend.updateCompetition(this.editUuid, this.editSecret, {
+            id: this.editId,
+            datum: datumStr,
+            titel: this.form().titel,
+            programmId: this.form().programmId!,
+            notificationEMail: this.form().notificationEMail,
+            auszeichnung: Number.isInteger(this.form().auszeichnung) ? this.form().auszeichnung : Math.trunc(this.form().auszeichnung * 100) || 40,
+            auszeichnungendnote: this.form().auszeichnungendnote || 0,
+            altersklassen: this.form().altersklassen,
+            jahrgangsklassen: this.form().jahrgangsklassen,
+            punktegleichstandsregel: this.form().punktegleichstandsregel,
+            rotation: this.form().rotation,
+            teamrule: this.form().teamrule
+          })
+        );
+
+        if (this.selectedLogo) {
+          try {
+            await firstValueFrom(this.backend.uploadLogo(this.editUuid, this.editSecret, this.selectedLogo));
+          } catch {
+            const toast = await this.toastCtrl.create({
+              message: 'Logo konnte nicht hochgeladen werden.',
+              duration: 4000,
+              color: 'warning'
+            });
+            await toast.present();
+          }
+        }
+
+        const toast = await this.toastCtrl.create({
+          message: `Wettkampf "${this.form().titel}" gespeichert.`,
+          duration: 3000,
+          color: 'success'
+        });
+        await toast.present();
+        this.nav.navigateRoot('/admin/competitions');
+        return;
+      }
+
+      const response = await firstValueFrom(
+        this.backend.createCompetition({
+          datum: datumStr,
+          titel: this.form().titel,
+          programmId: this.form().programmId!,
+          notificationEMail: this.form().notificationEMail,
+          auszeichnung: this.form().auszeichnung || 40,
+          auszeichnungendnote: this.form().auszeichnungendnote || 0,
+          altersklassen: this.form().altersklassen,
+          jahrgangsklassen: this.form().jahrgangsklassen,
+          punktegleichstandsregel: this.form().punktegleichstandsregel,
+          rotation: this.form().rotation,
+          teamrule: this.form().teamrule,
+          creatorName: this.form().creatorName,
+          creatorAddress: this.form().creatorAddress,
+          creatorPhone: this.form().creatorPhone,
+          termsAccepted: true,
+          termsVersion: '1.0',
+          copyFrom: this.copyFromUuid || undefined
+        })
+      );
+
+      this.secretService.saveSecret({
+        uuid: response.uuid,
+        titel: response.titel,
+        datum: response.datum,
+        secret: response.secret
+      });
+
+      if (this.selectedLogo) {
+        try {
+          await firstValueFrom(this.backend.uploadLogo(response.uuid, response.secret, this.selectedLogo));
+        } catch {
+          const toast = await this.toastCtrl.create({
+            message: 'Wettkampf angelegt, aber Logo konnte nicht hochgeladen werden.',
+            duration: 4000,
+            color: 'warning'
+          });
+          await toast.present();
+        }
+      }
+
+      const toast = await this.toastCtrl.create({
+        message: `Wettkampf "${response.titel}" angelegt! Prüfe dein Email-Postfach zur Bestätigung.`,
+        duration: 5000,
+        color: 'success',
+        buttons: [
+          {
+            text: 'Download ZIP',
+            handler: () => {
+              this.backend.downloadCompetitionZip(response.uuid, response.secret)
+                .subscribe(blob => {
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = response.titel + '.zip';
+                  a.click();
+                });
+            }
+          }
+        ]
+      });
+      await toast.present();
+      this.nav.navigateRoot('/admin/competitions');
+    } catch (e: any) {
+      const detail = typeof e.error === 'string' ? e.error : e.message || 'Unbekannter Fehler';
+      const toast = await this.toastCtrl.create({
+        message: 'Fehler: ' + detail,
+        duration: 5000,
+        color: 'danger'
+      });
+      await toast.present();
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+}

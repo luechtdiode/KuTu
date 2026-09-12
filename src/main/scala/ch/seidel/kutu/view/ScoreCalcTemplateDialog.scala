@@ -256,11 +256,20 @@ class ScoreCalcTemplatedialog(actionTitle: String, templateEditor: ScoreCalcTemp
     //add(txtValidState, 0, 12, 2, 1)
   }
 
-  val btnOK: Button = new Button("OK") {
+  val btnOK: Button = new Button("Speichern") {
     onAction = (event: ActionEvent) => {
-      onSelected(
-        templateEditor.context.updated(templateEditor.commit)
-      )
+      // Sicherheitsabfrage, ob bereits erfasste Wertungen zurückgesetzt werden sollen
+      val alert = new Alert(Alert.AlertType.Confirmation) {
+        title = "Formular speichern - Sicherheitsabfrage"
+        headerText = "Bereits erfasste Wertungen zu den im Formular angegebenen Disziplinen werden beim Speichern der Formulare zurückgesetzt. Soll das Formular wirklich gespeichert werden?"
+      }
+      alert.showAndWait() match {
+        case Some(ButtonType.OK) =>
+          onSelected(
+            templateEditor.context.updated(templateEditor.commit)
+          )
+        case _ => // Do nothing
+      }
     }
   }
 

@@ -47,5 +47,5 @@ trait WettkampfResultMapper extends DisziplinResultMapper {
   })
 
   implicit def getWettkampfStats: GetResult[WettkampfStats] = GetResult(using r => WettkampfStats(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<))
-  implicit def getWettkampfMetaData: GetResult[WettkampfMetaData] = GetResult(using r => WettkampfMetaData(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<?, mapBigDecimalOption(r), mapBigDecimalOption(r)))
+  implicit def getWettkampfMetaData: GetResult[WettkampfMetaData] = GetResult(using r => WettkampfMetaData(r.<<, r.<<, r.<<, r.<<, r.<<, r.<<, r.<<?, mapBigDecimalOption(r), mapBigDecimalOption(r), r.<<?, r.<<?, r.<<?, r.<<, r.<<?, r.<<?))
 }

@@ -109,6 +109,53 @@ object MailTemplates {
       wettkampf.notificationEMail)
   }
 
+  def createBackupMail(wettkampf: Wettkampf, zipBytes: Array[Byte]): Mail = {
+    val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
+    val logofile = ServerPrintUtil.locateLogoFile(logodir)
+    val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
+    val attachments = List((s"${wettkampf.easyprint}.zip", zipBytes, "application/zip"))
+    MultipartMail(s"Kutuapp Wettkampf-Backup (${wettkampf.easyprint})",
+      s"""Hallo ${wettkampf.notificationEMail}
+         |
+         |Dein Wettkampf '${wettkampf.easyprint}' wurde erfolgreich verifiziert.
+         |Anbei findest du ein Backup des Wettkampfs (noch leer, aber mit den Zugangsdaten zu Deinem Wettkampf auf dem Server).
+         |
+         |Damit kannst du den Wettkampf lokal in der Wettkampf-App importieren. 
+         |Danach lässt sich die Verbindung des Wettkampfs mit dem Server wieder herstellen.
+         |
+         |LG, die Kutuapp
+         |
+         |PS: Dies ist eine automatisch versendete EMail. Bitte nicht auf diese Mail antworten.""".stripMargin,
+      s"""<html>$htmlhead<body>
+         |    <div class=textbody>
+         |      <div class=headline>
+         |        $logoHtml
+         |        <div class=title><h4>${escaped(wettkampf.easyprint)}</h4></div>
+         |        <div class=subtitle>Wettkampf-Backup</br></div>
+         |      </div>
+         |      <div class="textblock">
+         |        <h4>Hallo ${escaped(wettkampf.notificationEMail)}</h4>
+         |        <p>
+         |          Dein Wettkampf '${escaped(wettkampf.easyprint)}' wurde erfolgreich verifiziert.
+         |        </p><p>
+         |          Anbei findest du ein Backup des Wettkampfs (noch leer, aber mit den Zugangsdaten zu Deinem Wettkampf auf dem Server).
+         |       </p><p>
+         |          Damit kannst du den Wettkampf lokal in der Wettkampf-App importieren.<br>
+         |          Danach lässt sich die Verbindung des Wettkampfs mit dem Server wieder herstellen.
+         |        </p><p>
+         |          LG, die KuTu-App
+         |        </p>
+         |        <hr>
+         |        <p>
+         |           <b>PS:</b> <em>Dies ist eine automatisch versendete EMail. Bitte nicht auf diese Mail antworten.</em>
+         |        </p>
+         |      </div>
+         |    </div>
+         |</body></html>""".stripMargin,
+      wettkampf.notificationEMail,
+      attachments)
+  }
+
   def createDonateMail(wettkampf: Wettkampf, link: String, wkStats: WettkampfStats, preisPerTn: BigDecimal, betrag: BigDecimal, clubs: Int, teilnehmer: Int): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = ServerPrintUtil.locateLogoFile(logodir)

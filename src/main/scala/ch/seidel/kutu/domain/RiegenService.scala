@@ -81,6 +81,27 @@ trait RiegenService extends DBService with RiegenResultMapper {
     }, Duration.Inf)
   }
 
+  def cleanAllRiegenDurchgaenge(wettkampfid: Long, durchgaenge: Set[String]): Unit = {
+    Await.result(database.run{(
+      sqlu"""
+                delete from durchgang where
+                name in (#${durchgaenge.map(d => s"'$d'").mkString(",")})
+                and wettkampf_id=$wettkampfid
+        """ >>
+      sqlu"""
+                delete from durchgangstation where
+                durchgang in (#${durchgaenge.map(d => s"'$d'").mkString(",")})
+                and wettkampf_id=$wettkampfid
+        """ >>
+      sqlu"""
+                delete from riege where
+                durchgang in (#${durchgaenge.map(d => s"'$d'").mkString(",")})
+                and kind = 1 -- empty riege
+                and wettkampf_id=$wettkampfid
+        """).transactionally
+    }, Duration.Inf)
+  }
+
   def updateOrinsertRiegen(riegen: Iterable[RiegeRaw]): Unit = {
     val riegenList: List[(Long, Iterable[RiegeRaw])] = riegen.groupBy(_.wettkampfId).toList
     def insertRiegen(rs: Iterable[RiegeRaw]): DBIOAction[Iterable[Int], NoStream, Effect] = DBIO.sequence(for
@@ -127,12 +148,26 @@ trait RiegenService extends DBService with RiegenResultMapper {
                     zp.wettkampf_id = $wettkampfId
                     AND NOT EXISTS (SELECT 1 FROM durchgang dd WHERE dd.wettkampf_id = zp.wettkampf_id and dd.name = zp.durchgang)
         """>>
+        sqlu"""
+                DELETE FROM riege
+                WHERE wettkampf_id = $wettkampfId
+                  AND kind = 1
+                  AND durchgang IS NOT NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM riege r2
+                    INNER JOIN wertung w ON r2.wettkampf_id = w.wettkampf_id AND (r2.name = w.riege OR r2.name = w.riege2)
+                    WHERE r2.durchgang = riege.durchgang
+                      AND r2.wettkampf_id = riege.wettkampf_id
+                    AND r2.kind = 0
+                )
+          """ >>
       sqlu"""
                 delete from durchgang
                 where wettkampf_id = $wettkampfId
                 and durchgangType = 1
                 and not exists (
                   select 1 from riege r where r.durchgang = durchgang.name
+                     and r.wettkampf_id = durchgang.wettkampf_id
                 )
             """
 
@@ -164,7 +199,7 @@ trait RiegenService extends DBService with RiegenResultMapper {
   }
 
   def findAndStoreMatchingRiege(riege: RiegeRaw): RiegeRaw = {
-    val existingRiegen = selectRiegenRaw(riege.wettkampfId)
+    val existingRiegen = selectRiegenRaw(riege.wettkampfId).filter(r => r.durchgang.nonEmpty && r.start.nonEmpty && r.durchgang.get.nonEmpty && r.start.get > 0)
     val riegenParts = riege.r.split(",")
     val scoreSchwellwert = math.pow(riegenParts.length -1d, 10d).intValue
     val scoreSchwellwert2 = math.pow(riegenParts.length -2d, 10d).intValue
@@ -266,6 +301,11 @@ trait RiegenService extends DBService with RiegenResultMapper {
        sql"""select r.wettkampf_id, r.name, r.durchgang, r.start, r.kind
              from riege r
              where wettkampf_id=$wettkampfId
+             union
+             select distinct w.wettkampf_id, w.riege, '' as durchgang, 0 as start, 0 as kind
+             from wertung w
+             where w.wettkampf_id=$wettkampfId and w.riege is not null
+               and not exists (select 1 from riege r2 where r2.name = w.riege and r2.wettkampf_id = w.wettkampf_id)
           """.as[RiegeRaw].withPinnedSession
     }, Duration.Inf).toList
   }

@@ -4,9 +4,9 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.8.4"
+ThisBuild / scalaVersion := "3.9.0"
 ThisBuild / organization := "ch.seidel"
-ThisBuild / version := "2.3.26"
+ThisBuild / version := "2.4.0"
 
 // logLevel := Level.Error
 
@@ -16,8 +16,8 @@ name := "KuTu"
 val scalafxV     = "26.0.0-R38"
 val javafxV      = "27-ea+21" // current issues with macos - see https://youtrack.jetbrains.com/articles/SUPPORT-A-860/How-to-fix-JavaFX-running-crash-issue-NSInternalInconsistencyException-on-macOS?_gl=1*173yxy7*_ga*NTcyODg1ODk1LjE3NjczMDM1MTc.*_ga_9J976DJZ68*czE3NjczMDM1MTYkbzEkZzAkdDE3NjczMDM1MTgkajYwJGwwJGgw*_gcl_au*MjI4ODI3MTEwLjE3NjczMDM1MTk.*FPAU*MjI4ODI3MTEwLjE3NjczMDM1MTk.&_cl=MTsxOzE7V0dydFNwb0tnM2w0eHZuUUdzMUxiVjFYS1JaV3NIQjNMQmxKcHViMUtaUDNRYjlkcFFjUjBaa0NVczdwOWZtbjs=
                               // 25.0.1 runs stable on macOS but has other issues with Treetable JavaFX controls
-val pekkoHttpV   = "1.3.0"
-val pekkoV       = "1.6.0"
+val pekkoHttpV   = "1.4.0"
+val pekkoV       = "1.7.0"
 val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
 val gatlingV     = "3.15.1"
@@ -116,7 +116,7 @@ libraryDependencies ++= Seq(
 
   // JSON / Jackson / Spray
   "com.fasterxml.jackson.core" % "jackson-core" % "2.22.2",
-  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.1",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.2",
 
   // Database drivers / utils
   "org.xerial" % "sqlite-jdbc" % "3.53.4.0",
@@ -135,7 +135,7 @@ libraryDependencies ++= Seq(
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.4",
-  "org.simplejavamail" % "simple-java-mail" % "8.12.6",
+  "org.simplejavamail" % "simple-java-mail" % "9.3.2",
   "org.apache.poi" % "poi-ooxml" % "5.5.1",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
@@ -159,7 +159,7 @@ libraryDependencies ++= Seq(
   "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingV % Test,
   "io.gatling"            % "gatling-test-framework"    % gatlingV % Test,
   // Scala 3 std lib
-  "org.scala-lang" %% "scala3-library" % "3.8.4"
+  "org.scala-lang" %% "scala3-library" % "3.9.0"
 )
 
 enablePlugins(GatlingPlugin)
@@ -182,7 +182,8 @@ libraryDependencies ++= Seq(
 )
 
 // Task: prepareJpackage - copies the compiled jar and all dependencies (including JavaFX) into target/package/libs
-prepareJpackage := {
+// Def.uncached: side-effecting task; sbt 2.0 would otherwise serve a disk-cache hit and skip the body.
+prepareJpackage := Def.uncached {
   // Extract all the necessary values using the modern slash syntax
   val log = streams.value.log
   val t = baseDirectory.value / "target"
@@ -209,7 +210,8 @@ Test / javaOptions ++= Seq(
 // ============================================================================
 
 
-jpackageApp := {
+// Def.uncached: side-effecting task; sbt 2.0 would otherwise serve a disk-cache hit and skip the body.
+jpackageApp := Def.uncached {
   // Extract all the necessary values using the modern slash syntax
   val log = streams.value.log
   val baseDir = baseDirectory.value
@@ -235,3 +237,11 @@ Compile / mainClass := Some("ch.seidel.kutu.KuTuApp")
 
 // Enable recommended forked test reporter for better compatibility
 Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
+
+// Scala 3 native coverage (scala.runtime.coverage.Invoker) never creates its data dir and
+// writes one measurement file per thread. sbt 2's forked test runner spawns fresh pool threads,
+// so ensure scoverage-data exists before suites start to avoid FileNotFoundException/ExceptionInInitializerError.
+Test / testOptions += {
+  val scoverageDir = crossTarget.value / "scoverage-data"
+  Tests.Setup(() => IO.createDirectory(scoverageDir))
+}
