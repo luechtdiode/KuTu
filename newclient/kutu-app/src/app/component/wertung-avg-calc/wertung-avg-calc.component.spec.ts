@@ -8,7 +8,7 @@ import { By } from '@angular/platform-browser';
 import { WertungAvgCalcComponent } from './wertung-avg-calc.component';
 
 @Component({
-  selector: 'test-host',
+  selector: 'app-test-host',
   standalone: false,
   template: `
     <form>
@@ -23,7 +23,7 @@ class TestHostComponent {
 }
 
 @Component({
-  selector: 'collision-host',
+  selector: 'app-collision-host',
   standalone: false,
   template: `
     <form>
@@ -38,7 +38,7 @@ class CollisionHostComponent {
 }
 
 @Component({
-  selector: 'standalone-host',
+  selector: 'app-standalone-host',
   standalone: false,
   template: `
     <form>
