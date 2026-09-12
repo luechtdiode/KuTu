@@ -1,7 +1,0 @@
-{
-  "name": "resultcatcher",
-  "integrations": {
-    "capacitor": {}
-  },
-  "type": "angular"
-}
