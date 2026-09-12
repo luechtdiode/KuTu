@@ -166,15 +166,15 @@ enablePlugins(GatlingPlugin)
 
 // Add parser combinators: choose correct artifact for current scalaVersion
 libraryDependencies ++= {
-  Seq("org.scala-lang.modules" % "scala-parser-combinators_3" % "2.4.0")
+  Seq("org.scala-lang.modules" % "scala-parser-combinators_3" % "2.5.0")
 }
 
 // Exclude the 2.13 suffixed parser-combinators globally to avoid mixed-resolution during Scala 3 builds
 excludeDependencies += ExclusionRule(organization = "org.scala-lang.modules", name = "scala-parser-combinators_2.13")
 
 // Force consistent versions for both suffixed artifacts
-dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_3" % "2.4.0"
-//dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_2.13" % "2.4.0"
+dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_3" % "2.5.0"
+//dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_2.13" % "2.5.0"
 
 // Add JavaFX platform-specific artifacts (classifier based on OS)
 libraryDependencies ++= Seq(
