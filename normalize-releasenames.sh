@@ -18,5 +18,6 @@ normalizeReleaseName() {
 
 normalizeReleaseName macOS-x86_64 pkg
 normalizeReleaseName macOS-aarch64 pkg
+normalizeReleaseName Linux-aarch64 deb
 normalizeReleaseName Linux deb
 normalizeReleaseName Win64 msi

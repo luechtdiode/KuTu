@@ -43,6 +43,8 @@ object JpackageExecutor {
         ("macOS-aarch64", "pkg", "AppIcon.icns")
     else if (osName.contains("mac"))
         ("macOS-x86_64", "pkg", "AppIcon.icns")
+    else if (osName.contains("linux") && osArch.contains("aarch64"))
+        ("Linux-aarch64", "deb", "app-logo.png")
     else 
         ("Linux", "deb", "app-logo.png")
 
