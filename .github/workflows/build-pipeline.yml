@@ -132,6 +132,51 @@ jobs:
             target/Linux/*.deb
             target/Linux/*.rpm
 
+  build-lnx-arm-distribution:
+    needs: build-app
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # We must fetch at least the immediate parents so that if this is
+          # a pull request then we can checkout the head.
+          fetch-depth: 2
+
+      - run: git checkout $(git log --branches -1 --pretty=format:'%D' | sed 's/.*, //g')
+      - name: Cleanup
+        run: |
+          rm -rf src/main/resources/app
+        shell: bash
+      - name: Download client modifications
+        uses: actions/download-artifact@v8
+        with:
+          name: src
+          path: src/main/resources/app
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
+      - name: Package-Build
+        run: |
+          sbt -v "packageApp"
+        shell: bash
+        env:
+          OS: Linux
+      - name: Prepare Releasenames
+        run: |
+          . ./normalize-releasenames.sh
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-arm-app
+          path: |
+            target/Linux-aarch64/*.deb
+
   build-win64-distribution:
     needs: build-app
     runs-on: windows-latest
@@ -333,7 +378,7 @@ jobs:
 
   upload-release-assets:
     name: Upload Release-Assets and Cleanup Workflow-Files
-    needs: [build-lnx-distribution, build-win64-distribution, build-osx-intel-distribution,build-osx-arm-distribution, build-docker-distribution]
+    needs: [build-lnx-distribution, build-lnx-arm-distribution, build-win64-distribution, build-osx-intel-distribution,build-osx-arm-distribution, build-docker-distribution]
     runs-on: ubuntu-latest
     steps:
       - uses: geekyeggo/delete-artifact@v6
@@ -355,5 +400,6 @@ jobs:
             dist/osx-intel-app/*
             dist/osx-arm-app/*
             dist/linux-app/*
+            dist/linux-arm-app/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

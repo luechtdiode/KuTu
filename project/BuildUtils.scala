@@ -50,6 +50,7 @@ object BuildUtils {
     if (os.contains("win")) "win"
     else if (os.contains("mac") && arch.contains("aarch64")) "mac-aarch64"
     else if (os.contains("mac")) "mac"
+    else if (os.contains("linux") && arch.contains("aarch64")) "linux-aarch64"
     else "linux"
   }
 
