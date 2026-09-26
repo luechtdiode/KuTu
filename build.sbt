@@ -116,7 +116,7 @@ libraryDependencies ++= Seq(
 
   // JSON / Jackson / Spray
   "com.fasterxml.jackson.core" % "jackson-core" % "2.22.2",
-  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.2",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.3",
 
   // Database drivers / utils
   "org.xerial" % "sqlite-jdbc" % "3.53.4.0",
