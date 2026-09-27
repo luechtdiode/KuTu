@@ -156,8 +156,8 @@ jobs:
       - name: Setup JDK
         uses: actions/setup-java@v5
         with:
-          distribution: temurin
-          java-version: 25
+          distribution: 'zulu' # <--- Azul unterstützt 64kb anstatt nur 4kb pagesize
+          java-version: '25'
           cache: sbt
       - name: Setup sbt launcher
         uses: sbt/setup-sbt@v1
