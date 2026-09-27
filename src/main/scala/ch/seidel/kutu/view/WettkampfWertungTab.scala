@@ -382,7 +382,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if evt.rowValue != null && evt.rowValue.size > index then {
             val disciplin = evt.rowValue(index)
-            if disciplin.init.defaultVariables.isEmpty then {
+            if hasNoFormTemplate || disciplin.init.defaultVariables.isEmpty then {
               if evt.newValue.toString == "NaN" then {
                 disciplin.noteD.value = evt.newValue
                 disciplin.noteE.value = evt.newValue
@@ -448,7 +448,7 @@ class WettkampfWertungTab(wettkampfmode: BooleanProperty, programm: Option[Progr
         onEditCommit = (evt: CellEditEvent[IndexedSeq[WertungEditor], Double]) => {
           if evt.rowValue != null && evt.rowValue.size > index then {
             val disciplin = evt.rowValue(index)
-            if disciplin.init.defaultVariables.isEmpty then {
+            if hasNoFormTemplate || disciplin.init.defaultVariables.isEmpty then {
               if evt.newValue.toString == "NaN" then {
                 disciplin.noteD.value = evt.newValue
                 disciplin.noteE.value = evt.newValue
