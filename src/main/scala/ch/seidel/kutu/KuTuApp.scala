@@ -2175,9 +2175,9 @@ object KuTuApp extends JFXApp3 with KutuService with JsonSupport with JwtSupport
       text <== createStringBinding(() => {
         ConnectionStates.connectedWithProperty.value match {
           case "" =>
-            s"Server: ${Config.remoteBaseUrl}offline\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
+            s"Server: ${Config.remoteBaseUrl} offline\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
           case uuid =>
-            s"Server: ${Config.remoteBaseUrl}online\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
+            s"Server: ${Config.remoteBaseUrl} online\nVersion: ${Config.appFullVersion}, Built: ${Config.builddate}"
         }
       }, ConnectionStates.connectedWithProperty, LocalServerStates.localServerProperty, ConnectionStates.remoteServerProperty)
       items += makeSelectBackendMenu

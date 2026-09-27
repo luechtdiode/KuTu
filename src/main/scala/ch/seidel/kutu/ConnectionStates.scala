@@ -48,6 +48,7 @@ object ConnectionStates {
 
   def switchRemoteHost(host: String): Unit = {
     Config.setRemoteHost(host)
+    _remoteServerProperty.setValue("")
     _remoteServerProperty.setValue(Config.remoteHost)
   }
 }
