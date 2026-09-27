@@ -71,29 +71,6 @@ Test / javaOptions ++= Seq(
   "--enable-native-access=ALL-UNNAMED"
 )
 
-// Filter some source files ===========================================================
-// Define a directory to hold the filtered resources temporarily in the target folder
-val filteredResourcesDir = settingKey[File]("directory for filtered resources")
-Compile / filteredResourcesDir := crossTarget.value / "sbt-filtered-resources" / "main"
-
-// Define the task using the implementation from the external file
-Compile / filterApplicationConfTask := {
-  filterApplicationConfImpl(
-    (Compile / resourceDirectory).value,
-    (Compile / filteredResourcesDir).value,
-    streams.value.log,
-    version.value
-  )
-}
-// Add the output of the filtering task to the *managed* resources
-Compile / managedResources ++= (Compile / filterApplicationConfTask).value
-
-// Exclude the original 'application.conf' from the *unmanaged* resources
-Compile / unmanagedResources / excludeFilter := {
-  (Compile / unmanagedResources / excludeFilter).value || "application.conf"
-}
-// ============================================================================
-
 // Basic dependency translation (try to keep the same artifacts where possible)
 libraryDependencies ++= Seq(
   // ScalaFX (cross-built)
@@ -180,6 +157,9 @@ dependencyOverrides += "org.scala-lang.modules" % "scala-parser-combinators_3" %
 libraryDependencies ++= Seq(
   ("org.openjfx" % "javafx-controls" % javafxV).classifier(BuildUtils.javafxClassifier)
 )
+
+// Task: filterApplicationConf
+BuildUtils.filterApplicationConfSettings
 
 // Task: prepareJpackage - copies the compiled jar and all dependencies (including JavaFX) into target/package/libs
 // Def.uncached: side-effecting task; sbt 2.0 would otherwise serve a disk-cache hit and skip the body.

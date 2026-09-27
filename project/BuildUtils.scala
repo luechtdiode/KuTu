@@ -56,7 +56,7 @@ object BuildUtils {
   // A full custom task definition that can be imported into build.sbt
   @transient
   val filterApplicationConfTask = taskKey[Seq[File]]("Filters application.conf and copies it to a managed location")
-
+    
   def filterApplicationConfImpl(
       resourceDir: File, 
       targetDir: File, 
@@ -84,4 +84,34 @@ object BuildUtils {
     // Return the single generated file
     Seq(targetConf)
   }
+
+  def filterApplicationConfSettings: Seq[Setting[?]] = Seq(
+    filterApplicationConfTask := {
+      val log = streams.value.log
+      val resourcesDir = (Compile / sourceDirectory).value / "resources"
+      val targetDir = (Compile / resourceManaged).value
+      filterApplicationConfImpl(
+        resourcesDir,
+        targetDir,
+        log,
+        version.value
+      )
+    },
+    
+    // 1. Die substituierte Datei zu den generierten Ressourcen hinzufügen
+    Compile / resourceGenerators += filterApplicationConfTask.taskValue,
+    
+    // 2. FÜR sbt 2 KORRIGIERT: Duplikate direkt beim finalen JAR-Packprozess (packageBin) filtern
+    Compile / packageBin / mappings := {
+      val originalMappings = (Compile / packageBin / mappings).value
+      
+      originalMappings.filterNot { case (fileRef, path) =>
+        // 'path' ist der Pfad im JAR-File (z.B. "application.conf")
+        // 'fileRef.id' zeigt im sbt 2 VFS an, woher die Datei kommt.
+        // Wir filtern NUR die unmodifizierte Datei aus dem Quellordner (src/main) heraus.
+        path == "application.conf" && fileRef.id.contains("src/main")
+      }
+    }
+  )
+
 }
