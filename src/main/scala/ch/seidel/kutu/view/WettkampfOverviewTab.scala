@@ -6,6 +6,7 @@ import ch.seidel.kutu.Config.{homedir, remoteHostOrigin}
 import ch.seidel.kutu.KuTuApp.{controlsView, getStage, modelWettkampfModus, selectedWettkampfSecret}
 import ch.seidel.kutu.data.{ByAltersklasse, ByJahrgangsAltersklasse}
 import ch.seidel.kutu.domain.*
+import ch.seidel.kutu.http.TermsClient
 import ch.seidel.kutu.renderer.{CompetitionsJudgeToHtmlRenderer, FilenameDefault, ServerPrintUtil, WettkampfOverviewToHtmlRenderer}
 import javafx.scene.text.FontSmoothingType
 import scalafx.Includes.*
@@ -121,16 +122,17 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
    * einem lokalen Server, weil der Server die Metadatenlage und den Altbestand-Fall entscheidet.
    */
   private def requestAdminToken(secret: String, creator: Option[CreatorMetaData]): Unit = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    import scala.util.control.NonFatal
     import AdminTokenRepair.NextStep
     import ch.seidel.kutu.http.HTTPFailure
+
+    import scala.concurrent.ExecutionContext.Implicits.global
     import scala.concurrent.duration.*
+    import scala.util.control.NonFatal
     val wk = wettkampf.toWettkampf
     Future {
       val result: Either[Option[Int], String] = try {
         Right(scala.concurrent.Await.result(
-          KuTuServer.httpPostAdminTokenRequest(wk.uuid.get, secret, creator), 30.seconds).token.trim)
+          KuTuApp.httpPostAdminTokenRequest(wk.uuid.get, secret, creator), 30.seconds).token.trim)
       } catch {
         case failure: HTTPFailure => Left(Some(failure.status.intValue))
         case NonFatal(_) => Left(None)
@@ -146,7 +148,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             AdminTokenRepair.nextStep(status, creatorSent = creator.isDefined) match {
               case NextStep.OpenBrowser => showWebUiAdmin(secret)
               case NextStep.CollectCreatorData =>
-                val termsInfo = KuTuServer.fetchTerms().value.get.get
+                val termsInfo = TermsClient.fetchTerms()
                 CreatorMetaDataDialog.ask(getStage, termsInfo).foreach { metaData =>
                   requestAdminToken(secret, Some(metaData))
                 }

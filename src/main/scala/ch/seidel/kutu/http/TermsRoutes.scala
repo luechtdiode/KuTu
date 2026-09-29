@@ -15,7 +15,26 @@ import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
 import org.apache.pekko.util.ByteString
 import spray.json.*
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+
+object TermsClient extends Directives with SprayJsonSupport with JsonSupport {
+  def fetchTerms(): TermsInfo = {
+    import Core.*
+    val info = httpGetClientRequest(s"$remoteAdminBaseUrl/api/terms").flatMap {
+      case org.apache.pekko.http.scaladsl.model.HttpResponse(StatusCodes.OK, headers, entity, _) =>
+        Unmarshal(entity).to[TermsInfo]
+      case _ => Future {
+        TermsInfo(
+          version = Terms.version,
+          stand = Terms.stand,
+          title = Terms.title,
+          blocks = Terms.blocks.map(block => TermsBlock(block.kind.toString, block.text))
+        )
+      }
+    }
+    Await.result(info, scala.concurrent.duration.Duration.Inf)
+  }
+}
 
 /**
  * Liefert die Nutzungsbedingungen an den Web-Client, damit Desktop und Web-Oberfläche Text und
@@ -28,21 +47,6 @@ import scala.concurrent.Future
 trait TermsRoutes extends Directives with SprayJsonSupport with JsonSupport with RouterLogging {
 
   private val termsCacheControl = `Cache-Control`(CacheDirectives.public, CacheDirectives.`max-age`(300))
-  
-  def fetchTerms(): Future[TermsInfo] = {
-    import Core.*
-    httpGetClientRequest(s"$remoteAdminBaseUrl/api/terms").flatMap {
-      case org.apache.pekko.http.scaladsl.model.HttpResponse(StatusCodes.OK, headers, entity, _) => Unmarshal(entity).to[TermsInfo]
-      case _ => Future {
-        TermsInfo(
-          version = Terms.version,
-          stand = Terms.stand,
-          title = Terms.title,
-          blocks = Terms.blocks.map(block => TermsBlock(block.kind.toString, block.text))
-        )
-      }
-    }
-  }
 
   lazy val termsRoutes: Route = {
     pathLabeled("terms", "terms") {
