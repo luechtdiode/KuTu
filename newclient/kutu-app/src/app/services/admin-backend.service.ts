@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { backendUrl } from '../utils';
-import { ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks, AdminAccessLink, TeamItem, ScoreCalcTemplate, ScoreCalcOptions, ScoreCalcPreviewRequest, ScoreCalcPreviewResponse } from '../backend-types';
+import { ApproveEMailRequest, ApproveEMailResponse, ProgrammRaw, WettkampfPublic, AdminCreateCompetitionRequest, AdminCreateCompetitionResponse, AdminUpdateCompetitionRequest, AdminGetCompetitionResponse, RiegeItem, RiegeSuggestionRequest, UpdateRiegeRequest, DurchgangDurationItem, Geraet, ClubRegistration, Verein, SyncAction, SyncActionKey, SyncApplyResponse, AthletRegistration, JudgeRegistration, MergeDurchgangRequest, GroupDurchgangRequest, UngroupDurchgangRequest, UpdateStartOffsetRequest, PlaybookState, JudgeLink, PublishedScoreView, AdminScoreRequest, OverviewLinks, AdminAccessLink, TeamItem, ScoreCalcTemplate, ScoreCalcOptions, ScoreCalcPreviewRequest, ScoreCalcPreviewResponse } from '../backend-types';
 import {map} from "rxjs/operators";
 
 @Injectable()
@@ -321,4 +321,8 @@ export class AdminBackendService {
     return this.http.post<ScoreCalcPreviewResponse>(this.api + 'admin/competition/' + uuid + '/scorecalc/preview', request, { headers });
   }
 
+  /** Oeffentlicher Endpunkt: bestaetigt einen hochgeladenen Wettkampf und speichert die Veranstalter-Daten. */
+  approveCompetitionByMail(uuid: string, request: ApproveEMailRequest): Observable<ApproveEMailResponse> {
+    return this.http.post<ApproveEMailResponse>(this.api + 'registrations/' + uuid + '/approvemail', request);
+  }
 }

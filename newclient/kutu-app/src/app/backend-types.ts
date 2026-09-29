@@ -602,3 +602,20 @@ export interface OverviewLinks {
   adminAccessUrl: string;
   adminAccessQr: string;
 }
+
+export interface CreatorMetaData {
+  creatorName: string;
+  creatorAddress: string;
+  creatorPhone: string;
+  termsVersion: string;
+}
+
+export interface ApproveEMailRequest {
+  mail: string;
+  creator: CreatorMetaData;
+}
+
+export interface ApproveEMailResponse {
+  message: string;
+  success: boolean;
+}

@@ -34,14 +34,17 @@ class SortUtilsTest extends AnyWordSpec
     "correctly sort TreeItems by their values ignoring case" in {
       import scalafx.scene.control.TreeItem
 
-      val items = List(
-        new TreeItem[String]("banana"),
-        new TreeItem[String]("Apple"),
-        new TreeItem[String]("cherry")
-      )
-      val sortedItems = items.sortWith(SortUtils.treeItemSort)
+      // TreeItems sind JavaFX-Knoten und müssen auf dem FX-Thread erzeugt werden.
+      val sortedValues = onFxThread {
+        val items = List(
+          new TreeItem[String]("banana"),
+          new TreeItem[String]("Apple"),
+          new TreeItem[String]("cherry")
+        )
+        items.sortWith(SortUtils.treeItemSort).map(_.value())
+      }
 
-      sortedItems.map(_.value()) should equal(List("Apple", "banana", "cherry"))
+      sortedValues should equal(List("Apple", "banana", "cherry"))
     }
 
     "correctly sort KuTuAppThumbNails by their button text ignoring case" in {
@@ -49,16 +52,18 @@ class SortUtilsTest extends AnyWordSpec
       import scalafx.scene.control.Button
       import scalafx.scene.control.TreeItem
 
-      val items = List(
-        new TreeItem[String]("banana"),
-        new TreeItem[String]("Apple"),
-        new TreeItem[String]("cherry")
-      )
-      val thumbnails = items.map(treeitem => KuTuAppThumbNail("context", new Button(treeitem.getValue), treeitem))
+      val sortedTexts = onFxThread {
+        val items = List(
+          new TreeItem[String]("banana"),
+          new TreeItem[String]("Apple"),
+          new TreeItem[String]("cherry")
+        )
+        val thumbnails = items.map(treeitem => KuTuAppThumbNail("context", new Button(treeitem.getValue), treeitem))
 
-      val sortedThumbnails = thumbnails.sortWith(SortUtils.thumbNailsSort)
+        thumbnails.sortWith(SortUtils.thumbNailsSort).map(_.button.text())
+      }
 
-      sortedThumbnails.map(_.button.text()) should equal(List("Apple", "banana", "cherry"))
+      sortedTexts should equal(List("Apple", "banana", "cherry"))
     }
   }
 }

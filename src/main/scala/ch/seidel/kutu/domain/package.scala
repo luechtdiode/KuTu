@@ -1090,6 +1090,66 @@ package object domain {
                                              secret: String
                                            ) extends DataObject
 
+  case class CreatorMetaData(
+                                creatorName: String,
+                                creatorAddress: String,
+                                creatorPhone: String,
+                                termsVersion: String
+                              ) extends DataObject {
+    def isComplete: Boolean = Seq(creatorName, creatorAddress, creatorPhone, termsVersion)
+      .forall(value => value != null && value.trim.nonEmpty)
+  }
+
+  object CreatorMetaData {
+    /** Inkrementieren, wenn sich der Text der Nutzungsbedingungen inhaltlich ändert. */
+    val currentTermsVersion = "1.0"
+
+    /**
+     * Text der Nutzungsbedingungen für den Desktop-Dialog. Der Web-Formular-Pfad zeigt denselben
+     * Text über die Angular-TermsModalComponent, siehe
+     * newclient/kutu-app/src/app/create-competition/terms-modal.component.html.
+     */
+    val termsText =
+      """Nutzungsbedingungen für die KuTu-Wettkampfplattform
+        |
+        |1. Geltungsbereich
+        |Diese Nutzungsbedingungen gelten für die Erstellung und Verwaltung von Wettkämpfen über die
+        |KuTu-Plattform. Mit der Freigabe eines Wettkampfs erklären Sie sich mit diesen Bedingungen
+        |einverstanden.
+        |
+        |2. Verantwortlichkeit des Erstellers
+        |Sie als Wettkampf-Ersteller sind verantwortlich für die Richtigkeit aller von Ihnen
+        |eingegebenen Daten. Sie versichern, dass Sie befugt sind, den Wettkampf im Namen des
+        |ausrichtenden Vereins oder Verbandes zu veröffentlichen.
+        |
+        |3. Datenschutz
+        |Die von Ihnen erfassten personenbezogenen Daten (Name, Adresse, Telefon) werden
+        |ausschliesslich zur Identifikation als Wettkampf-Ersteller verwendet und nicht an Dritte
+        |weitergegeben. Teilnehmerdaten werden nur im Rahmen der Wettkampf-Durchführung gespeichert
+        |und verarbeitet.
+        |
+        |4. Haftungsausschluss
+        |Die KuTu-Plattform wird nach bestem Wissen und Gewissen betrieben. Eine Haftung für Schäden,
+        |die durch die Nutzung der Plattform entstehen, wird ausgeschlossen, soweit gesetzlich
+        |zulässig.
+        |
+        |5. Löschung von Daten
+        |Sie können jederzeit die Löschung Ihres Wettkampfs und aller zugehörigen Daten verlangen.
+        |Nicht bestätigte Wettkämpfe werden automatisch nach 24 Stunden gelöscht.
+        |
+        |6. Änderungen der Bedingungen
+        |Wir behalten uns vor, diese Bedingungen jederzeit zu ändern. Bei wesentlichen Änderungen
+        |werden Sie rechtzeitig informiert.""".stripMargin
+  }
+
+  case class AdminTokenRequest(creator: CreatorMetaData) extends DataObject
+
+  case class AdminTokenResponse(token: String) extends DataObject
+
+  case class ApproveEMailRequest(mail: String, creator: CreatorMetaData) extends DataObject
+
+  case class ApproveEMailResponse(message: String, success: Boolean) extends DataObject
+
   case class AdminUpdateCompetitionRequest(
                                             id: Long,
                                             datum: java.sql.Date,

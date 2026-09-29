@@ -1,511 +1,232 @@
 package ch.seidel.kutu.http
 
 import ch.seidel.jwt.JsonWebToken
-import ch.seidel.kutu.Config
-import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey, jwtTokenExpiryPeriodInDays}
-import ch.seidel.kutu.actors.{FinishDurchgang, FinishDurchgangStep, ResetStartDurchgang, StartDurchgang}
+import ch.seidel.kutu.Config.{jwtAuthorizationKey, jwtHeader, jwtSecretKey}
 import ch.seidel.kutu.base.KuTuBaseSpec
-import ch.seidel.kutu.data.ResourceExchanger
-import ch.seidel.kutu.domain.{ProgrammRaw, Wettkampf}
-import ch.seidel.kutu.renderer.ServerPrintUtil
-import org.apache.pekko.http.scaladsl.model.*
-import org.apache.pekko.http.scaladsl.model.HttpMethods.{DELETE, GET, POST, PUT}
+import ch.seidel.kutu.domain.*
+import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
-import spray.json.*
-import spray.json.DefaultJsonProtocol.*
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, StatusCodes}
 
-import java.io.ByteArrayOutputStream
+import spray.json.enrichString
+
+import java.sql.Date
 import java.util.UUID
-import scala.compiletime.uninitialized
 
 class WettkampfRoutesSpec extends KuTuBaseSpec {
-  private var testWettkampf: Wettkampf = uninitialized
 
-  /** Competition whose zip is prepared in beforeAll; the DB entry is deleted before tests run so
-   *  we can use the POST upload endpoint to re-import it under the original UUID. */
-  private var uploadSourceWettkampf: Wettkampf = uninitialized
-  private var uploadZipBytes: Array[Byte] = uninitialized
+  private val creator = CreatorMetaData(
+    creatorName = "Hans Muster",
+    creatorAddress = "Musterstrasse 1, 1234 Musterstadt",
+    creatorPhone = "+49 123 456789",
+    termsVersion = "1.0"
+  )
 
-  /** Competition reserved exclusively for the DELETE happy-path test. */
-  private var forDeletionWettkampf: Wettkampf = uninitialized
-
-  override def beforeAll(): Unit = {
-    super.beforeAll()
-
-    testWettkampf = insertGeTuWettkampf("WkRoutesMainWK", 2)
-    makeEinteilung(testWettkampf)
-
-    // ── upload-test setup ──────────────────────────────────────────────────────
-    // 1) Create a fresh competition and export it to a byte array.
-    uploadSourceWettkampf = insertGeTuWettkampf("WkRoutesUploadSrc", 1)
-    val bos = new ByteArrayOutputStream()
-    ResourceExchanger.exportWettkampfToStream(uploadSourceWettkampf, bos)
-    uploadZipBytes = bos.toByteArray
-    // 2) Remove it from the DB so the UUID is "unknown" when the POST route checks.
-    deleteWettkampf(uploadSourceWettkampf.id)
-
-    // ── delete-test setup ──────────────────────────────────────────────────────
-    forDeletionWettkampf = insertGeTuWettkampf("WkRoutesDeleteWK", 1)
-
-    // ── logo-test setup: remove any leftover logo files from previous runs ────
-    val logoFile = ServerPrintUtil.locateLogoFile(testWettkampf.prepareFilePath(Config.homedir, readOnly = true))
-    if logoFile.exists() then logoFile.delete()
+  private def legacyWettkampf(name: String): Wettkampf = {
+    val wettkampf = createWettkampf(
+      new Date(System.currentTimeMillis()), name, Set(20L), s"$name@test.ch", 3333, 7.5d,
+      Some(UUID.randomUUID().toString), "", "", "", "Kategorie/AlterAufsteigend/Verein/Vorname/Name/Rotierend/AltInvers", "")
+    wettkampf
   }
 
-  // ─── helpers ───────────────────────────────────────────────────────────────
+  /** entspricht der Alt-Reparatur: unendliche Gültigkeit, aber ohne admin-Claim */
+  private def legacyJwtFor(userId: String): RawHeader =
+    RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, setClaims(userId, Int.MaxValue), jwtSecretKey))
+
+  private def jwtFor(userId: String, days: Long, isAdmin: Boolean = false): RawHeader =
+    RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, setClaims(userId, days, isAdmin), jwtSecretKey))
+
+  private def adminTokenUri(uuid: String): String = s"/api/competition/$uuid/admin-token"
+
+  private def creatorEntity(metaData: CreatorMetaData = creator): HttpEntity.Strict =
+    HttpEntity(ContentTypes.`application/json`, adminTokenRequestFormat.write(AdminTokenRequest(metaData)).compactPrint)
 
   private def withRoutes = allroutes(x => vereinSecretHashLookup(x), id => extractRegistrationId(id))
 
-  private def jwtFor(userId: String): RawHeader = {
-    val claims = setClaims(userId, jwtTokenExpiryPeriodInDays)
-    RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))
-  }
+  "the admin-token endpoint" should {
 
-  private def adminJwtFor(userId: String): RawHeader = {
-    val claims = setClaims(userId, jwtTokenExpiryPeriodInDays, isAdmin = true)
-    RawHeader(jwtAuthorizationKey, JsonWebToken(jwtHeader, claims, jwtSecretKey))
-  }
-
-  /** Builds a multipart/form-data entity with a "zip" part, matching the field
-   *  name expected by the `fileUpload("zip")` directive in WettkampfRoutes. */
-  private def zipEntity(bytes: Array[Byte], filename: String): RequestEntity =
-    Multipart.FormData(
-      Multipart.FormData.BodyPart.Strict(
-        "zip",
-        HttpEntity(bytes),
-        Map("filename" -> filename)
-      )
-    ).toEntity
-
-  /** Exports testWettkampf on-the-fly so PUT tests always use up-to-date bytes. */
-  private def testWettkampfZipEntity(): RequestEntity = {
-    val bos = new ByteArrayOutputStream()
-    ResourceExchanger.exportWettkampfToStream(testWettkampf, bos)
-    zipEntity(bos.toByteArray, s"${testWettkampf.easyprint}.zip")
-  }
-
-  /** Returns the first durchgang name found via the API, or a fallback. */
-  private def discoverDurchgang(wk: Wettkampf): String = {
-    var name = "Durchgang 1"
-    HttpRequest(GET, s"/api/durchgang/${wk.uuid.get}") ~> withRoutes ~> check {
-      val list = responseAs[String].parseJson.convertTo[List[String]]
-      if list.nonEmpty then name = list.head
-    }
-    name
-  }
-
-  // ─── test body ─────────────────────────────────────────────────────────────
-
-  "WettkampfRoutes" should {
-
-    // ── public listing ────────────────────────────────────────────────────────
-
-    "return all competitions as JSON" in {
-      HttpRequest(GET, "/api/competition") ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-        contentType should ===(ContentTypes.`application/json`)
-        responseAs[String] should include("titel")
-      }
-    }
-
-    "return programmlist as JSON with at least one entry" in {
-      HttpRequest(GET, "/api/competition/programmlist") ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-        contentType should ===(ContentTypes.`application/json`)
-        responseAs[String].parseJson.convertTo[List[ProgrammRaw]].nonEmpty shouldBe true
-      }
-    }
-
-    "return competitions by verein as JSON" in {
-      HttpRequest(GET, "/api/competition/byVerein/1") ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-        contentType should ===(ContentTypes.`application/json`)
-      }
-    }
-
-    "return empty list for a verein that has no competitions" in {
-      HttpRequest(GET, "/api/competition/byVerein/99999") ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-        contentType should ===(ContentTypes.`application/json`)
-        responseAs[String].parseJson.convertTo[List[JsValue]] shouldBe empty
-      }
-    }
-
-    // ── JWT renewal (isTokenExpired) ──────────────────────────────────────────
-
-    "reject isTokenExpired without JWT" in {
-      HttpRequest(GET, "/api/isTokenExpired") ~> withRoutes ~> check {
+    "reject a request without a token" in {
+      val wk = legacyWettkampf("AdminTokenNoAuth")
+      HttpRequest(POST, adminTokenUri(wk.uuid.get), entity = creatorEntity()) ~> withRoutes ~> check {
         status should ===(StatusCodes.Unauthorized)
       }
     }
 
-    "renew token on isTokenExpired with a valid JWT" in {
-      HttpRequest(GET, "/api/isTokenExpired")
-        .addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+    "reject a token with an invalid signature" in {
+      val wk = legacyWettkampf("AdminTokenBadSignature")
+      val forged = RawHeader(jwtAuthorizationKey,
+        JsonWebToken(jwtHeader, setClaims(wk.uuid.get, Int.MaxValue), "falsches-geheimnis"))
+      HttpRequest(POST, adminTokenUri(wk.uuid.get), entity = creatorEntity())
+        .addHeader(forged) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Unauthorized)
+      }
+    }
+
+    "reject an expired token" in {
+      val wk = legacyWettkampf("AdminTokenExpired")
+      val expired = RawHeader(jwtAuthorizationKey,
+        JsonWebToken(jwtHeader, setClaimsWithExpiry(wk.uuid.get, System.currentTimeMillis() - 10000), jwtSecretKey))
+      HttpRequest(POST, adminTokenUri(wk.uuid.get), entity = creatorEntity())
+        .addHeader(expired) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Unauthorized)
+      }
+    }
+
+    "reject a token that belongs to a different competition" in {
+      val wk = legacyWettkampf("AdminTokenOtherWk")
+      val other = legacyWettkampf("AdminTokenOtherWkForeign")
+      HttpRequest(POST, adminTokenUri(wk.uuid.get), entity = creatorEntity())
+        .addHeader(legacyJwtFor(other.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Forbidden)
+      }
+    }
+
+    "answer 404 for an unknown competition" in {
+      val unknown = UUID.randomUUID().toString
+      HttpRequest(POST, adminTokenUri(unknown), entity = creatorEntity())
+        .addHeader(legacyJwtFor(unknown)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.NotFound)
+      }
+    }
+
+    "answer 400 for a malformed body" in {
+      val wk = legacyWettkampf("AdminTokenMalformed")
+      HttpRequest(POST, adminTokenUri(wk.uuid.get),
+        entity = HttpEntity(ContentTypes.`application/json`, "{kein json"))
+        .addHeader(legacyJwtFor(wk.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.BadRequest)
+      }
+    }
+
+    "report missing creator data with 409 when the body is absent" in {
+      val wk = legacyWettkampf("AdminTokenNoBody")
+      HttpRequest(POST, adminTokenUri(wk.uuid.get))
+        .addHeader(legacyJwtFor(wk.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Conflict)
+      }
+    }
+
+    "report incomplete creator data with 409" in {
+      val wk = legacyWettkampf("AdminTokenIncomplete")
+      HttpRequest(POST, adminTokenUri(wk.uuid.get),
+        entity = creatorEntity(creator.copy(creatorPhone = "   ")))
+        .addHeader(legacyJwtFor(wk.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Conflict)
+      }
+    }
+
+    "issue an admin token and store the creator data" in {
+      val wk = legacyWettkampf("AdminTokenHappy")
+      HttpRequest(POST, adminTokenUri(wk.uuid.get), entity = creatorEntity())
+        .addHeader(legacyJwtFor(wk.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.OK)
+
+        val fromHeader = header(jwtAuthorizationKey).map(_.value()).getOrElse(fail("kein Token-Header"))
+        val fromBody = responseAs[String].parseJson.convertTo[AdminTokenResponse].token
+        fromBody shouldBe fromHeader
+
+        val claims = fromHeader match {
+          case JsonWebToken(_, jwtClaims, _) => jwtClaims.asSimpleMap.toOption.getOrElse(Map.empty)
+          case _ => Map.empty[String, String]
+        }
+        claims.get("admin").shouldBe(Some("true"))
+        isExpiryInfinite(claims).shouldBe(true)
+        claims.get("user").shouldBe(Some(wk.uuid.get))
+      }
+
+      val metaData = getWettkampfMetaData(UUID.fromString(wk.uuid.get))
+      metaData.creatorName shouldBe Some("Hans Muster")
+      metaData.creatorAddress shouldBe Some("Musterstrasse 1, 1234 Musterstadt")
+      metaData.creatorPhone shouldBe Some("+49 123 456789")
+      metaData.termsAccepted shouldBe true
+      metaData.termsAcceptedAt should not be empty
+      metaData.termsVersion shouldBe Some("1.0")
+    }
+
+    "accept a non-admin token with finite expiry (the real desktop case)" in {
+      val wk = legacyWettkampf("AdminTokenFinite")
+      HttpRequest(POST, adminTokenUri(wk.uuid.get), entity = creatorEntity())
+        .addHeader(jwtFor(wk.uuid.get, 30L)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.OK)
+      }
+    }
+
+    "accept an identical repeated request (lost response retry)" in {
+      val wk = legacyWettkampf("AdminTokenReplay")
+      val request = HttpRequest(POST, adminTokenUri(wk.uuid.get), entity = creatorEntity())
+        .addHeader(legacyJwtFor(wk.uuid.get))
+
+      request ~> withRoutes ~> check { status should ===(StatusCodes.OK) }
+      request ~> withRoutes ~> check { status should ===(StatusCodes.OK) }
+    }
+
+    "answer 409 when different creator data is submitted for an onboarded competition" in {
+      val wk = legacyWettkampf("AdminTokenDifferent")
+      HttpRequest(POST, adminTokenUri(wk.uuid.get), entity = creatorEntity())
+        .addHeader(legacyJwtFor(wk.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.OK)
+      }
+
+      HttpRequest(POST, adminTokenUri(wk.uuid.get),
+        entity = creatorEntity(creator.copy(creatorName = "Jemand Anders")))
+        .addHeader(legacyJwtFor(wk.uuid.get)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Conflict)
+      }
+
+      getWettkampfMetaData(UUID.fromString(wk.uuid.get)).creatorName shouldBe Some("Hans Muster")
+    }
+
+    "answer 409 for an admin token on an already onboarded competition" in {
+      val wk = legacyWettkampf("AdminTokenAlreadyOnboarded")
+      saveWettkampfCreatorMetaData(UUID.fromString(wk.uuid.get), creator,
+        new java.sql.Timestamp(System.currentTimeMillis()))
+
+      HttpRequest(POST, adminTokenUri(wk.uuid.get))
+        .addHeader(jwtFor(wk.uuid.get, 30L, isAdmin = true)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.OK)
+      }
+
+      HttpRequest(POST, adminTokenUri(wk.uuid.get),
+        entity = creatorEntity(creator.copy(creatorPhone = "+41 999 000")))
+        .addHeader(jwtFor(wk.uuid.get, 30L, isAdmin = true)) ~> withRoutes ~> check {
+        status should ===(StatusCodes.Conflict)
+      }
+    }
+
+    "issue a token without a body for an onboarded competition" in {
+      val wk = legacyWettkampf("AdminTokenOnboardedNoBody")
+      saveWettkampfCreatorMetaData(UUID.fromString(wk.uuid.get), creator,
+        new java.sql.Timestamp(System.currentTimeMillis()))
+
+      HttpRequest(POST, adminTokenUri(wk.uuid.get))
+        .addHeader(legacyJwtFor(wk.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
         header(jwtAuthorizationKey) should not be empty
       }
     }
 
-    // ── GET /api/competition/:wkuuid – download ───────────────────────────────
-
-    "download existing competition as a zip binary" in {
-      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}") ~> withRoutes ~> check {
+    "produce a token that satisfies an existing admin route" in {
+      val wk = legacyWettkampf("AdminTokenUsable")
+      var token = ""
+      HttpRequest(POST, adminTokenUri(wk.uuid.get), entity = creatorEntity())
+        .addHeader(legacyJwtFor(wk.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
-        contentType.mediaType should ===(MediaTypes.`application/zip`)
-        response.entity.contentLengthOption.getOrElse(0L) should be > 0L
+        token = responseAs[String].parseJson.convertTo[AdminTokenResponse].token
       }
-    }
 
-    // ── POST /api/competition/:wkuuid – upload new competition ────────────────
-
-    "reject upload when competition UUID already exists in the database" in {
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}",
-        entity = zipEntity(uploadZipBytes, "test.zip")
-      ) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Conflict)
-        responseAs[String] should include("mehrfach")
-      }
-    }
-
-    "upload a new competition and return OK with a JWT secret header" in {
-      val uuid = uploadSourceWettkampf.uuid.get
-      HttpRequest(
-        POST,
-        s"/api/competition/$uuid",
-        entity = zipEntity(uploadZipBytes, s"$uuid.zip")
-      ) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-        header(jwtAuthorizationKey) should not be empty
-      }
-    }
-
-    // ── PUT /api/competition/:wkuuid – update existing competition ────────────
-
-    "reject competition update without a JWT" in {
-      HttpRequest(
-        PUT,
-        s"/api/competition/${testWettkampf.uuid.get}",
-        entity = testWettkampfZipEntity()
-      ) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "reject competition update with a JWT for a different UUID" in {
-      HttpRequest(
-        PUT,
-        s"/api/competition/${testWettkampf.uuid.get}",
-        entity = testWettkampfZipEntity()
-      ).addHeader(jwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "accept competition update with the matching JWT and return OK" in {
-      HttpRequest(
-        PUT,
-        s"/api/competition/${testWettkampf.uuid.get}",
-        entity = testWettkampfZipEntity()
-      ).addHeader(jwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
+      HttpRequest(POST, s"/api/competition/${wk.uuid.get}/admin-access-link",
+        entity = HttpEntity(ContentTypes.`application/json`,
+          createAdminAccessLinkFormat.write(CreateAdminAccessLink(7L)).compactPrint))
+        .addHeader(RawHeader(jwtAuthorizationKey, token)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
       }
     }
 
-    // ── DELETE /api/competition/:wkuuid ───────────────────────────────────────
-
-    "reject competition deletion without a JWT" in {
-      HttpRequest(DELETE, s"/api/competition/${forDeletionWettkampf.uuid.get}") ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "reject competition deletion with a JWT for a different UUID" in {
-      HttpRequest(DELETE, s"/api/competition/${forDeletionWettkampf.uuid.get}")
-        .addHeader(jwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "delete a competition with the matching JWT" in {
-      HttpRequest(DELETE, s"/api/competition/${forDeletionWettkampf.uuid.get}")
-        .addHeader(jwtFor(forDeletionWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-      }
-    }
-
-    // ── POST /api/competition/:wkuuid/start ───────────────────────────────────
-
-    "reject StartDurchgang without a JWT" in {
-      val sd = StartDurchgang(testWettkampf.uuid.get, discoverDurchgang(testWettkampf))
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/start",
-        entity = HttpEntity(ContentTypes.`application/json`, startDurchgangFormat.write(sd).compactPrint)
-      ) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "reject StartDurchgang with a JWT for a different UUID" in {
-      val sd = StartDurchgang(testWettkampf.uuid.get, discoverDurchgang(testWettkampf))
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/start",
-        entity = HttpEntity(ContentTypes.`application/json`, startDurchgangFormat.write(sd).compactPrint)
-      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Conflict)
-      }
-    }
-
-    "accept StartDurchgang with the matching JWT" in {
-      val sd = StartDurchgang(testWettkampf.uuid.get, discoverDurchgang(testWettkampf))
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/start",
-        entity = HttpEntity(ContentTypes.`application/json`, startDurchgangFormat.write(sd).compactPrint)
-      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-      }
-    }
-
-    // ── POST /api/competition/:wkuuid/reset ───────────────────────────────────
-
-    "reject ResetStartDurchgang without a JWT" in {
-      val rsd = ResetStartDurchgang(testWettkampf.uuid.get, discoverDurchgang(testWettkampf))
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/reset",
-        entity = HttpEntity(ContentTypes.`application/json`, resetStartDurchgangFormat.write(rsd).compactPrint)
-      ) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "reject ResetStartDurchgang with a JWT for a different UUID" in {
-      val rsd = ResetStartDurchgang(testWettkampf.uuid.get, discoverDurchgang(testWettkampf))
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/reset",
-        entity = HttpEntity(ContentTypes.`application/json`, resetStartDurchgangFormat.write(rsd).compactPrint)
-      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Conflict)
-      }
-    }
-
-    "accept ResetStartDurchgang with the matching JWT" in {
-      val rsd = ResetStartDurchgang(testWettkampf.uuid.get, discoverDurchgang(testWettkampf))
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/reset",
-        entity = HttpEntity(ContentTypes.`application/json`, resetStartDurchgangFormat.write(rsd).compactPrint)
-      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-      }
-    }
-
-    // ── POST /api/competition/:wkuuid/stop ────────────────────────────────────
-
-    "reject FinishDurchgang without a JWT" in {
-      val fd = FinishDurchgang(testWettkampf.uuid.get, discoverDurchgang(testWettkampf))
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/stop",
-        entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangFormat.write(fd).compactPrint)
-      ) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "reject FinishDurchgang with a JWT for a different UUID" in {
-      val fd = FinishDurchgang(testWettkampf.uuid.get, discoverDurchgang(testWettkampf))
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/stop",
-        entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangFormat.write(fd).compactPrint)
-      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Conflict)
-      }
-    }
-
-    "accept FinishDurchgang with the matching JWT" in {
-      val fd = FinishDurchgang(testWettkampf.uuid.get, discoverDurchgang(testWettkampf))
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/stop",
-        entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangFormat.write(fd).compactPrint)
-      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-      }
-    }
-
-    // ── POST /api/competition/:wkuuid/finishedStep ────────────────────────────
-
-    "reject FinishDurchgangStep without a JWT" in {
-      val fds = FinishDurchgangStep(testWettkampf.uuid.get)
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/finishedStep",
-        entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangStepFormat.write(fds).compactPrint)
-      ) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "reject FinishDurchgangStep with a JWT for a different UUID" in {
-      val fds = FinishDurchgangStep(testWettkampf.uuid.get)
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/finishedStep",
-        entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangStepFormat.write(fds).compactPrint)
-      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Conflict)
-      }
-    }
-
-    "accept FinishDurchgangStep with the matching JWT" in {
-      val fds = FinishDurchgangStep(testWettkampf.uuid.get)
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/finishedStep",
-        entity = HttpEntity(ContentTypes.`application/json`, finishDurchgangStepFormat.write(fds).compactPrint)
-      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-      }
-    }
-
-    // ── GET/POST /api/competition/:wkuuid/logo ──────────────────────────────
-
-    "reject logo upload without JWT" in {
-      val pngBytes = Array[Byte](0x89.toByte, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/logo",
-        entity = Multipart.FormData(
-          Multipart.FormData.BodyPart.Strict(
-            "logo",
-            HttpEntity(MediaTypes.`image/png`, pngBytes),
-            Map("filename" -> "logo.png"),
-            Seq.empty
-          )
-        ).toEntity
-      ) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "reject logo upload with a JWT for a different UUID" in {
-      val pngBytes = Array[Byte](0x89.toByte, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/logo",
-        entity = Multipart.FormData(
-          Multipart.FormData.BodyPart.Strict(
-            "logo",
-            HttpEntity(MediaTypes.`image/png`, pngBytes),
-            Map("filename" -> "logo.png"),
-            Seq.empty
-          )
-        ).toEntity
-      ).addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Conflict)
-      }
-    }
-
-    "return default-logo when no logo exists" in {
-      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo")
-        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-      }
-    }
-
-    "upload a PNG logo and return OK" in {
-      val pngBytes = Array[Byte](
-        0x89.toByte, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
-      )
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/logo",
-        entity = Multipart.FormData(
-          Multipart.FormData.BodyPart.Strict(
-            "logo",
-            HttpEntity(MediaTypes.`image/png`, pngBytes),
-            Map("filename" -> "logo.png"),
-            Seq.empty
-          )
-        ).toEntity
-      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-      }
-    }
-
-    "return the uploaded PNG logo with correct content type" in {
-      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo")
-        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-        contentType.mediaType should ===(MediaTypes.`image/png`)
-      }
-    }
-
-    "upload an SVG logo and return OK" in {
-      val svgContent = """<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>"""
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/logo",
-        entity = Multipart.FormData(
-          Multipart.FormData.BodyPart.Strict(
-            "logo",
-            HttpEntity(MediaTypes.`image/svg+xml`, svgContent.getBytes("UTF-8")),
-            Map("filename" -> "logo.svg"),
-            Seq.empty
-          )
-        ).toEntity
-      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-      }
-    }
-
-    "return the uploaded SVG logo with correct content type" in {
-      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo")
-        .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.OK)
-        contentType.mediaType should ===(MediaTypes.`image/svg+xml`)
-      }
-    }
-
-    "reject logo upload with disallowed file extension" in {
-      HttpRequest(
-        POST,
-        s"/api/competition/${testWettkampf.uuid.get}/logo",
-        entity = Multipart.FormData(
-          Multipart.FormData.BodyPart.Strict(
-            "logo",
-            HttpEntity(MediaTypes.`application/octet-stream`, Array[Byte](0x00, 0x01, 0x02)),
-            Map("filename" -> "logo.gif"),
-            Seq.empty
-          )
-        ).toEntity
-      ).addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Conflict)
-        responseAs[String] should include("Ungültiges Format")
-      }
-    }
-
-    "reject logo GET without JWT" in {
-      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo") ~> withRoutes ~> check {
-        status should ===(StatusCodes.Unauthorized)
-      }
-    }
-
-    "reject logo GET with a JWT for a different UUID" in {
-      HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/logo")
-        .addHeader(adminJwtFor(UUID.randomUUID().toString)) ~> withRoutes ~> check {
-        status should ===(StatusCodes.Conflict)
+    "not match a non uuid path segment" in {
+      HttpRequest(POST, "/api/competition/keine-uuid/admin-token", entity = creatorEntity())
+        .addHeader(legacyJwtFor("keine-uuid")) ~> withRoutes ~> check {
+        status should ===(StatusCodes.NotFound)
       }
     }
   }
 }
-
-

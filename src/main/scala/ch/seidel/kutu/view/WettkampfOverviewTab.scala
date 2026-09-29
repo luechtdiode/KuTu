@@ -102,6 +102,76 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
     )
   }
 
+  private def adminAccessUrl(secret: String): String = {
+    val uuid = wettkampf.uuid.get
+    val adminParams = s"admin&uuid=$uuid&secret=$secret" +
+      s"&titel=${java.net.URLEncoder.encode(wettkampf.titel, "UTF-8")}" +
+      s"&datum=${java.net.URLEncoder.encode(wettkampf.datum.toString, "UTF-8")}"
+    s"${Config.remoteBaseUrl}/?" + new String(KuTuApp.enc.encodeToString(adminParams.getBytes))
+  }
+
+  private def showWebUiAdmin(secret: String): Unit =
+    KuTuApp.hostServices.showDocument(adminAccessUrl(secret))
+
+  private def abortWebUiAdmin(reason: String): Unit =
+    PageDisplayer.showWarnDialog("Web-UI Admin", reason)
+
+  /**
+   * Fragt ein Admin-Token an und legt es lokal ab. Die Anfrage läuft immer über HTTP, auch bei
+   * einem lokalen Server, weil der Server die Metadatenlage und den Altbestand-Fall entscheidet.
+   */
+  private def requestAdminToken(secret: String, creator: Option[CreatorMetaData]): Unit = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import scala.util.control.NonFatal
+    import AdminTokenRepair.NextStep
+    import ch.seidel.kutu.http.HTTPFailure
+    import scala.concurrent.duration.*
+    val wk = wettkampf.toWettkampf
+    Future {
+      val result: Either[Option[Int], String] = try {
+        Right(scala.concurrent.Await.result(
+          KuTuServer.httpPostAdminTokenRequest(wk.uuid.get, secret, creator), 30.seconds).token.trim)
+      } catch {
+        case failure: HTTPFailure => Left(Some(failure.status.intValue))
+        case NonFatal(_) => Left(None)
+      }
+      Platform.runLater {
+        result match {
+          case Right(token) if token.nonEmpty =>
+            wk.saveSecret(homedir, remoteHostOrigin, token)
+            selectedWettkampfSecret.value = Some(token)
+            showWebUiAdmin(token)
+          case Right(_) => abortWebUiAdmin("Der Server hat kein neues Admin-Token geliefert.")
+          case Left(status) =>
+            AdminTokenRepair.nextStep(status, creatorSent = creator.isDefined) match {
+              case NextStep.OpenBrowser => showWebUiAdmin(secret)
+              case NextStep.CollectCreatorData =>
+                CreatorMetaDataDialog.ask(getStage).foreach { metaData =>
+                  requestAdminToken(secret, Some(metaData))
+                }
+              case NextStep.Abort(reason) => abortWebUiAdmin(reason)
+            }
+        }
+      }
+    }
+  }
+
+  /**
+   * Öffnet die Web-UI. Secrets aus dem Altbestand haben kein `admin`-Claim; dann wird zuerst über
+   * den Server ein gültiges Admin-Token beschafft.
+   */
+  private def openWebUiAdmin(): Unit = {
+    val wk = wettkampf.toWettkampf
+    val secret = wk.readSecret(homedir, remoteHostOrigin)
+    import AdminTokenRepair.LocalCheck
+    AdminTokenRepair.localCheckFromToken(secret) match {
+      case LocalCheck.Usable => showWebUiAdmin(secret.get)
+      case LocalCheck.NoSecret =>
+        abortWebUiAdmin("Für diesen Wettkampf ist kein Passwort hinterlegt. Bitte zuerst den Wettkampf bereitstellen.")
+      case LocalCheck.NeedsRepair => requestAdminToken(secret.get, None)
+    }
+  }
+
   override def isPopulated: Boolean = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val wettkampfEditable = !wettkampf.toWettkampf.isReadonly(homedir, remoteHostOrigin)
@@ -251,15 +321,7 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
                   "",
                   "Möchten Sie fortfahren?"
                 ),
-                () => {
-                  val uuid = wettkampf.uuid.get
-                  val secret = wettkampf.toWettkampf.readSecret(homedir, remoteHostOrigin).get
-                  val adminParams = s"admin&uuid=$uuid&secret=$secret" +
-                    s"&titel=${java.net.URLEncoder.encode(wettkampf.titel, "UTF-8")}" +
-                    s"&datum=${java.net.URLEncoder.encode(wettkampf.datum.toString, "UTF-8")}"
-                  val adminUrl = s"${Config.remoteBaseUrl}/?" + new String(KuTuApp.enc.encodeToString(adminParams.getBytes))
-                  KuTuApp.hostServices.showDocument(adminUrl)
-                }
+                () => openWebUiAdmin()
               )
             }
           },
