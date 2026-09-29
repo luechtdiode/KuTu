@@ -5,6 +5,7 @@ import slick.jdbc.PostgresProfile.api.*
 
 import java.sql.{Date, Timestamp}
 import java.util.UUID
+import scala.concurrent.Await
 
 class WettkampfMetaDataSpec extends KuTuBaseSpec {
 
@@ -71,7 +72,7 @@ class WettkampfMetaDataSpec extends KuTuBaseSpec {
       val wk = newWettkampf("MetaDataInsert")
       val uuid = UUID.fromString(wk.uuid.get)
 
-      database.run(sqlu"delete from wettkampfmetadata where uuid=${uuid.toString}").map(_ => ())
+      Await.result(database.run(sqlu"delete from wettkampfmetadata where uuid=${uuid.toString}").map(_ => ()), scala.concurrent.duration.Duration.Inf)
       getWettkampfMetaDataOption(uuid) shouldBe None
 
       val saved = saveWettkampfCreatorMetaData(uuid, creator, new Timestamp(System.currentTimeMillis()))
