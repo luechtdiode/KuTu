@@ -2,7 +2,7 @@ package ch.seidel.kutu.view
 
 import ch.seidel.jwt.{JsonWebToken, JwtClaimsSet}
 import ch.seidel.kutu.Config
-import ch.seidel.kutu.domain.CreatorMetaData
+import ch.seidel.kutu.domain.{CreatorMetaData, Terms}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -121,15 +121,16 @@ class AdminTokenRepairSpec extends AnyWordSpec with Matchers {
     }
   }
 
-  "the terms version" should {
-    "be the version expected by the server" in {
-      CreatorMetaData.currentTermsVersion shouldBe "1.0"
+  "the creator data sent by the repair" should {
+
+    "carry the version from the shared terms document" in {
+      val creator = CreatorMetaData("Hans Muster", "Musterstrasse 1", "+49 123", Terms.version)
+      creator.termsVersion shouldBe Terms.version
+      creator.isComplete shouldBe true
     }
 
-    "be complete text" in {
-      CreatorMetaData.termsText should include("Nutzungsbedingungen")
-      CreatorMetaData.termsText should include("Haftungsausschluss")
-      CreatorMetaData.termsText should include("24 Stunden")
+    "be rejected by the server without a terms version" in {
+      CreatorMetaData("Hans Muster", "Musterstrasse 1", "+49 123", "  ").isComplete shouldBe false
     }
   }
 }

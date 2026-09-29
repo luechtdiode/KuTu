@@ -169,6 +169,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson with LowPriorityJso
   given adminGetCompetitionResponseFormat: RootJsonFormat[AdminGetCompetitionResponse] = jsonFormat(AdminGetCompetitionResponse.apply, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
   given adminScoreRequestFormat: RootJsonFormat[AdminScoreRequest] = jsonFormat3(AdminScoreRequest.apply)
   given creatorMetaDataFormat: RootJsonFormat[CreatorMetaData] = jsonFormat4(CreatorMetaData.apply)
+  given termsBlockFormat: RootJsonFormat[TermsBlock] = jsonFormat2(TermsBlock.apply)
+  given termsInfoFormat: RootJsonFormat[TermsInfo] = jsonFormat4(TermsInfo.apply)
   given adminTokenRequestFormat: RootJsonFormat[AdminTokenRequest] = jsonFormat1(AdminTokenRequest.apply)
   given adminTokenResponseFormat: RootJsonFormat[AdminTokenResponse] = jsonFormat1(AdminTokenResponse.apply)
   given approveEMailRequestFormat: RootJsonFormat[ApproveEMailRequest] = jsonFormat2(ApproveEMailRequest.apply)

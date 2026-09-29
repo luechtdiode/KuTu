@@ -1,8 +1,7 @@
 package ch.seidel.kutu.view
 
-import ch.seidel.kutu.domain.CreatorMetaData
+import ch.seidel.kutu.domain.{CreatorMetaData, Terms, TermsInfo}
 import javafx.scene.control as jfxsc
-
 import scalafx.Includes.*
 import scalafx.geometry.Insets
 import scalafx.scene.control.*
@@ -18,9 +17,7 @@ import javafx.stage.{Modality, Window}
  */
 object CreatorMetaDataDialog {
 
-  private val termsVersion = CreatorMetaData.currentTermsVersion
-
-  def ask(owner: Window, initial: CreatorMetaData = CreatorMetaData("", "", "", "")): Option[CreatorMetaData] = {
+  def ask(owner: Window, termsInfo: TermsInfo, initial: CreatorMetaData = CreatorMetaData("", "", "", "")): Option[CreatorMetaData] = {
     val name = new TextField {
       promptText = "Name des Veranstalters"
       text = initial.creatorName
@@ -38,11 +35,15 @@ object CreatorMetaDataDialog {
     }
     // Ohne vorbelegte, akzeptierte Daten bleibt die Checkbox bewusst leer: die
     // Akzeptanz muss eine aktive Handlung des Veranstalters sein.
-    val terms = new CheckBox(s"Ich akzeptiere die Nutzungsbedingungen (Version $termsVersion)") {
-      selected = initial.termsVersion == termsVersion
+    val terms = new CheckBox(s"Ich akzeptiere die Nutzungsbedingungen (Version ${termsInfo.version})") {
+      selected = initial.termsVersion == termsInfo.version
+    }
+    val termstext: String = {
+      val body = termsInfo.blocks.map(_.text).mkString("\n\n")
+      s"$body\n\nStand: ${termsInfo.stand}"
     }
     val termsView = new TextArea {
-      text = CreatorMetaData.termsText
+      text = termstext
       editable = false
       wrapText = true
       prefRowCount = 12
@@ -52,7 +53,7 @@ object CreatorMetaDataDialog {
     var okButton: javafx.scene.control.Button = null
 
     def candidate(): CreatorMetaData =
-      CreatorMetaData(name.text.value, address.text.value, phone.text.value, termsVersion)
+      CreatorMetaData(name.text.value, address.text.value, phone.text.value, termsInfo.version)
 
     def updateState(): Unit = {
       val data = candidate()

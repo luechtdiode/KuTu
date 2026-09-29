@@ -253,8 +253,12 @@ export class CreateCompetitionPage {
 
   async showTerms(event: Event) {
     event.preventDefault();
+    const terms = await firstValueFrom(this.backend.fetchTerms());
     const modal = await this.modalCtrl.create({
-      component: TermsModalComponent
+      component: TermsModalComponent,
+      componentProps: {
+        terms
+      }
     });
     modal.onDidDismiss().then(result => {
       if (result !== null && result !== undefined) {

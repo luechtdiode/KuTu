@@ -6,15 +6,11 @@ import { AdminBackendService } from '../services/admin-backend.service';
 import { ApproveEMailRequest, ApproveEMailResponse } from '../backend-types';
 import { TermsModalComponent } from '../create-competition/terms-modal.component';
 
-/** Muss mit CreatorMetaData.currentTermsVersion im Backend (package.scala) uebereinstimmen. */
-const TERMS_VERSION = '1.0';
-
 @Component({
   templateUrl: 'competition-approval.page.html',
   standalone: false
 })
 export class CompetitionApprovalPage {
-  readonly TERMS_VERSION = TERMS_VERSION;
 
   readonly uuid = signal<string>(null);
   readonly mail = signal<string>(null);
@@ -23,6 +19,7 @@ export class CompetitionApprovalPage {
   readonly creatorAddress = signal('');
   readonly creatorPhone = signal('');
   readonly termsAccepted = signal(false);
+  readonly termsAcceptedVersion = signal('');
 
   readonly submitting = signal(false);
   readonly submitted = signal(false);
@@ -47,11 +44,18 @@ export class CompetitionApprovalPage {
 
   async showTerms(event: Event) {
     event.preventDefault();
-    const modal = await this.modalCtrl.create({ component: TermsModalComponent });
+    const terms = await firstValueFrom(this.backend.fetchTerms());
+    const modal = await this.modalCtrl.create({
+      component: TermsModalComponent,
+      componentProps: {
+        terms
+      }
+    });
     await modal.present();
     const result = await modal.onDidDismiss();
     if (result.data) {
       this.termsAccepted.set(true);
+      this.termsAcceptedVersion.set(terms.version);
     }
   }
 
@@ -62,7 +66,7 @@ export class CompetitionApprovalPage {
         creatorName: this.creatorName().trim(),
         creatorAddress: this.creatorAddress().trim(),
         creatorPhone: this.creatorPhone().trim(),
-        termsVersion: TERMS_VERSION
+        termsVersion: this.termsAcceptedVersion()
       }
     };
   }
@@ -80,7 +84,7 @@ export class CompetitionApprovalPage {
       this.resultMessage.set(response.message);
       this.submitted.set(true);
       if (response.success) {
-        this.toast('Wettkampf bestätigt - eine Backup-Email mit dem Admin-Passwort wurde versendet.');
+        this.toast('Wettkampf bestätigt - eine Backup-Email mit dem Zugangscode wurde versendet.');
       }
     } catch (error) {
       this.resultSuccess.set(false);

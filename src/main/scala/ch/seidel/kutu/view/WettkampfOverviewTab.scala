@@ -146,7 +146,8 @@ class WettkampfOverviewTab(wettkampf: WettkampfView, override val service: KutuS
             AdminTokenRepair.nextStep(status, creatorSent = creator.isDefined) match {
               case NextStep.OpenBrowser => showWebUiAdmin(secret)
               case NextStep.CollectCreatorData =>
-                CreatorMetaDataDialog.ask(getStage).foreach { metaData =>
+                val termsInfo = KuTuServer.fetchTerms().value.get.get
+                CreatorMetaDataDialog.ask(getStage, termsInfo).foreach { metaData =>
                   requestAdminToken(secret, Some(metaData))
                 }
               case NextStep.Abort(reason) => abortWebUiAdmin(reason)

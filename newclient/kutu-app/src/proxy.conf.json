@@ -1,7 +1,7 @@
 {
   "/api": {
-    "target": "https://test-kutuapp.sharevic.net",
-    "_target": "http://localhost:5757",
+    "_target": "https://test-kutuapp.sharevic.net",
+    "target": "http://localhost:5757",
     "secure": false,
     "ws": true,
     "changeOrigin": true,

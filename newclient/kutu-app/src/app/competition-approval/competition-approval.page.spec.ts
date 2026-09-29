@@ -93,6 +93,7 @@ describe('CompetitionApprovalPage', () => {
     component.creatorAddress.set(' Musterstrasse 1 ');
     component.creatorPhone.set(' +49 123 ');
     component.termsAccepted.set(true);
+    component.termsAcceptedVersion.set('1.0');
 
     const request = component.request();
     expect(request.mail).toBe(MAIL);
