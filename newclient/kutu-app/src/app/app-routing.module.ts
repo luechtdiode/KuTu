@@ -30,6 +30,12 @@ const routes: Routes = [
   { path: 'athlet-view/:wkId/:athletId', loadChildren: () => import('./athlet-view/athlet-view.module').then( m => m.AthletViewPageModule) },
   { path: 'registration', loadChildren: () => import('./registration/registration.module').then( m => m.RegistrationPageModule) },
   { path: 'registration/:wkId', loadChildren: () => import('./registration/registration.module').then( m => m.RegistrationPageModule) },
+  // Oeffentlicher Link aus der Bestaetigungs-Mail hochgeladener Wettkaempfe. Ohne Guard,
+  // weil der Link ohne Token auskommt; die Identitaet ist die Mail-Adresse aus dem Link.
+  {
+    path: 'wettkampf-bestaetigen/:uuid',
+    loadChildren: () => import('./competition-approval/competition-approval.module').then(m => m.CompetitionApprovalPageModule)
+  },
   { path: 'registration/:wkId/:regId',
     canActivate: [VereinsRegistrationGuardService],
     loadChildren: () => import('./registration/clubreg-editor/clubreg-editor.module').then( m => m.ClubregEditorPageModule) },

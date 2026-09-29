@@ -55,21 +55,35 @@ object MailTemplates {
        |      </style>
        |    </head>""".stripMargin
 
-  def createMailApprovement(wettkampf: Wettkampf, link: String): Mail = {
+  def createMailApprovement(wettkampf: Wettkampf, link: String, withForm: Boolean = false): Mail = {
     val logodir = new java.io.File(Config.homedir + "/" + encodeFileName(wettkampf.easyprint))
     val logofile = ServerPrintUtil.locateLogoFile(logodir)
     val logoHtml = if logofile.exists() then s"""<img class=logo src="${logofile.imageSrcForWebEngine}" title="Logo"/>""" else ""
     val imageData = toQRCodeImage(link)
-    MultipartMail(s"Kutuapp EMail Verifikation nach Wettkampf-Upload (${wettkampf.easyprint})",
+    // Bei Uploads fehlen die Veranstalter-Daten, die zusammen mit der Bestätigung erfasst werden.
+    val (subject, instructionText, linkTitle) = if withForm then (
+      s"Kutuapp Wettkampf bestätigen (${wettkampf.easyprint})",
+      """Bitte bestätige den Wettkampf und hinterlege dabei Deine Veranstalter-Daten.
+         |Dazu öffne bitte folgenden Link und sende das Formular ab:""".stripMargin,
+      "Link zum Bestätigungsformular"
+    ) else (
+      s"Kutuapp EMail Verifikation nach Wettkampf-Upload (${wettkampf.easyprint})",
+      """Um sicherzustellen, dass die angegebene EMail Adresse funktioniert, bitten wir Dich,
+         |folgenden Link für die Bestätigung anzuwählen:""".stripMargin,
+      "Link für die EMail-Bestätigung"
+    )
+    val uploadText = s"""Du hast einen neuen Wettkampf '${wettkampf.easyprint}' auf die Plattform hochgeladen."""
+    val deletionText = "Wenn die Bestätigung nicht innert 24h erfolgt, wird der Wettkampf auf der Plattform wieder gelöscht."
+    MultipartMail(subject,
       s"""Hallo ${wettkampf.notificationEMail}
          |
-         |Du hast einen neuen Wettkampf '${wettkampf.easyprint}' auf die Plattform hochgeladen.
-         |Um sicherzustellen, dass die angegebene EMail Adresse funktioniert, bitten wir Dich,
-         |folgenden Link für die Bestätigung anzuwählen:
+         |$uploadText
+         |
+         |$instructionText
          |
          |$link
          |
-         |Wenn die Bestätigung nicht innert 1h erfolgt, wird der Wettkampf auf der Plattform wieder gelöscht.
+         |$deletionText
          |
          |LG, die Kutuapp
          |
@@ -84,20 +98,21 @@ object MailTemplates {
          |      <div class="textblock">
          |        <h4>Hallo ${escaped(wettkampf.notificationEMail)}</h4>
          |        <p>
-         |          Du hast einen neuen Wettkampf '${escaped(wettkampf.easyprint)}' auf die Plattform hochgeladen.
-         |          Um sicherzustellen, dass die angegebene EMail Adresse funktioniert, bitten wir Dich,
-         |          folgenden Link für die Bestätigung anzuwählen:
+         |          ${escaped(uploadText)}
+         |        </p>
+         |        <p>
+         |          ${escaped(instructionText)}
          |        </p>
          |        <div class="catchme">
          |          <a href='$link'>
-         |            <h2>Link für die EMail-Bestätigung</h2>
+         |            <h2>${escaped(linkTitle)}</h2>
          |            <img title='$link' width='300px' height='300px' src='$imageData'>
          |          </a><br>
          |          <a href='$link'> $link</a>
          |        </div><p>
-         |          Wenn die Bestätigung nicht innert 1h erfolgt, wird der Wettkampf auf der Plattform wieder gelöscht.
+         |          ${escaped(deletionText)}
          |        </p><p>
-         |          LG, die KuTu-App
+         |          LG, die KTu-App
          |        </p>
          |        <hr>
          |        <p>

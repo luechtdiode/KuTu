@@ -7,7 +7,17 @@ import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import spray.json.*
 
 
-trait JsonSupport extends SprayJsonSupport with EnrichedJson {
+// Der generische DataObject-Writer muss niedrigere Priorität als alle spezifischen Formate haben,
+// sonst ist die Instanz mehrdeutig sobald ein DataObject zusätzlich ein eigenes Format besitzt.
+trait LowPriorityJsonSupport {
+  import DefaultJsonProtocol.*
+
+  given dataObjectFormat: RootJsonWriter[DataObject] = (p: DataObject) => {
+    p.easyprint.toJson
+  }
+}
+
+trait JsonSupport extends SprayJsonSupport with EnrichedJson with LowPriorityJsonSupport {
   // import the default encoders for primitive types (Int, String, Lists etc)
   import DefaultJsonProtocol.*
 
@@ -158,6 +168,13 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given adminUpdateCompetitionRequestFormat: RootJsonFormat[AdminUpdateCompetitionRequest] = jsonFormat(AdminUpdateCompetitionRequest.apply, "id", "datum", "titel", "programmId", "notificationEMail", "auszeichnung", "auszeichnungendnote", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
   given adminGetCompetitionResponseFormat: RootJsonFormat[AdminGetCompetitionResponse] = jsonFormat(AdminGetCompetitionResponse.apply, "id", "uuid", "datum", "titel", "programmId", "auszeichnung", "auszeichnungendnote", "notificationEMail", "altersklassen", "jahrgangsklassen", "punktegleichstandsregel", "rotation", "teamrule")
   given adminScoreRequestFormat: RootJsonFormat[AdminScoreRequest] = jsonFormat3(AdminScoreRequest.apply)
+  given creatorMetaDataFormat: RootJsonFormat[CreatorMetaData] = jsonFormat4(CreatorMetaData.apply)
+  given termsBlockFormat: RootJsonFormat[TermsBlock] = jsonFormat2(TermsBlock.apply)
+  given termsInfoFormat: RootJsonFormat[TermsInfo] = jsonFormat4(TermsInfo.apply)
+  given adminTokenRequestFormat: RootJsonFormat[AdminTokenRequest] = jsonFormat1(AdminTokenRequest.apply)
+  given adminTokenResponseFormat: RootJsonFormat[AdminTokenResponse] = jsonFormat1(AdminTokenResponse.apply)
+  given approveEMailRequestFormat: RootJsonFormat[ApproveEMailRequest] = jsonFormat2(ApproveEMailRequest.apply)
+  given approveEMailResponseFormat: RootJsonFormat[ApproveEMailResponse] = jsonFormat2(ApproveEMailResponse.apply)
 
   given riegeSuggestionRequestFormat: RootJsonFormat[RiegeSuggestionRequest] = jsonFormat(RiegeSuggestionRequest.apply, "maxRiegenSize", "maxParallelDg", "splitPgm", "splitSexOption", "onDisziplinIds", "separateRiegen2Durchgaenge", "filterDurchgang")
   given updateRiegeRequestFormat: RootJsonFormat[UpdateRiegeRequest] = jsonFormat4(UpdateRiegeRequest.apply)
@@ -168,10 +185,6 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson {
   given updateStartOffsetRequestFormat: RootJsonFormat[UpdateStartOffsetRequest] = jsonFormat2(UpdateStartOffsetRequest.apply)
   given riegeItemFormat: RootJsonFormat[RiegeItem] = jsonFormat6(RiegeItem.apply)
   given durchgangDurationItemFormat: RootJsonFormat[DurchgangDurationItem] = jsonFormat7(DurchgangDurationItem.apply)
-
-  given dataObjectFormat: RootJsonWriter[DataObject] = (p: DataObject) => {
-    p.easyprint.toJson
-  }
 
   // actions (via rest-request)
   given refresWettkampfMap: RootJsonFormat[RefreshWettkampfMap] = jsonFormat1(RefreshWettkampfMap.apply)

@@ -28,6 +28,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
   with ScoreRoutes
   with ReportRoutes
   with RegistrationRoutes
+  with TermsRoutes
   //    with WebSockets
   with ResourceService
   with MetricsController {
@@ -51,7 +52,8 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
     }
     val standardRoutes = resourceRoutes ~
       pathPrefixLabeled("api", "api") {
-        login(userLookup, userIdLookup) ~
+        termsRoutes ~
+          login(userLookup, userIdLookup) ~
           wertungenRoutes ~
           scoreCalcRoutes ~
           wettkampfRoutes ~

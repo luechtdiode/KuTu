@@ -1,0 +1,95 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Wettkampf bestätigen</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  @if (!uuid() || !mail()) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Link unvollständig</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>Dieser Link enthält keine Wettkampf-Id oder keine Email-Adresse. Bitte den Link aus der Bestätigungs-Email unverändert verwenden.</p>
+      </ion-card-content>
+    </ion-card>
+  } @else if (submitted() && resultSuccess()) {
+    <ion-card color="success">
+      <ion-card-header>
+        <ion-card-title>Wettkampf bestätigt</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <p>{{ resultMessage() }}</p>
+        <p>
+          Die Daten des Wettkampfs wurden an {{ mail() }} gesendet. Der darin enthaltene Schlüssel erlaubt den Zugang
+          zur Verwaltung über das KuTu-Portal und sollte wie ein Passwort behandelt werden.
+        </p>
+        <p>Sie können dieses Fenster jetzt schliessen.</p>
+      </ion-card-content>
+    </ion-card>
+  } @else {
+    <ion-list>
+      <ion-item-divider>
+        <ion-label>Veranstalter-Daten</ion-label>
+      </ion-item-divider>
+
+      <ion-item>
+        <ion-label position="stacked">Name *</ion-label>
+        <ion-input
+          data-test="creatorName"
+          [ngModel]="creatorName()" (ngModelChange)="creatorName.set($event)"
+          placeholder="Vor- und Nachname"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Adresse *</ion-label>
+        <ion-textarea
+          data-test="creatorAddress"
+          [ngModel]="creatorAddress()" (ngModelChange)="creatorAddress.set($event)"
+          placeholder="Strasse, PLZ, Ort"
+          rows="2"></ion-textarea>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Telefon *</ion-label>
+        <ion-input
+          data-test="creatorPhone"
+          type="tel"
+          [ngModel]="creatorPhone()" (ngModelChange)="creatorPhone.set($event)"
+          placeholder="+49 123 456789"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label>
+          <p>Ich akzeptiere die <a href="#" (click)="showTerms($event)">Nutzungsbedingungen</a> *</p>
+        </ion-label>
+        <ion-checkbox
+          slot="end"
+          data-test="termsAccepted"
+          [ngModel]="termsAccepted()" (ngModelChange)="termsAccepted.set($event)"></ion-checkbox>
+      </ion-item>
+    </ion-list>
+
+    @if (submitted() && !resultSuccess()) {
+      <ion-text color="danger">
+        <p data-test="errorMessage">{{ resultMessage() }}</p>
+      </ion-text>
+    }
+
+    <ion-button
+      expand="block"
+      class="ion-margin-top"
+      data-test="submit"
+      [disabled]="!isValid() || submitting()"
+      (click)="submit()"
+    >
+      {{ submitting() ? 'Wird gesendet ...' : 'Wettkampf bestätigen' }}
+    </ion-button>
+
+    <ion-note color="medium" class="ion-padding-top" style="display:block;">
+      Mit dem Absenden werden die Veranstalter-Daten gespeichert, der Wettkampf bestätigt und eine Backup-Email
+      an {{ mail() }} versendet. Nicht bestätigte Wettkämpfe werden nach 24 Stunden gelöscht.
+    </ion-note>
+  }
+</ion-content>

@@ -1,7 +1,7 @@
 package ch.seidel.kutu.http
 
 import ch.seidel.kutu.actors.{AthletWertungUpdated, KutuAppEvent}
-import ch.seidel.kutu.domain.{SyncActionKey, SyncApplyRequest, SyncApplyResponse}
+import ch.seidel.kutu.domain.{AdminTokenRequest, AdminTokenResponse, ApproveEMailRequest, ApproveEMailResponse, CreatorMetaData, SyncActionKey, SyncApplyRequest, SyncApplyResponse}
 import org.scalatest.funsuite.AnyFunSuite
 import spray.json.{JsNumber, _}
 
@@ -97,5 +97,49 @@ class JsonSupportTest extends AnyFunSuite with JsonSupport with EnrichedJson {
     val json = response.toJson.compactPrint
     val deserialized = json.parseJson.convertTo[SyncApplyResponse]
     assert(deserialized === response)
+  }
+
+  test("testCreatorMetaDataSerializationRoundtrip") {
+    val creator = CreatorMetaData("Hans Muster", "Musterstrasse 1, 1234 Musterstadt", "+49 123 456789", "1.0")
+    val json = creator.toJson.compactPrint
+    assert(json.parseJson.convertTo[CreatorMetaData] === creator)
+    assert(json.parseJson.asJsObject.fields.keys == Set("creatorName", "creatorAddress", "creatorPhone", "termsVersion"))
+    assert(creator.isComplete)
+    assert(!creator.copy(creatorPhone = "  ").isComplete)
+    assert(!creator.copy(termsVersion = null).isComplete)
+  }
+
+  test("testAdminTokenRequestSerializationRoundtrip") {
+    val creator = CreatorMetaData("Hans", "Musterstrasse 1", "+49 123", "1.0")
+    val request = AdminTokenRequest(creator)
+    val json = request.toJson.compactPrint
+    assert(json.parseJson.convertTo[AdminTokenRequest] === request)
+    assert(json.parseJson.asJsObject.fields("creator").asJsObject.fields.keys == Set("creatorName", "creatorAddress", "creatorPhone", "termsVersion"))
+  }
+
+  test("testAdminTokenResponseSerializationRoundtrip") {
+    val response = AdminTokenResponse("a.b.c")
+    val json = response.toJson.compactPrint
+    assert(json.parseJson.convertTo[AdminTokenResponse] === response)
+    assert(json.parseJson.asJsObject.fields("token") === JsString("a.b.c"))
+  }
+
+  test("testApproveEMailRequestSerializationRoundtrip") {
+    val request = ApproveEMailRequest("org@test.ch", CreatorMetaData("Hans", "Musterstrasse 1", "+49 123", "1.0"))
+    val json = request.toJson.compactPrint
+    assert(json.parseJson.convertTo[ApproveEMailRequest] === request)
+  }
+
+  test("testApproveEMailResponseSerializationRoundtrip") {
+    val response = ApproveEMailResponse("EMail erfolgreich verifiziert", success = true)
+    val json = response.toJson.compactPrint
+    assert(json.parseJson.convertTo[ApproveEMailResponse] === response)
+    assert(json.parseJson.asJsObject.fields("success") === JsBoolean(true))
+  }
+
+  test("testDataObjectWriterIsOnlyUsedAsFallback") {
+    // Der generische DataObject-Writer darf spezifische Formate nicht verdrängen.
+    val response = AdminTokenResponse("a.b.c")
+    assert(response.toJson.compactPrint === """{"token":"a.b.c"}""")
   }
 }

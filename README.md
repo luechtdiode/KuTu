@@ -14,10 +14,23 @@ Wettkampf-App für Kunst- und Geräteturnen
 * Linux
 * Mac
 * Windows
-
+ 
 _[siehe Releases](https://github.com/luechtdiode/KuTu/releases)_
+
+## Cloud-Installation
+
+Die App ist über einen zentral bereitgestellten Server erreichbar. 
+Auch die Desktop-App kann sich mit diesem Server verbinden, um Wettkämpfe online zu verwalten und Resultate zu erfassen.
+
+Mit der Admin-Web-App direkt in der Cloud zugänglich, ist die lokale Desktop-Installation nicht zwingend notwendig. 
+* Nutzung der Admin-Web-App in der Cloud:
+  * [Test-/Spiel-Plattform für die Admin-Web-App: https://test-kutuapp.sharevic.net/admin](https://test-kutuapp.sharevic.net/admin)
+  * [Produktive Plattform für die Admin-Web-App: https://kutuapp.sharevic.net](https://kutuapp.sharevic.net/admin)
+* Nutzung der Admin-Web-App auf eigenem Server:
+  * [Docker-Image](docs/KuTuAppDockerImageDocu.md)
+
 ## Wettkampf-Vorbereitung
-* Erstellen von Wettkämpfen (KuTu, GeTu und Athletiktest)
+* Erstellen von Wettkämpfen (KuTu, GeTu und weitere Standardformate)
 * Zuweisen von Turner in eine Kategorie/ein Programm eines Wettkampfs
 * Riegeneinteilung (mit Vorbelegungs-Vorschlag)
 * Durchgangs-Plaung mit Berechnung der Durchlaufzeiten
@@ -37,7 +50,7 @@ _[siehe detailierte Dokumentation](https://luechtdiode.gitbook.io/turner-wettkam
 ## Resultat-Analysen
 * Wettkampf-, Vereins- oder Jahresübergreifende Auswertungen
 * Speichern von Ranglisten-Einstellungen
-* Export (HTML oder Drucker)
+* Export (Excel-Listen, HTML oder Drucker)
 
 _[siehe detailierte Dokumentation](https://luechtdiode.gitbook.io/turner-wettkampf-app/resultatanalysen)_
  
@@ -50,7 +63,7 @@ _[siehe detailierte Dokumentation](https://luechtdiode.gitbook.io/turner-wettkam
   Die App kann in der Desktop-Version selbst als Server betrieben werden (nützlich in privaten Netzwerken ohne Internet-Zugang).
   
   Einfacher ist die Nutzung des [zentral bereitgestellten Servers](https://kutuapp.sharevic.net), mit dem sich die Desktop-Version standardmässig verbinden kann. Davon gibt es auch eine [Test-/Spiel-Plattform](https://test-kutuapp.sharevic.net) und eine [Beschreibung, wie die Test-/Spiel-Plattform benutzt werden kann](https://github.com/luechtdiode/KuTu/blob/master/docs/HowToSetupTestInstallation.md).
-
+  
   Es steht ein [Docker-Image](https://hub.docker.com/r/luechtdiode/kutuapp) zur Verfügung, um den Server unter einer eigenen Domäne zu betreiben.
   * Docu [Detailierte Beschreibung zur Installation des Dockerimages](docs/KuTuAppDockerImageDocu.md)
   * Feature [Wettkampfanmeldungen für Vereine](https://luechtdiode.gitbook.io/turner-wettkampf-app/wettkampf-vorbereitung/wettkampf_uebersicht/turneranmeldungen_verarbeiten_online)
