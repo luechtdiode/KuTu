@@ -33,9 +33,9 @@ sealed trait RegistrationAction extends RegistrationProtokoll {
 
 sealed trait RegistrationEvent extends RegistrationProtokoll
 
-case class CompetitionCreated(wettkampfUUID: String, link: String) extends RegistrationAction
+case class CompetitionCreated(wettkampfUUID: String, link: String, withForm: Boolean = false) extends RegistrationAction
 
-case class ApproveEMail(wettkampfUUID: String, mail: String) extends RegistrationAction
+case class ApproveEMail(wettkampfUUID: String, mail: String, creator: Option[CreatorMetaData] = None) extends RegistrationAction
 
 case class EMailApproved(message: String, success: Boolean) extends RegistrationEvent
 
@@ -123,12 +123,12 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
       receive(action)
       clientId = () => ""
 
-    case CompetitionCreated(_, link) =>
+    case CompetitionCreated(_, link, withForm) =>
       syncState = syncState.unapproved
       val wk = readWettkampf(wettkampfUUID)
       if wk.notificationEMail.nonEmpty then {
         KuTuMailerActor.send(
-          MailTemplates.createMailApprovement(wk, link)
+          MailTemplates.createMailApprovement(wk, link, withForm)
         )
         approvementEMailSent = true
         log.info("Competition created / updated: Approver EMail sent")
@@ -137,27 +137,52 @@ class CompetitionRegistrationClientActor(wettkampfUUID: String) extends Persiste
         log.info("Competition without NotificationEMail created/updated: NO Approver EMail sent")
       }
 
-    case ApproveEMail(_, mail) =>
+    case ApproveEMail(_, mail, creator) =>
       val notificationEMail = readWettkampf(wettkampfUUID).notificationEMail
       if notificationEMail.equals(mail) then {
         if !syncState.emailApproved then {
-          syncState = syncState.approved
           val wk = readWettkampf(wettkampfUUID)
-          try {
-            val adminJwt = Some(JsonWebToken(Config.jwtHeader, setClaims(wk.uuid.toString, Int.MaxValue, isAdmin = true), Config.jwtSecretKey))
-            val bos = new java.io.ByteArrayOutputStream()
-            ResourceExchanger.exportWettkampfToStream(wk, bos, withSecret = true, adminJwt = adminJwt, adminOrigin = None)
-            val data = bos.toByteArray
-            // for debug reasons: new BufferedOutputStream(new FileOutputStream("./exported.zip")).write(data)
-            KuTuMailerActor.send(
-              MailTemplates.createBackupMail(wk, data)
-            )
-            log.info(s"EMail approved $mail: Backup EMail sent")
-          } catch {
-            case e: Exception =>
-              log.warning(s"EMail approved $mail but could not send backup: ${e.getMessage}")
+          // Veranstalter-Daten werden nur beim erstmaligen Bestätigen hinterlegt. Ein erneutes
+          // Absenden (z.B. nach verlorener Antwort) darf die Daten nicht überschreiben.
+          // Schlägt das Speichern fehl, wird nicht bestätigt: der Absender kann es erneut versuchen.
+          val stored: Either[String, Unit] = creator.filter(_.isComplete) match {
+            case Some(creatorMetaData) =>
+              val uuid = UUID.fromString(wettkampfUUID)
+              val alreadyStored = getWettkampfMetaDataOption(uuid).exists(_.termsAcceptedAt.isDefined)
+              if alreadyStored then Right(())
+              else
+                try {
+                  saveWettkampfCreatorMetaData(uuid, creatorMetaData, new java.sql.Timestamp(System.currentTimeMillis()))
+                  log.info(s"Creator metadata stored for wettkampf $wettkampfUUID")
+                  Right(())
+                } catch {
+                  case e: Exception =>
+                    log.warning(s"Creator metadata for wettkampf $wettkampfUUID could not be stored: ${e.getMessage}")
+                    Left("Die Veranstalter-Daten konnten nicht gespeichert werden.")
+                }
+            case None => Right(())
           }
-          sender() ! EMailApproved(s"EMail $mail erfolgreich verifiziert", success = true)
+          stored match {
+            case Left(reason) =>
+              sender() ! EMailApproved(reason, success = false)
+            case Right(_) =>
+              syncState = syncState.approved
+              try {
+                val adminJwt = Some(JsonWebToken(Config.jwtHeader, setClaims(wk.uuid.toString, Int.MaxValue, isAdmin = true), Config.jwtSecretKey))
+                val bos = new java.io.ByteArrayOutputStream()
+                ResourceExchanger.exportWettkampfToStream(wk, bos, withSecret = true, adminJwt = adminJwt, adminOrigin = None)
+                val data = bos.toByteArray
+                // for debug reasons: new BufferedOutputStream(new FileOutputStream("./exported.zip")).write(data)
+                KuTuMailerActor.send(
+                  MailTemplates.createBackupMail(wk, data)
+                )
+                log.info(s"EMail approved $mail: Backup EMail sent")
+              } catch {
+                case e: Exception =>
+                  log.warning(s"EMail approved $mail but could not send backup: ${e.getMessage}")
+              }
+              sender() ! EMailApproved(s"EMail $mail erfolgreich verifiziert", success = true)
+          }
         } else {
           sender() ! EMailApproved(s"EMail $mail wurde bereits verifiziert", success = true)
           log.info(s"EMail $mail was already approved")

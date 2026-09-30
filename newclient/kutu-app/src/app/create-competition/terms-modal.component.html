@@ -7,34 +7,52 @@
   </ion-toolbar>
 </ion-header>
 <ion-content class="ion-padding">
-  <h2>Nutzungsbedingungen für die KuTu-Wettkampfplattform</h2>
+  @if (terms?.blocks) {
+    @for (block of terms.blocks; track $index) {
+      @if (block.kind == 'Heading') {
+        <h3>{{ block.text }}</h3>
+      } @else if (block.kind == 'Paragraph') {
+        <p>{{ block.text }}</p>
+      } @else if (block.kind == 'Title') {
+        <h2>{{ block.text }}</h2>
+      }
+    }
+    <p class="ion-padding-top">
+      <em>Version:&nbsp;<strong>{{ terms.version }}</strong></em><br>
+      <em>Stand:&nbsp;<strong>{{ terms.stand }}</strong></em><br>
+    </p>
 
-  <h3>1. Geltungsbereich</h3>
-  <p>Diese Nutzungsbedingungen gelten für die Erstellung und Verwaltung von Wettkämpfen über die KuTu-Administrationsoberfläche. Mit der Erstellung eines Wettkampfs erklären Sie sich mit diesen Bedingungen einverstanden.</p>
+    <div class="ion-padding-top">
+      <ion-button expand="block" (click)="dismiss(true)" color="primary">
+        Akzeptieren
+      </ion-button>
+      <ion-button expand="block" fill="outline" (click)="dismiss(false)" class="ion-margin-top">
+        Ablehnen
+      </ion-button>
+    </div>
+  } @else {
+    <h2>Nutzungsbedingungen für die KuTu-Wettkampfplattform</h2>
 
-  <h3>2. Verantwortlichkeit des Erstellers</h3>
-  <p>Sie als Wettkampf-Ersteller sind verantwortlich für die Richtigkeit aller von Ihnen eingegebenen Daten (Wettkampfinformationen, Teilnehmerdaten, Wertungen). Sie versichern, dass Sie befugt sind, den Wettkampf im Namen des ausrichtenden Vereins oder Verbandes anzulegen.</p>
+    <h3>1. Geltungsbereich</h3>
+    <p>Diese Nutzungsbedingungen gelten für Endnutzer für die Funktionen, die von der KuTu-Wettkampfplattform bereitgestellt werden.</p>
 
-  <h3>3. Datenschutz</h3>
-  <p>Die von Ihnen erfassten personenbezogenen Daten (Name, Adresse, Telefon) werden ausschliesslich zur Identifikation als Wettkampf-Ersteller verwendet und nicht an Dritte weitergegeben. Teilnehmerdaten werden nur im Rahmen der Wettkampf-Durchführung gespeichert und verarbeitet.</p>
+    <h3>2. Verantwortlichkeit</h3>
+    <p>Die Wettkampfleitung ist verantwortlich für die Richtigkeit aller von ihr eingegebenen Daten (Wettkampfinformationen, Teilnehmerdaten, Wertungen).</p>
+    <p>Die Vereine sind verantwortlich für die Richtigkeit aller via Online-Anmeldung eingegebenen Daten (Teilnehmerdaten).</p>
+    <p>Der Betreiber der KuTu-Wettkampfplattform ist verantwortlich für den Betrieb und die Verfügbarkeit der Plattform.</p>
 
-  <h3>4. Haftungsausschluss</h3>
-  <p>Die KuTu-Plattform wird nach bestem Wissen und Gewissen betrieben. Eine Haftung für Schäden, die durch die Nutzung der Plattform entstehen, wird ausgeschlossen, soweit gesetzlich zulässig.</p>
+    <h3>3. Datenschutz</h3>
+    <p>Die erfassten personenbezogenen Daten werden ausschliesslich zur Identifikation und für den Wettkampfbetrieb notwendige Funktionen verwendet und nicht an Dritte weitergegeben. Teilnehmerdaten werden nur im Rahmen der Wettkampf-Durchführung und nachgelagerter Auswertung (Ranglisten) gespeichert und verarbeitet.</p>
 
-  <h3>5. Löschung von Daten</h3>
-  <p>Sie können jederzeit die Löschung Ihres Wettkampfs und aller zugehörigen Daten verlangen. Nicht bestätigte Wettkämpfe werden automatisch nach 24 Stunden gelöscht.</p>
+    <h3>4. Haftungsausschluss</h3>
+    <p>Die KuTu-Wettkampfplattform wird nach bestem Wissen und Gewissen betrieben. Eine Haftung für Schäden, die durch die Nutzung der Plattform entstehen, wird ausgeschlossen, soweit gesetzlich zulässig.</p>
 
-  <h3>6. Änderungen der Bedingungen</h3>
-  <p>Wir behalten uns vor, diese Nutzungsbedingungen jederzeit zu ändern. Bei wesentlichen Änderungen werden Sie rechtzeitig informiert.</p>
+    <h3>5. Löschung von Daten</h3>
+    <p>Die Wettkampfleitung kann jederzeit einzelne Personen oder den ganzen Wettkampf aus dem System löschen. Die entsprechende Löschung beeinflusst auch die Positionen in den Ranglisten.</p>
 
-  <p class="ion-padding-top"><em>Stand: Juli 2026</em></p>
+    <h3>6. Änderungen der Bedingungen</h3>
+    <p>Wir behalten uns vor, diese Bedingungen jederzeit zu ändern. Änderungen werden auf der Plattform veröffentlicht. Mit der weiteren Nutzung der Plattform nach Veröffentlichung der Änderungen erklären Sie sich mit den neuen Bedingungen einverstanden.</p>
+    <p class="ion-padding-top"><em>Stand: Juli 2026</em></p>
+  }
 
-  <div class="ion-padding-top">
-    <ion-button expand="block" (click)="dismiss(true)" color="primary">
-      Akzeptieren
-    </ion-button>
-    <ion-button expand="block" fill="outline" (click)="dismiss(false)" class="ion-margin-top">
-      Ablehnen
-    </ion-button>
-  </div>
 </ion-content>

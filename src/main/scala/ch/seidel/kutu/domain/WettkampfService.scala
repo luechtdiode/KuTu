@@ -733,11 +733,52 @@ trait WettkampfService extends DBService
     }, Duration.Inf)
   }
 
+  private def loadWettkampfMetaDataAction(uuid: UUID) =
+    sql"""      select * from wettkampfmetadata
+                where uuid=${uuid.toString}
+       """.as[WettkampfMetaData]
+
   def getWettkampfMetaData(uuid: UUID): WettkampfMetaData = {
     Await.result(database.run {
-      sql"""      select * from wettkampfmetadata
-                  where uuid=${uuid.toString}
-         """.as[WettkampfMetaData].head
+      loadWettkampfMetaDataAction(uuid).head
+    }, Duration.Inf)
+  }
+
+  def getWettkampfMetaDataOption(uuid: UUID): Option[WettkampfMetaData] = {
+    Await.result(database.run {
+      loadWettkampfMetaDataAction(uuid).headOption
+    }, Duration.Inf)
+  }
+
+  def saveWettkampfCreatorMetaData(uuid: UUID, creator: CreatorMetaData, acceptedAt: java.sql.Timestamp): WettkampfMetaData = {
+    val uuidString = uuid.toString
+    val creatorName = creator.creatorName.trim
+    val creatorAddress = creator.creatorAddress.trim
+    val creatorPhone = creator.creatorPhone.trim
+    val termsVersion = creator.termsVersion.trim
+    val updateRow = sql"""
+                        update wettkampfmetadata
+                        set creator_name=$creatorName,
+                            creator_address=$creatorAddress,
+                            creator_phone=$creatorPhone,
+                            terms_accepted=${true},
+                            terms_accepted_at=$acceptedAt,
+                            terms_version=$termsVersion
+                        where uuid=$uuidString
+                   """.as[Int].map(_.head == 1)
+
+    val insertRow = sqlu"""
+                        insert into wettkampfmetadata
+                        (uuid, wettkampf_id, creator_name, creator_address, creator_phone, terms_accepted, terms_accepted_at, terms_version)
+                        select $uuidString, id, $creatorName, $creatorAddress, $creatorPhone, ${true}, $acceptedAt, $termsVersion
+                        from wettkampf wk where wk.uuid=$uuidString
+                   """
+
+    Await.result(database.run {
+      updateRow.flatMap {
+        case true => DBIO.successful(0)
+        case false => insertRow
+      } >> loadWettkampfMetaDataAction(uuid).head
     }, Duration.Inf)
   }
 

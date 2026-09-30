@@ -244,6 +244,28 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
                     }
                   }
               }
+            } ~
+            // Web-Formular aus der Bestätigungs-Mail. Das Absenden speichert die
+            // Veranstalter-Daten und bestätigt den Wettkampf in einem Schritt.
+            post {
+              entity(as[ApproveEMailRequest]) { request =>
+                val creator = Option(request.creator).filter(_.isComplete)
+                if !creator.isDefined then {
+                  complete(StatusCodes.BadRequest,
+                    "Veranstalter-Daten (Name, Adresse, Telefon) und akzeptierte Nutzungsbedingungen sind erforderlich.")
+                } else {
+                  complete {
+                    CompetitionRegistrationClientActor
+                      .publish(ApproveEMail(wettkampf.uuid.get, request.mail, creator), clientId)
+                      .map {
+                        case EMailApproved(message, success) =>
+                          ApproveEMailResponse(message, success)
+                        case _ =>
+                          ApproveEMailResponse("unable to approve - unexpected behavior", success = false)
+                      }
+                  }
+                }
+              }
             }
           } ~ pathLabeled("programmlist", "programmlist") {
             get {

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory
 import java.time.{Duration, Instant}
 import java.util.concurrent.TimeUnit
 import java.util.{Base64, Date}
+import scala.util.Try
 
 trait JwtSupport extends Directives {
   private lazy val userKey = "user"
@@ -25,12 +26,22 @@ trait JwtSupport extends Directives {
 
   def authenticatedId: Directive1[Option[String]] = {
     optionalHeaderValueByName(jwtAuthorizationKey)
-      .flatMap(jwtOption => provide(jwtOption
-        .filter(token => JsonWebToken.validate(token, jwtSecretKey))
-        .filter(token => !isTokenExpired(token))
-        .flatMap(token => getUserID(getClaims(token))))
-      )
+      .flatMap(jwtOption => provide(jwtOption.flatMap(validTokenUserID)))
   }
+
+  /**
+   * User-ID eines Tokens oder None, wenn der Token ungültig, abgelaufen oder unlesbar ist.
+   *
+   * Ein unlesbarer Token ist kein Serverfehler: diese Prüfung läuft für jede Anfrage, also auch für
+   * öffentliche Seiten wie die Wettkampf-Bestätigung oder die Nutzungsbedingungen. Solche Clients
+   * gelten als nicht angemeldet, statt mit einem 500 abgewiesen zu werden - das trifft insbesondere
+   * einen veralteten Eintrag im localStorage des Web-Clients.
+   */
+  private def validTokenUserID(token: String): Option[String] = Try {
+    if !JsonWebToken.validate(token, jwtSecretKey) then None
+    else if isTokenExpired(token) then None
+    else getUserID(getClaims(token))
+  }.toOption.flatten
 
   def authenticateWith(jwtOption: Option[String], rejectRequest: Boolean): Directive1[String] = jwtOption match {
     case Some(jwt) if JsonWebToken.validate(jwt, jwtSecretKey) =>

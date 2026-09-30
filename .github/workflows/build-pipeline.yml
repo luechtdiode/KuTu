@@ -50,6 +50,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+      - name: Test Mobile-App
+        run: |
+          cd newclient/kutu-app
+          npm i
+          npx ng test --watch=false --browsers=ChromeHeadless
       - name: Build Mobile-App
         run: |
           cd newclient/kutu-app

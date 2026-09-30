@@ -1090,6 +1090,35 @@ package object domain {
                                              secret: String
                                            ) extends DataObject
 
+  case class CreatorMetaData(
+                                creatorName: String,
+                                creatorAddress: String,
+                                creatorPhone: String,
+                                termsVersion: String
+                              ) extends DataObject {
+    def isComplete: Boolean = Seq(creatorName, creatorAddress, creatorPhone, termsVersion)
+      .forall(value => value != null && value.trim.nonEmpty)
+  }
+
+  // Text und Version der Nutzungsbedingungen liegen in terms/nutzungsbedingungen.md, siehe Terms.
+
+  case class TermsBlock(kind: String, text: String) extends DataObject
+
+  /**
+   * Nutzungsbedingungen für den Web-Client. Text und Version kommen aus [[Terms]], damit Desktop
+   * und Web-Oberfläche dieselbe Quelle rendern. Absichtlich ohne Authentifizierung: der Text ist
+   * öffentlich und wird auch auf der öffentlichen Bestätigungsseite angezeigt.
+   */
+  case class TermsInfo(version: String, stand: String, title: String, blocks: Seq[TermsBlock]) extends DataObject
+
+  case class AdminTokenRequest(creator: CreatorMetaData) extends DataObject
+
+  case class AdminTokenResponse(token: String) extends DataObject
+
+  case class ApproveEMailRequest(mail: String, creator: CreatorMetaData) extends DataObject
+
+  case class ApproveEMailResponse(message: String, success: Boolean) extends DataObject
+
   case class AdminUpdateCompetitionRequest(
                                             id: Long,
                                             datum: java.sql.Date,

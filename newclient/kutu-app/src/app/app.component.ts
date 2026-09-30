@@ -8,6 +8,8 @@ import { ActivatedRoute, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { TermsModalComponent } from './create-competition/terms-modal.component';
+import {firstValueFrom} from "rxjs";
+import {AdminBackendService} from "./services/admin-backend.service";
 
 @Component({
     selector: 'app-root',
@@ -21,6 +23,7 @@ export class AppComponent {
   private router = inject(Router);
   themeSwitcher = inject(ThemeSwitcherService);
   backendService = inject(BackendService);
+  adminBackendService = inject(AdminBackendService);
   private secretService = inject(SecretService);
   private alertCtrl = inject(AlertController);
   private modalCtrl = inject(ModalController);
@@ -170,6 +173,17 @@ export class AppComponent {
   async showTerms() {
     const modal = await this.modalCtrl.create({
       component: TermsModalComponent
+    });
+    await modal.present();
+  }
+
+  async showAdminTerms() {
+    const terms = await firstValueFrom(this.adminBackendService.fetchTerms());
+    const modal = await this.modalCtrl.create({
+      component: TermsModalComponent,
+      componentProps: {
+        terms
+      }
     });
     await modal.present();
   }

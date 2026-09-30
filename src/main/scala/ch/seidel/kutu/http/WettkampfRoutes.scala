@@ -255,6 +255,57 @@ trait WettkampfClient extends AuthSupport with KutuService with FailureSupport {
     eventualResponse
   }
 
+  /**
+   * Erneuert das Admin-Token eines Wettkampfes, dessen Secret noch kein `admin`-Claim enthält.
+   * Der Wettbewerbs-Token wird bewusst explizit übergeben und nicht aus `clientheader` gelesen,
+   * weil der Server das eingeschränkte Alt-Token zur Identifikation braucht.
+   *
+   * @param creator Veranstalter-Daten inkl. akzeptierter Nutzungsbedingungen. `None` fragt den
+   *               Altbestand ohne Metadaten ab und liefert im Erfolgsfall nur das Token.
+   */
+  def httpPostAdminTokenRequest(wettkampfUuid: String, jwtToken: String, creator: Option[CreatorMetaData]): Future[AdminTokenResponse] = {
+    import Core.*
+    import HttpMethods.*
+    import org.apache.pekko.http.scaladsl.marshalling.Marshal
+    val uri = s"$remoteBaseUrl/api/competition/$wettkampfUuid/admin-token"
+    val baseRequest = HttpRequest(method = POST, uri = uri)
+      .withHeaders(RawHeader(jwtAuthorizationKey, jwtToken))
+
+    val entityFuture: Future[RequestEntity] = creator match {
+      case Some(creatorMetaData) => Marshal(AdminTokenRequest(creatorMetaData)).to[RequestEntity]
+      case None => Future.successful(HttpEntity.Empty)
+    }
+
+    entityFuture.flatMap { entity =>
+      Http().singleRequest(baseRequest.withEntity(entity), settings = poolsettings).flatMap { response =>
+        if response.status.isSuccess() then {
+          // Das Token steht im Header; der Body ist nur der Fallback, falls kein Header geliefert wurde.
+          val headerToken = response.headers.find(h => h.is(jwtAuthorizationKey)).flatMap {
+            case HttpHeader(_, token) => Option(token).map(_.trim).filter(_.nonEmpty)
+          }
+          headerToken match {
+            case Some(token) => response.entity.discardBytes().future().map(_ => AdminTokenResponse(token))
+            case None =>
+              response.entity match {
+                case HttpEntity.Empty => Future.successful(AdminTokenResponse(""))
+                case _ => Unmarshal(response.entity).to[AdminTokenResponse]
+              }
+          }
+        } else {
+          val status = response.status.intValue
+          response.entity match {
+            case HttpEntity.Strict(_, text) =>
+              text.utf8String
+              response.entity.discardBytes().future().flatMap(_ => Future.failed(HTTPFailure(response.status, text.utf8String)))
+            case _ =>
+              response.entity.discardBytes().future().flatMap(_ =>
+                Future.failed(HTTPFailure(response.status, s"Admin-Token konnte nicht erneuert werden (HTTP $status).")))
+          }
+        }
+      }
+    }
+  }
+
   def extractWettkampfUUID: HttpHeader => Option[String] = {
     case HttpHeader("wkuuid", value) => Some(value)
     case _ => None
@@ -281,6 +332,22 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
     (adminAccessUrl, adminAccessQr)
   }
 
+  /**
+   * Baut den Link für die Bestätigungs-Mail.
+   *
+   * @param withForm true  -> Web-Formular, mit dem der Veranstalter seine Daten erfassen und
+   *                           die Nutzungsbedingungen akzeptiert. Wird für Uploads verwendet,
+   *                           weil der Desktop keine Veranstalter-Daten überträgt.
+   *                 false -> direkter API-Link, der ohne zusätzliche Eingaben bestätigt. Wird
+   *                           für Web-erstellte Wettkämpfe verwendet, die die Daten bereits
+   *                           beim Anlegen mitgeschickt haben.
+   */
+  private def approvemailLink(uri: Uri, uuid: UUID, mail: String, withForm: Boolean): String = {
+    val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
+    val path = if withForm then s"wettkampf-bestaetigen/$uuid" else s"api/registrations/$uuid/approvemail"
+    s"$decodedorigin/$path?mail=${encodeURIParam(mail)}"
+  }
+
   private def cappedAdminLinkExpiry(requestedEpochMillis: Long, currentClaims: Option[Map[String, String]]): Long =
     currentClaims.flatMap(_.get("expiredAtKey")) match {
       case Some(currentExpiry) if !isExpiryInfinite(currentClaims.getOrElse(Map.empty)) =>
@@ -288,6 +355,47 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
       case _ =>
         requestedEpochMillis
     }
+
+  // Erlaubt einen erneuten Aufruf, wenn nach dem Speichern der Veranstalter-Daten
+  // keine Antwort mehr beim Client ankam (idempotentes Wiederholen).
+  private def creatorDataMatches(metaData: WettkampfMetaData, creator: CreatorMetaData): Boolean =
+    metaData.creatorName.contains(creator.creatorName.trim) &&
+      metaData.creatorAddress.contains(creator.creatorAddress.trim) &&
+      metaData.creatorPhone.contains(creator.creatorPhone.trim) &&
+      metaData.termsVersion.contains(creator.termsVersion.trim)
+
+  private def issueAdminToken(wkuuid: UUID): Route = {
+    val claims = setClaims(wkuuid.toString, Int.MaxValue, isAdmin = true)
+    val token = JsonWebToken(jwtHeader, claims, jwtSecretKey)
+    log.info(s"admin token issued for wettkampf $wkuuid")
+    respondWithHeader(RawHeader(jwtAuthorizationKey, token)) {
+      complete(StatusCodes.OK, AdminTokenResponse(token).toJson)
+    }
+  }
+
+  // Liest die optionalen Veranstalter-Daten. Ein leerer Body bedeutet: der Client fragt nur ab,
+  // ob Daten fehlen. Ein fehlerhafter Body wird als 400 beantwortet.
+  private def adminTokenCreator(inner: Option[CreatorMetaData] => Route): Route = {
+    import Core.*
+    extractRequest { httpRequest =>
+      httpRequest.entity match {
+        case HttpEntity.Empty => inner(None)
+        case entity =>
+          val creatorFuture: Future[Either[String, Option[CreatorMetaData]]] = Unmarshal(entity)
+            .to[AdminTokenRequest]
+            .map(request => Right(Option(request.creator).filter(_.isComplete)))
+            .recover { case scala.util.control.NonFatal(e) =>
+              Left(Option(e.getMessage).getOrElse("unbekannter Fehler"))
+            }
+          onSuccess(creatorFuture) {
+            case Left(error) =>
+              complete(StatusCodes.BadRequest, s"Ungültiger Anfrage-Inhalt: $error")
+            case Right(creator) =>
+              inner(creator)
+          }
+      }
+    }
+  }
 
   lazy val wettkampfRoutes: Route = {
     handleCID { (clientId: String) =>
@@ -335,9 +443,9 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                     val claims = setClaims(uuid, Int.MaxValue, isAdmin = true)
                     val secret = JsonWebToken(jwtHeader, claims, jwtSecretKey)
                     wettkampf.saveSecret(Config.homedir, Config.remoteHostOrigin, secret)
-                    val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
-                    val link = s"$decodedorigin/api/registrations/$uuid/approvemail?mail=${encodeURIParam(request.notificationEMail)}"
-                    CompetitionRegistrationClientActor.publish(CompetitionCreated(uuid, link), clientId)
+                    // Web-Erstellung liefert die Veranstalter-Daten bereits mit, daher genügt der direkte Link.
+                    val link = approvemailLink(uri, UUID.fromString(uuid), request.notificationEMail, withForm = false)
+                    CompetitionRegistrationClientActor.publish(CompetitionCreated(uuid, link, withForm = false), clientId)
                     AdminCreateCompetitionResponse(uuid, request.titel, request.datum, secret)
                   }) {
                     case Success(response) => complete(response.toJson)
@@ -663,6 +771,50 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
             }
           }
         } ~
+        pathLabeled("admin-token", "admin-token") {
+          post {
+            authenticated() { userId =>
+              if !userId.equals(wkuuid.toString) then {
+                complete(StatusCodes.Forbidden, "Token gehört zu einem anderen Wettkampf.")
+              } else {
+                onSuccess(readWettkampfAsync(wkuuid.toString)
+                  .map(Option(_))
+                  .recover { case _: NoSuchElementException => None }) { wettkampfOption =>
+                  if wettkampfOption.isEmpty then {
+                    complete(StatusCodes.NotFound, "Wettkampf nicht gefunden.")
+                  } else {
+                    // Eine fehlende Metazeile bedeutet "Altbestand" - saveWettkampfCreatorMetaData legt sie an.
+                    val existingMetaData = getWettkampfMetaDataOption(wkuuid)
+                    val alreadyOnboarded = existingMetaData.exists(_.termsAcceptedAt.isDefined)
+
+                    // Der Presence des Bodys ist die explizite Akzeptanz der Nutzungsbedingungen.
+                    adminTokenCreator { creator =>
+                      if alreadyOnboarded then {
+                        if creator.exists(c => !creatorDataMatches(existingMetaData.get, c)) then {
+                          complete(StatusCodes.Conflict,
+                            "Für diesen Wettkampf sind bereits andere Veranstalter-Daten hinterlegt. " +
+                              "Der Token kann nur für Wettkämpfe ohne hinterlegte Daten erneuert werden.")
+                        } else {
+                          issueAdminToken(wkuuid)
+                        }
+                      } else if creator.isEmpty then {
+                        complete(StatusCodes.Conflict,
+                          "Für diesen Wettkampf fehlen die Veranstalter-Daten inkl. akzeptierter Nutzungsbedingungen.")
+                      } else {
+                        onSuccess(Future {
+                          saveWettkampfCreatorMetaData(wkuuid, creator.get,
+                            new java.sql.Timestamp(System.currentTimeMillis()))
+                        }) { _ =>
+                          issueAdminToken(wkuuid)
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } ~
         pathPrefixLabeled("athlet" / LongNumber, "athlet/:athlet-id") { athletId =>
           delete {
             authenticatedAdmin() { userId =>
@@ -962,10 +1114,10 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                         val processor = Future[(Wettkampf,JwtClaimsSetMap)] {
                           try {
                             val wettkampf = ResourceExchanger.importWettkampf(is, wkuuid.toString, validateEmail = true)
-                            val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
-                            val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
+                            // Upload ohne Veranstalter-Daten: Link auf das Erfassungsformular.
+                            val link = approvemailLink(uri, wkuuid, wettkampf.notificationEMail, withForm = true)
                             AthletIndexActor.publish(ResyncIndex)
-                            CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
+                            CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link, withForm = true), clientId)
                             val claims = setClaims(wkuuid.toString, Int.MaxValue, isAdmin = true)
                             (wettkampf, claims)
                           } finally {
@@ -1020,9 +1172,9 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                             CompetitionRegistrationClientActor.publish(RegistrationChanged(wkuuid.toString), clientId)
                             AbuseHandler.clearAbusedClients()
                             if !before.notificationEMail.equalsIgnoreCase(wettkampf.notificationEMail) then {
-                              val decodedorigin = s"${if uri.authority.host.toString().contains("localhost") then "http" else "https"}://${uri.authority}"
-                              val link = s"$decodedorigin/api/registrations/${wettkampf.uuid.get}/approvemail?mail=${encodeURIParam(wettkampf.notificationEMail)}"
-                              CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link), clientId)
+                              // Upload ohne Veranstalter-Daten: Link auf das Erfassungsformular.
+                              val link = approvemailLink(uri, wkuuid, wettkampf.notificationEMail, withForm = true)
+                              CompetitionRegistrationClientActor.publish(CompetitionCreated(wkuuid.toString, link, withForm = true), clientId)
                             }
                             wettkampf
                           } finally {
