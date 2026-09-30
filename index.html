@@ -49,7 +49,7 @@
 
       <ul>
         <li>Verwaltung von Turner mit ihren Vereinen</li>
-        <li>Erstellen von Wettkämpfen (KuTu, GeTu und Athletiktest)</li>
+        <li>Erstellen von Wettkämpfen (KuTu, GeTu und weitere)</li>
         <li>Zuweisen von Turner in eine Kategorie/ein Programm eines Wettkampfs</li>
         <li>Import von Turner (z.B. kopiert aus Turneranmeldung-Excel) mit Dupletten-Abgleich</li>
         <li>Riegeneinteilung/Durchgangplanung (mit Vorbelegungs-Vorschlag)</li>
@@ -58,6 +58,7 @@
         <li>Ranglisten Erstellung mit div. Gruppierungskriterien</li>
         <li>Netzwerk-Modus mit Mobile-App
           <ul>
+            <li>Online-Admin Oberfläche für in die Wettkampf-Planung und -Durchführung</li>
             <li>Online-Anmeldung mit elektronischer Datenübernahme für in die Wettkampf-Planung</li>
             <li>Online-Resultaterfassung</li>
             <li>Online Echtzeit Resultat-Anzeige</li>
@@ -65,6 +66,9 @@
           </ul>
         </li>
         <li>Regelwerk für die korrekte Rangierung bei Punktegleichstand</li>
+        <li>Regelwerk für Riegen/Turner-Rotationen</li>
+        <li>Regelwerk für Team Zusammenstellung und Resultat-Berechnung</li>
+        <li>Regelwerk für Altersklassen Abgrenzungen</li>
         <li>Integration in Dateisystem
           <ul>
             <li>für die Hinterlegung von Vereins- oder Wettkampfspezifischen Logos</li>
@@ -76,40 +80,51 @@
           und Wettkampfübergreifend.</li>
       </ul>
 
-      <h2>
+      <h2>Nutzung der App via Cloud</h2>
+      <p>Die App kann direkt über die Cloud benutzt werden.</p>
+      <ul>
+        <li><a href="https://test-kutuapp.sharevic.net/admin">Test/Spielwiese Cloud Version</a></li>
+        <li><a href="https://kutuapp.sharevic.net/admin">Produktive Cloud Version</a></li>
+      </ul>
+
+      <h2>Installationshinweise Desktopversion</h2>
+      <h3>
         <a id="systemanforderungen" class="anchor" href="#systemanforderungen" aria-hidden="true"><span
-            class="octicon octicon-link"></span></a>Systemanforderungen:
-      </h2>
-      <p>Die App wird per Installer installiert und bringt die notwendige Java-Runtime mit sich.
+                class="octicon octicon-link"></span></a>Systemanforderungen:
+      </h3>
+      <p>Die App wird per Installer installiert und bringt die notwendige Java-Runtime mit sich. <br>
+        Es sind mind. 4GB RAM und 1GB freier Festplattenspeicher notwendig. Der Bildschirm sollte mind. 1024x768 Pixel gross sein.<br>
+        Die App läuft unter Windows, MacOS und Linux.
       </p>
 
-      <h2>
-        <a id="download" class="anchor" href="#download" aria-hidden="true"><span
-            class="octicon octicon-link"></span></a>Download:
-      </h2>
-
       <h3>
-        <a id="download-latest" class="anchor" href="#download-latest" aria-hidden="true"><span
-            class="octicon octicon-link"></span></a>Aktuellste Version
+        <a id="download" class="anchor" href="#download" aria-hidden="true"><span
+                class="octicon octicon-link"></span></a>Download:
       </h3>
+
+      <h4>
+        <a id="download-latest" class="anchor" href="#download-latest" aria-hidden="true"><span
+                class="octicon octicon-link"></span></a>Aktuellste Version
+      </h4>
       <ul>
         <li><a href="https://github.com/luechtdiode/KuTu/releases">siehe Release-Eintrag</a></li>
         <li><a href="https://github.com/luechtdiode/KuTu/milestones?state=closed">siehe Milestones</a></li>
-        <li><a href="https://luechtdiode.gitbook.io/turner-wettkampf-app/v/v2r3/">Benutzeranleitung der Version 2.3</a></li>
+        <li><a href="https://luechtdiode.gitbook.io/turner-wettkampf-app/v/v2r4/">Benutzeranleitung der Version 2.4</a></li>
       </ul>
 
-      <h2>Installationshinweise</h2>
       <p>Die Installationsdatei ist nicht signiert und führt deshalb bei der Installation zu Sicherheitswarnungen - oder
         die Installation bricht ab.<br>
         Es gibt für die jeweiligen Betriebssysteme Workarounds, mit denen die Installation ordentlich ausgeführt werden
         kann.</p>
-      <h3>Windows 10</h3>
+      <h3>Windows</h3>
       <p>Nach dem Download der msi-Datei ist es notwendig, die folgende Einstellung im Eigenschaft-Dialog (rechte
         Maustaste auf der msi-Datei und dann Eigenschaften) vorzunehmen:
         <br>
         <img src="images/msi-wont-install-issue.png" alt="Eigenschaft-Dialog mit Sicherheits-Einstellung">
       </p>
-
+      <h3>MacOS</h3>
+      <p>Nach dem Download und öffnen der pkg-Datei ist es notwendig, jeweils "Dennoch öffnen", resp. nicht in den Papierkorb zu legen.
+        Dann muss in der Systemsteuerung unter Datenschutz und Sicherheit der Button "Dennoch öffnen" angewählt werden.</p>
       <h3>Test-Installation</h3>
       <p>Zum Ausprobieren oder zum Testen der nächsten Programm-Bereitstellung lässt sich eine Test-Installation
         parallel zur produktiv installierten Version betreiben.<br>
