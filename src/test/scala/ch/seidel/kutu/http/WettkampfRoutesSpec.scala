@@ -7,11 +7,11 @@ import ch.seidel.kutu.domain.*
 import org.apache.pekko.http.scaladsl.model.HttpMethods.POST
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, StatusCodes}
-
 import spray.json.enrichString
 
 import java.sql.Date
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class WettkampfRoutesSpec extends KuTuBaseSpec {
 
@@ -213,12 +213,29 @@ class WettkampfRoutesSpec extends KuTuBaseSpec {
         status should ===(StatusCodes.OK)
         token = responseAs[String].parseJson.convertTo[AdminTokenResponse].token
       }
-
+      val dec = java.util.Base64.getUrlDecoder
+      val expectedExpiration = Some(new Date(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1L)).toLocalDate)
       HttpRequest(POST, s"/api/competition/${wk.uuid.get}/admin-access-link",
         entity = HttpEntity(ContentTypes.`application/json`,
-          createAdminAccessLinkFormat.write(CreateAdminAccessLink(7L)).compactPrint))
+          createAdminAccessLinkFormat.write(CreateAdminAccessLink(1L)).compactPrint))
         .addHeader(RawHeader(jwtAuthorizationKey, token)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
+        val resp: AdminAccessLink = responseAs[AdminAccessLink]
+        val decoded = new String(dec.decode(resp.link.substring(resp.link.indexOf("?") + 1)))
+        // split decoded into key-value pairs and extract the claims from the token
+        decoded.split("&").find(_.startsWith("secret=")) match {
+          case Some(secretPart) =>
+            val secret = secretPart.substring("secret=".length)
+            val claims = secret match {
+              case JsonWebToken(_, jwtClaims, _) => jwtClaims.asSimpleMap.toOption.getOrElse(Map.empty)
+              case _ => Map.empty[String, String]
+            }
+            claims.get("admin").shouldBe(Some("true"))
+            isExpiryInfinite(claims).shouldBe(false)
+            getExpiration(secret).map(d => new Date(d.getTime).toLocalDate).shouldBe(expectedExpiration)
+            claims.get("user").shouldBe(Some(wk.uuid.get))
+          case None => fail("no secret part found in decoded link")
+        }
       }
     }
 
