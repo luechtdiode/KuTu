@@ -1,0 +1,1 @@
+import{r as C}from"./chunk-B_3BPKTL.js";import{_ as C$1}from"./main-RHRCWUL6.js";var o=class extends C$1{show(i){return C(this,null,function*(){})}hide(i){return C(this,null,function*(){})}};export{o as SplashScreenWeb};
