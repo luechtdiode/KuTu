@@ -104,7 +104,7 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % slf4jV,
   "ch.qos.logback" % "logback-classic" % logbackV,
   "commons-codec" % "commons-codec" % "1.22.1",
-  "org.apache.commons" % "commons-lang3" % "3.20.0",
+  "org.apache.commons" % "commons-lang3" % "3.21.0",
   "org.apache.commons" % "commons-text" % "1.15.0",
   "technology.tabula" % "tabula" % "1.0.5",
   "org.apache.poi" % "poi" % "5.5.1",
