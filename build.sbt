@@ -22,7 +22,7 @@ val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
 val gatlingV     = "3.15.1"
 val slf4jV       = "2.0.20"
-val logbackV     = "1.6.3"
+val logbackV     = "1.6.5"
 
 // Ensure Java compiler options match the project's target
 ThisBuild / javacOptions ++= Seq("-source", "25", "-target", "25")
@@ -104,7 +104,7 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % slf4jV,
   "ch.qos.logback" % "logback-classic" % logbackV,
   "commons-codec" % "commons-codec" % "1.22.1",
-  "org.apache.commons" % "commons-lang3" % "3.20.0",
+  "org.apache.commons" % "commons-lang3" % "3.21.0",
   "org.apache.commons" % "commons-text" % "1.15.0",
   "technology.tabula" % "tabula" % "1.0.5",
   "org.apache.poi" % "poi" % "5.5.1",
