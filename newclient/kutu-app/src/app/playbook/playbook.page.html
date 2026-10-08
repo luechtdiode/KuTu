@@ -144,7 +144,7 @@
                         <small class="dg-time">Plan: {{ formatTimestampFromOffset(groupStartOffset(group)) }} – {{ formatTimeOfDay(groupEndOffset(group)) }}, Plandauer: {{ formatMillis(groupTotalMillis(group)) }}</small>
                       }
                       @if (groupStartEffective(group) || groupEffectiveFinish(group)) {
-                        <small class="dg-time">Start (eff): {{ (groupStartEffective(group) || '--:--').substring(0, 5) }}, Ende (eff): {{ (groupEffectiveFinish(group) || '--:--').substring(0, 5) }}, Dauer: {{ groupDurationStr(group) || '–' }}</small>
+                        <small class="dg-time">Start (eff): {{ groupStartEffective(group) || '--:--' }}, Ende (eff): {{ groupEffectiveFinish(group) || '--:--' }}, Dauer: {{ groupDurationStr(group) || '–' }}</small>
                       }
                       @if (groupTotalMillis(group) > 0) {
                         <small class="dg-plan">Einturnen: {{ formatMillis(groupEinturnenMillis(group)) }}, Gerät: {{ formatMillis(groupGeraetMillis(group)) }}</small>
@@ -209,8 +209,8 @@
                         @if (row.offsetMillis > 0) {
                           <small class="dg-time">Plan: {{ formatTimestampFromOffset(row.offsetMillis) }} – {{ formatTimeOfDay(row.offsetMillis + row.totalMillis) }}, Plandauer: {{ formatMillis(row.totalMillis) }}</small>
                         }
-                        @if (row.effectiveStart || row.effectiveEnd) {
-                          <small class="dg-time">Start (eff): {{ (row.effectiveStart || '--:--').substring(0, 5) }}, Ende (eff): {{ (row.effectiveEnd || '--:--').substring(0, 5) }}, Dauer: {{ row.duration || '–' }}</small>
+                        @if (row.effectiveStartMillis > 0 || row.effectiveEndMillis > 0) {
+                          <small class="dg-time">Start (eff): {{ formatEffectiveTime(row.effectiveStartMillis) || '--:--' }}, Ende (eff): {{ formatEffectiveTime(row.effectiveEndMillis) || '--:--' }}, Dauer: {{ row.duration || '–' }}</small>
                         }
                         @if (row.totalMillis > 0) {
                           <small class="dg-plan">Einturnen: {{ formatMillis(row.einturnenMillis) }}, Gerät: {{ formatMillis(row.geraetMillis) }}</small>

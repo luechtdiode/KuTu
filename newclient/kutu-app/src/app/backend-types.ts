@@ -564,8 +564,8 @@ export interface PlaybookDurchgang {
   overallPct: number;
   totalCount: number;
   completedCount: number;
-  effectiveStart: string;
-  effectiveEnd: string;
+  effectiveStartMillis: number;
+  effectiveEndMillis: number;
   duration: string;
   planEinturnen: string;
   offsetMillis: number;

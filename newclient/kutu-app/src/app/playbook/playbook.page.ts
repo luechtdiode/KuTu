@@ -401,35 +401,34 @@ export class PlaybookPage implements OnInit, OnDestroy {
     return Math.max(...group.rows.map(r => r.totalMillis));
   }
 
+  formatEffectiveTime(millis: number): string {
+    if (millis <= 0) return '';
+    const ts = new Date(millis);
+    const hh = ts.getHours().toString().padStart(2, '0');
+    const min = ts.getMinutes().toString().padStart(2, '0');
+    return `${hh}:${min}`;
+  }
+
   groupStartEffective(group: PlaybookGroup): string {
-    return group.rows.find(r => r.effectiveStart)?.effectiveStart || '';
+    const row = group.rows.find(r => r.effectiveStartMillis > 0);
+    return row ? this.formatEffectiveTime(row.effectiveStartMillis) : '';
   }
 
   groupEffectiveFinish(group: PlaybookGroup): string {
     let last = '';
     for (const r of group.rows) {
-      if (r.effectiveEnd) last = r.effectiveEnd;
+      if (r.effectiveEndMillis > 0) last = this.formatEffectiveTime(r.effectiveEndMillis);
     }
     return last;
   }
 
   groupDurationStr(group: PlaybookGroup): string {
-    const starts = group.rows.filter(r => r.effectiveStart).map(r => r.effectiveStart);
-    const ends = group.rows.filter(r => r.effectiveEnd).map(r => r.effectiveEnd);
-    if (starts.length === 0) return '';
-    const parseSec = (t: string) => {
-      const p = t.split(':');
-      return p.length === 3 ? parseInt(p[0]) * 3600 + parseInt(p[1]) * 60 + parseInt(p[2]) : 0;
-    };
-    const secDiff = ends.length ? parseSec(ends[ends.length - 1]) - parseSec(starts[0]) : 0;
+    const starts = group.rows.filter(r => r.effectiveStartMillis > 0).map(r => r.effectiveStartMillis);
+    const ends = group.rows.filter(r => r.effectiveEndMillis > 0).map(r => r.effectiveEndMillis);
+    if (starts.length === 0 || ends.length === 0) return '';
+    const secDiff = Math.max(...ends) - Math.min(...starts);
     if (secDiff <= 0) return '';
-    const hrs = Math.floor(secDiff / 3600);
-    const min = Math.floor((secDiff % 3600) / 60);
-    const sec = secDiff % 60;
-    const hp = hrs > 0 ? `${hrs}h, ` : '';
-    const mp = min > 0 ? `${min}m, ` : '';
-    const sp = sec > 0 ? `${sec.toString().padStart(2, '0')}s` : '00s';
-    return hp + mp + sp;
+    return this.formatMillis(secDiff);
   }
 
   groupTotalAthletes(group: PlaybookGroup): number {
