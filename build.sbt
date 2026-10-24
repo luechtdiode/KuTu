@@ -92,7 +92,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp" % slickV,
 
   // JSON / Jackson / Spray
-  "com.fasterxml.jackson.core" % "jackson-core" % "2.22.3",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.22.4",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.4",
 
   // Database drivers / utils
