@@ -92,8 +92,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp" % slickV,
 
   // JSON / Jackson / Spray
-  "com.fasterxml.jackson.core" % "jackson-core" % "2.22.3",
-  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.3",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.22.4",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.4",
 
   // Database drivers / utils
   "org.xerial" % "sqlite-jdbc" % "3.53.4.0",
@@ -112,8 +112,8 @@ libraryDependencies ++= Seq(
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.6",
-  "org.simplejavamail" % "simple-java-mail" % "9.3.5",
   "org.apache.poi" % "poi-ooxml" % "6.0.0",
+  "org.simplejavamail" % "simple-java-mail" % "9.3.8",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
   "org.javadelight" % "delight-nashorn-sandbox" % "0.5.6",
