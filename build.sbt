@@ -108,12 +108,12 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-text" % "1.15.0",
   "technology.tabula" % "tabula" % "1.0.5",
   "org.apache.poi" % "poi" % "5.5.1",
-  "org.apache.poi" % "poi-ooxml" % "5.5.1",
+  "org.apache.poi" % "poi-ooxml" % "6.0.0",
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.6",
+  "org.apache.poi" % "poi-ooxml" % "6.0.0",
   "org.simplejavamail" % "simple-java-mail" % "9.3.8",
-  "org.apache.poi" % "poi-ooxml" % "5.5.1",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
   "org.javadelight" % "delight-nashorn-sandbox" % "0.5.6",
