@@ -723,6 +723,7 @@ package object domain {
             acc :+ (fallbackBezeichnung, Seq(), item._2)
           }
         }
+        .distinct
         .sortBy(item => (item._1, item._3))
     }
 

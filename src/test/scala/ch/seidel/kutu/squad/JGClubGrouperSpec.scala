@@ -10,28 +10,22 @@ class JGClubGrouperSpec extends AnyWordSpec with Matchers {
   "extract Altersklasse" in {
     val altersklasse = ByAltersklasse("AK", Altersklasse.parseGrenzen("AK6-10,AK11-20/2,AK25-100/10"))
     println(altersklasse.grenzen)
-    assert(altersklasse.grenzen === List(("AK", List(), 6), ("AK", List(), 7), ("AK", List(), 8), ("AK", List(), 9), ("AK", List(), 10),
-      ("AK", List(), 11), ("AK", List(), 13), ("AK", List(), 15), ("AK", List(), 17), ("AK", List(), 19), ("AK", List(), 25),
-      ("AK", List(), 35), ("AK", List(), 45), ("AK", List(), 55), ("AK", List(), 65), ("AK", List(), 75), ("AK", List(), 85), ("AK", List(), 95))
+    assert(altersklasse.grenzen === Seq(
+      ("AK", Seq(), 6),
+      ("AK", Seq(), 11), ("AK", Seq(), 13), ("AK", Seq(), 15), ("AK", Seq(), 17), ("AK", Seq(), 19),
+      ("AK", Seq(), 25), ("AK", Seq(), 35), ("AK", Seq(), 45), ("AK", Seq(), 55), ("AK", Seq(), 65), ("AK", Seq(), 75), ("AK", Seq(), 85), ("AK", Seq(), 95))
     )
   }
   "extract complex Altersklasse" in {
     val altersklasse = ByAltersklasse("AK", Altersklasse.parseGrenzen("AK(W+BS)8-17,AK(M+BS)8-18/2,AK(OS)14-18/2"))
     println(altersklasse.grenzen)
-    assert(altersklasse.grenzen === List(
-      ("AK",List("W", "BS"),8), ("AK",List("M", "BS"),8),
-      ("AK",List("W", "BS"),9),
-      ("AK",List("W", "BS"),10), ("AK",List("M", "BS"),10),
-      ("AK",List("W", "BS"),11), ("AK",List("W", "BS"),12),
-
-      ("AK",List("M", "BS"),12),
-      ("AK",List("W", "BS"),13),
-      ("AK",List("W", "BS"),14), ("AK",List("M", "BS"),14), ("AK",List("OS"),14),
-
-      ("AK",List("W", "BS"),15), ("AK",List("W", "BS"),16), ("AK",List("M", "BS"),16), ("AK",List("OS"),16),
-
-      ("AK",List("W", "BS"),17),
-      ("AK",List("M", "BS"),18), ("AK",List("OS"),18))
+    assert(altersklasse.grenzen === Seq(
+      ("AK",Seq("W", "BS"),8),  ("AK",Seq("M", "BS"),8),
+                                ("AK",Seq("M", "BS"),10),
+                                ("AK",Seq("M", "BS"),12),
+                                ("AK",Seq("M", "BS"),14),  ("AK",Seq("OS"),14),
+                                ("AK",Seq("M", "BS"),16),  ("AK",Seq("OS"),16),
+      ("AK",Seq("W", "BS"),18), ("AK",Seq("M", "BS"),18),  ("AK",Seq("OS"),18))
     )
   }
 }

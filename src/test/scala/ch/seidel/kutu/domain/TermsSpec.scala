@@ -60,7 +60,7 @@ class TermsSpec extends AnyWordSpec with Matchers {
     }
 
     "accept CRLF line endings" in {
-      Terms.parse(sample.replace("\n", "\r\n")).blocks shouldBe Terms.parse(sample).blocks
+      Terms.parse(sample.replace("\r\n", "\n").replace("\n", "\r\n")).blocks shouldBe Terms.parse(sample).blocks
     }
 
     "fail fast without a version" in {
