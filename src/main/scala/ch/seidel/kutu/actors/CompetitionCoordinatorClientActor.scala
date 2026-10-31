@@ -199,17 +199,20 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
   }
 
   private def recomputeRiegenEinteilungState(): Unit = {
-    val riegen = selectRiegen(wettkampf.id)
+    val riegen = selectRiegen(wettkampf.id).map(r => r.r -> r).toMap
     val riegenZuWettkampf = listRiegenZuWettkampf(wettkampf.id)
     val counts = riegenZuWettkampf.groupMap(_._1)(_._2).view.mapValues(_.sum)
-    val riegeItems = riegen.map(r => RiegeItem(
-      name = r.r,
-      durchgang = r.durchgang,
-      startId = r.start.map(_.id),
-      startName = r.start.map(_.name),
-      kind = r.kind,
-      athletCount = counts.getOrElse(r.r, 0)
-    ))
+    val riegeItems = riegenZuWettkampf.map(rs =>
+      val (rName, rKind, rDG, rDisz) = rs
+      val r = riegen.getOrElse(rName, Riege(rName, None, None, 0))
+      RiegeItem(
+        name = r.r,
+        durchgang = r.durchgang,
+        startId = r.start.map(_.id),
+        startName = r.start.map(_.name),
+        kind = r.kind,
+        athletCount = counts.getOrElse(rName, 0)
+      )).toList
 
     val athleteCountsByDurchgang = riegenZuWettkampf
       .groupBy(_._3).view.mapValues(_.map(_._2).sum)
@@ -221,7 +224,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
       athletCount = athleteCountsByDurchgang.getOrElse(Some(d.name), 0)
     )).toList.sortBy(_.name)
 
-    val disziplinen = wkDiszs.map(wd => (wd.ord, wd.disziplin)).toList.sortBy(_._1).map(_._2).distinct
+    val disziplinen = wkDiszs.map(wd => (wd.ord, wd.disziplin)).sortBy(_._1).map(_._2).distinct
 
     riegenEinteilungState = Some(RiegenEinteilungState(riegen = riegeItems, duration = durationItems, disziplinen = disziplinen))
   }

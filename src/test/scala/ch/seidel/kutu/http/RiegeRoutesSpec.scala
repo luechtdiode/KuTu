@@ -7,6 +7,7 @@ import ch.seidel.kutu.domain.*
 import org.apache.pekko.http.scaladsl.model.*
 import org.apache.pekko.http.scaladsl.model.HttpMethods.{GET, POST, PUT}
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
+import org.checkerframework.checker.nonempty.qual.NonEmpty
 import spray.json.*
 import spray.json.DefaultJsonProtocol.*
 
@@ -40,15 +41,15 @@ class RiegeRoutesSpec extends KuTuBaseSpec {
 
   "RiegeRoutes" should {
 
-    // ── GET /api/competition/{uuid}/riege (empty) ────────────────────────────
+    // ── GET /api/competition/{uuid}/riege (non-empty) ────────────────────────────
 
-    "return empty list when no riegen exist" in {
+    "return non-empty list when riegen exist" in {
       HttpRequest(GET, s"/api/competition/${testWettkampf.uuid.get}/riege")
         .addHeader(adminJwtFor(testWettkampf.uuid.get)) ~> withRoutes ~> check {
         status should ===(StatusCodes.OK)
         contentType should ===(ContentTypes.`application/json`)
         val items = responseAs[String].parseJson.convertTo[List[RiegeItem]]
-        items shouldBe empty
+        items should not be empty
       }
     }
 
