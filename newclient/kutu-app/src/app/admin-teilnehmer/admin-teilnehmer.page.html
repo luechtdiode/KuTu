@@ -1,0 +1,88 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button [defaultHref]="'/admin/competitions/' + uuid"></ion-back-button>
+      <ion-icon name="list" style="margin-left: 8px"></ion-icon>
+    </ion-buttons>
+    <ion-title>Teilnehmer</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="goToRiegenEinteilung()" title="Zur Riegeneinteilung">
+        <ion-icon name="git-network" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-refresher slot="fixed" (ionRefresh)="loadData(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <ion-searchbar placeholder="Suche in Name, Verein, Riege, Team" [debounce]="200" (ionInput)="onFilter($event)"></ion-searchbar>
+
+  <div class="actions">
+    <ion-button size="small" fill="outline" (click)="exportExcel(false)">Excel Vorlage</ion-button>
+    <ion-button size="small" (click)="fileInput.click()"><ion-icon name="cloud-upload" slot="start"></ion-icon>Excel Import</ion-button>
+    <ion-button size="small" (click)="exportExcel(true)"><ion-icon name="download" slot="start"></ion-icon>Excel Export</ion-button>
+    <input #fileInput type="file" accept=".xlsx,.xls,.csv" hidden (change)="onImportFile($event)" />
+    <ion-button size="small" color="secondary" (click)="print('notenblatt')"><ion-icon name="print" slot="start"></ion-icon>Notenblätter</ion-button>
+    <ion-button size="small" color="secondary" (click)="print('riegenblatt')"><ion-icon name="print" slot="start"></ion-icon>Riegenblätter</ion-button>
+    <ion-button size="small" color="secondary" (click)="print('durchgang')"><ion-icon name="print" slot="start"></ion-icon>Durchgangliste</ion-button>
+    <ion-button size="small" color="secondary" (click)="print('teilnehmer')"><ion-icon name="print" slot="start"></ion-icon>Kategorieliste</ion-button>
+    <ion-button size="small" color="secondary" (click)="print('vereine')"><ion-icon name="print" slot="start"></ion-icon>Vereinsliste</ion-button>
+  </div>
+  <ion-note *ngIf="filter()">Export/Druck nur für die {{ filtered().length }} gefilterten Teilnehmer.</ion-note>
+
+  <ion-card *ngIf="importFile() as f">
+    <ion-card-header>
+      <ion-card-title>Import-Vorschau: {{ f.name }}</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <table class="tn">
+        <thead><tr><th></th><th>Status</th><th>Name</th><th>Verein</th><th>Kategorie</th><th>Team</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of importRows()">
+            <td><input type="checkbox" [checked]="importSelected().has(r.key)" (change)="toggleImport(r.key)" /></td>
+            <td>{{ r.status }}</td>
+            <td>{{ r.name }} {{ r.vorname }} ({{ r.jahrgang }})</td>
+            <td>{{ r.verein }}</td>
+            <td>{{ r.status === 'entfernt' ? r.oldProgramm : (r.status === 'geändert' ? r.oldProgramm + ' → ' + r.programm : r.programm) }}</td>
+            <td>{{ r.team > 0 ? r.team : '' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <ion-button (click)="applyImport()" [disabled]="importSelected().size === 0">{{ importSelected().size }} übernehmen</ion-button>
+      <ion-button fill="outline" (click)="cancelImport()">Abbrechen</ion-button>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-spinner *ngIf="loading()"></ion-spinner>
+  <table class="tn">
+    <thead>
+      <tr><th>Name</th><th>Vorname</th><th>Jg</th><th>Verein</th><th>Kategorie</th><th>Riege 1</th><th>Riege 2</th><th>Team</th><th>Bearbeiten</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let i of filtered()" [class.selected]="i.athletId === selectedId()" (click)="select(i)" (dblclick)="edit(i)">
+        <td>{{ i.name }}</td>
+        <td>{{ i.vorname }}</td>
+        <td>{{ i.jahrgang }}</td>
+        <td>{{ i.verein }}</td>
+        <td>{{ i.programm }}</td>
+        <td>{{ i.riege || '—' }}</td>
+        <td>{{ i.riege2 || '—' }}</td>
+        <td>{{ i.teamName || '—' }}</td>
+        <td><span class="edit" (click)="edit(i); $event.stopPropagation()"><ion-icon name="create" slot="icon-only"></ion-icon></span>
+          <span class="edit" (click)="unassignFromCompetition(i); $event.stopPropagation()"><ion-icon name="trash" slot="icon-only"></ion-icon></span></td>
+      </tr>
+    </tbody>
+  </table>
+  <ion-note *ngIf="!loading() && filtered().length === 0">Keine Teilnehmer gefunden.</ion-note>
+</ion-content>
+<style>
+  table.tn { width: 100%; border-collapse: collapse; }
+  table.tn th, table.tn td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--ion-color-light-shade); }
+  .edit { cursor: pointer; display: inline-block; min-width: 3em; }
+  .edit:hover { background: var(--ion-color-light); }
+  tr.selected td { background: var(--ion-color-light); }
+  .actions { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+</style>

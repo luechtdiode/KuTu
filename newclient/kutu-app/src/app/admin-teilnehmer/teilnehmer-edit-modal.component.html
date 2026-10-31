@@ -1,0 +1,38 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>{{ item.name }} {{ item.vorname }} bearbeiten</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">Abbrechen</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+<ion-content class="ion-padding">
+  <ion-list>
+    <ion-item>
+      <ion-select label="Kategorie" labelPlacement="stacked" [ngModel]="programmId()" (ngModelChange)="programmId.set($event)" interface="popover">
+        <ion-select-option *ngFor="let p of programme()" [value]="p.id">{{ p.name }}</ion-select-option>
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-input label="Riege 1" labelPlacement="stacked" [ngModel]="riege()" (ngModelChange)="riege.set($event)"></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-input label="Riege 2" labelPlacement="stacked" [ngModel]="riege2()" (ngModelChange)="riege2.set($event)"></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-select label="Team" labelPlacement="stacked" [ngModel]="team()" (ngModelChange)="team.set($event)" interface="popover">
+        <ion-select-option [value]="0">kein Team</ion-select-option>
+        <ion-select-option *ngFor="let t of teams()" [value]="t.index">{{ t.index > 0 ? t.name + ' ' + t.index : t.name }}</ion-select-option>
+      </ion-select>
+    </ion-item>
+    <ion-item>
+      <ion-input label="Reserve" labelPlacement="stacked" type="number" min="0" [ngModel]="reserve()" (ngModelChange)="reserve.set($event)"></ion-input>
+    </ion-item>
+  </ion-list>
+  <ion-note color="medium">Bei Änderung von Kategorie oder Team werden die Riegen neu berechnet, ausser sie werden hier explizit geändert.</ion-note>
+  <ion-note color="danger" *ngIf="error()">{{ error() }}</ion-note>
+  <div class="ion-padding">
+    <ion-button expand="block" (click)="save()" [disabled]="saving()">Speichern</ion-button>
+  </div>
+</ion-content>
+

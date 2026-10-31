@@ -253,7 +253,7 @@ class WettkampfImportService(service: KutuService, wettkampf: WettkampfView) {
       .filter(_.progId > 0L)
       .filter(_.oldProg > 0)
       .foreach { row =>
-        service.moveToProgram(wettkampf.id, row.progId, row.team, row.reserve, row.athletView)
+        service.moveToProgram(wettkampf.id, row.progId, row.team, row.reserve, row.athletView, publishWS = publishWS)
       }
     athletList
       .filter(_.progId == 0L)

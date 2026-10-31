@@ -176,6 +176,10 @@ export class CompetitionAdminOverviewPage implements OnDestroy {
     this.nav.navigateRoot('/admin/registrations/' + this.uuid);
   }
 
+  openTeilnehmer() {
+    this.nav.navigateRoot('/admin/teilnehmer/' + this.uuid);
+  }
+
   openRiegen() {
     this.nav.navigateRoot('/admin/riege-einteilung/' + this.uuid);
   }
