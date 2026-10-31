@@ -25,6 +25,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
   with WertungenRoutes
   with WettkampfRoutes
   with ScoreCalcRoutes
+  with AltersklassenRoutes
   with ScoreRoutes
   with ReportRoutes
   with RegistrationRoutes
@@ -53,6 +54,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
     val standardRoutes = resourceRoutes ~
       pathPrefixLabeled("api", "api") {
         termsRoutes ~
+          altersklassenRoutes ~
           login(userLookup, userIdLookup) ~
           wertungenRoutes ~
           scoreCalcRoutes ~

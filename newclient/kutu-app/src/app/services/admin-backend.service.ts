@@ -38,6 +38,8 @@ import {
   ScoreCalcOptions,
   ScoreCalcPreviewRequest,
   ScoreCalcPreviewResponse,
+  AltersklassenPreviewRequest,
+  AltersklassenPreviewResponse,
   Terms
 } from '../backend-types';
 import {map} from "rxjs/operators";
@@ -356,6 +358,11 @@ export class AdminBackendService {
   previewScoreCalc(uuid: string, request: ScoreCalcPreviewRequest, secret: string): Observable<ScoreCalcPreviewResponse> {
     const headers = new HttpHeaders({ 'x-access-token': secret });
     return this.http.post<ScoreCalcPreviewResponse>(this.api + 'admin/competition/' + uuid + '/scorecalc/preview', request, { headers });
+  }
+
+  previewAltersklassen(formel: string): Observable<AltersklassenPreviewResponse> {
+    const request: AltersklassenPreviewRequest = { formel };
+    return this.http.post<AltersklassenPreviewResponse>(this.api + 'altersklassen/preview', request);
   }
 
   /** Oeffentlicher Endpunkt: bestaetigt einen hochgeladenen Wettkampf und speichert die Veranstalter-Daten. */
