@@ -220,7 +220,7 @@ export interface JudgeRegistrationProgramItem {
   values: ScoreCalcVariable[];
  }
 
- export interface ScoreCalcPreviewResponse {
+export interface ScoreCalcPreviewResponse {
   exercises: ScoreCalcVariable[][];
   noteD: number | null;
   noteE: number | null;
@@ -229,7 +229,16 @@ export interface JudgeRegistrationProgramItem {
   eValidState: string;
   pValidState: string;
   valid: boolean;
- }
+}
+
+export interface AltersklassenPreviewRequest {
+  formel: string;
+}
+
+export interface AltersklassenPreviewResponse {
+  valid: boolean;
+  labels: string[];
+}
 export interface Wertung {
   id: number;
   wettkampfId: number;

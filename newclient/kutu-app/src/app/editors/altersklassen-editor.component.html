@@ -2,7 +2,7 @@
   <ion-toolbar color="primary">
     <ion-buttons slot="start">
       @if (editIndex !== null) {
-        <ion-button (click)="editIndex = null">
+        <ion-button (click)="cancelEdit()">
           <ion-icon name="arrow-back"></ion-icon>
         </ion-button>
       }
@@ -54,6 +54,22 @@
       </ion-text>
     </ion-item>
 
+    @if (previewLabels().length > 0) {
+      <ion-list>
+        <ion-item lines="none">
+          <ion-label>
+            <h2>Vorschau</h2>
+            <p>{{ previewLabels().length }} Altersklassen</p>
+          </ion-label>
+        </ion-item>
+        @for (label of previewLabels(); track $index) {
+          <ion-item lines="none">
+            <ion-label>{{ label }}</ion-label>
+          </ion-item>
+        }
+      </ion-list>
+    }
+
     <div class="ion-padding">
       <ion-button expand="block" [disabled]="!valid" (click)="confirm()">
         Übernehmen
@@ -67,40 +83,68 @@
     <ion-list>
       <ion-item>
         <ion-label position="stacked">Bezeichnung</ion-label>
-        <ion-input [(ngModel)]="editTokenData.bezeichnung" placeholder="z.B. AK"></ion-input>
+        <ion-input [(ngModel)]="editTokenData.bezeichnung" (ngModelChange)="onEditChanged()" placeholder="z.B. AK"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label position="stacked">Gültigkeit für Geschlecht/Kategorie</ion-label>
-        <ion-input [(ngModel)]="editQualifier" placeholder="optional, z.B. W+BS"></ion-input>
+        <ion-input [(ngModel)]="editQualifier" (ngModelChange)="onEditChanged()" placeholder="optional, z.B. W+BS"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label position="stacked">Startalter</ion-label>
-        <ion-input type="number" [(ngModel)]="editTokenData.alterVon" placeholder="Startalter"></ion-input>
+        <ion-input type="number" [(ngModel)]="editTokenData.alterVon" (ngModelChange)="onEditChanged()" placeholder="Startalter"></ion-input>
       </ion-item>
       <ion-item>
         <ion-label position="stacked">Endalter</ion-label>
         @if (editTokenData.alterBis !== null) {
-          <ion-input type="number" [(ngModel)]="editTokenData.alterBis" placeholder="optional, Endalter"></ion-input>
+          <ion-input type="number" [(ngModel)]="editTokenData.alterBis" (ngModelChange)="onEditChanged()" placeholder="optional, Endalter"></ion-input>
         }
         @if (editTokenData.alterBis === null) {
-          <ion-button fill="clear" (click)="editTokenData.alterBis = 0">+ Endalter</ion-button>
+          <ion-button fill="clear" (click)="addEditEndalter()">+ Endalter</ion-button>
         }
       </ion-item>
       @if (editTokenData.alterBis !== null) {
         <ion-item>
           <ion-label position="stacked">Schrittweite</ion-label>
           @if (editTokenData.schrittweite !== null) {
-            <ion-input type="number" [(ngModel)]="editTokenData.schrittweite" placeholder="optional, Schrittweite"></ion-input>
+            <ion-input type="number" [(ngModel)]="editTokenData.schrittweite" (ngModelChange)="onEditChanged()" placeholder="optional, Schrittweite"></ion-input>
           }
           @if (editTokenData.schrittweite === null) {
-            <ion-button fill="clear" (click)="editTokenData.schrittweite = 1">+ Schrittweite</ion-button>
+            <ion-button fill="clear" (click)="addEditSchrittweite()">+ Schrittweite</ion-button>
           }
         </ion-item>
       }
     </ion-list>
 
+    @if (editFormula) {
+      <ion-item>
+        <ion-label position="stacked">Formel</ion-label>
+        <ion-text>{{ editFormula }}</ion-text>
+      </ion-item>
+    }
+    <ion-item lines="none">
+      <ion-text [color]="editTokenCanSave ? 'success' : 'danger'">
+        <p>{{ editStatusText }}</p>
+      </ion-text>
+    </ion-item>
+
+    @if (editPreviewLabels().length > 0) {
+      <ion-list>
+        <ion-item lines="none">
+          <ion-label>
+            <h2>Vorschau</h2>
+            <p>{{ editPreviewLabels().length }} Altersklassen</p>
+          </ion-label>
+        </ion-item>
+        @for (label of editPreviewLabels(); track $index) {
+          <ion-item lines="none">
+            <ion-label>{{ label }}</ion-label>
+          </ion-item>
+        }
+      </ion-list>
+    }
+
     <div class="ion-padding">
-      <ion-button expand="block" [disabled]="!editTokenValid" (click)="saveEdit()">Speichern</ion-button>
+      <ion-button expand="block" [disabled]="!editTokenCanSave" (click)="saveEdit()">Speichern</ion-button>
     </div>
   </ion-content>
 }

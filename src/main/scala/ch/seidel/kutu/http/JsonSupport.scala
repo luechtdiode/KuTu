@@ -69,6 +69,8 @@ trait JsonSupport extends SprayJsonSupport with EnrichedJson with LowPriorityJso
   given scoreCalcTemplateViewFormat: RootJsonFormat[ScoreCalcTemplateView] = jsonFormat10(ScoreCalcTemplateView.apply)
   given scoreCalcPreviewRequestFormat: RootJsonFormat[ScoreCalcPreviewRequest] = jsonFormat3(ScoreCalcPreviewRequest.apply)
   given scoreCalcPreviewResponseFormat: RootJsonFormat[ScoreCalcPreviewResponse] = jsonFormat8(ScoreCalcPreviewResponse.apply)
+  given altersklassenPreviewRequestFormat: RootJsonFormat[AltersklassenPreviewRequest] = jsonFormat1(AltersklassenPreviewRequest.apply)
+  given altersklassenPreviewResponseFormat: RootJsonFormat[AltersklassenPreviewResponse] = jsonFormat2(AltersklassenPreviewResponse.apply)
   given mediaFormat: RootJsonFormat[Media] = jsonFormat3(Media.apply)
   given mediaAdminFormat: RootJsonFormat[MediaAdmin] = jsonFormat7(MediaAdmin.apply)
 
