@@ -710,7 +710,7 @@ package object domain {
       klassenDef.split(",")
         .flatMap {
           case rangeStepPattern(bezeichnung, von, bis, stepsize) => Range.inclusive(von, bis, stepsize).map(i => (bez(bezeichnung), i))
-          case rangepattern(bezeichnung, von, bis) => (str2Int(von) to str2Int(bis)).map(i => (bez(bezeichnung), i))
+          case rangepattern(bezeichnung, von, bis) => Seq((bez(bezeichnung), str2Int(von)), (bez(bezeichnung), str2Int(bis)+1))
           case intpattern(bezeichnung, von) => Seq((bez(bezeichnung), str2Int(von)))
           case _ => Seq.empty
         }.toList
