@@ -202,6 +202,7 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
     val riegen = selectRiegen(wettkampf.id).map(r => r.r -> r).toMap
     val riegenZuWettkampf = listRiegenZuWettkampf(wettkampf.id)
     val counts = riegenZuWettkampf.groupMap(_._1)(_._2).view.mapValues(_.sum)
+    val riege2Names = listRiege2NamesZuWettkampf(wettkampf.id)
     val riegeItems = riegenZuWettkampf.map(rs =>
       val (rName, rKind, rDG, rDisz) = rs
       val r = riegen.getOrElse(rName, Riege(rName, None, None, 0))
@@ -211,7 +212,8 @@ class CompetitionCoordinatorClientActor(wettkampfUUID: String) extends Persisten
         startId = r.start.map(_.id),
         startName = r.start.map(_.name),
         kind = r.kind,
-        athletCount = counts.getOrElse(rName, 0)
+        athletCount = counts.getOrElse(rName, 0),
+        riege2 = riege2Names.contains(rName)
       )).toList
 
     val athleteCountsByDurchgang = riegenZuWettkampf

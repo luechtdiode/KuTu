@@ -1204,7 +1204,8 @@ package object domain {
                         startId: Option[Long],
                         startName: Option[String],
                         kind: Int,
-                        athletCount: Int
+                        athletCount: Int,
+                        riege2: Boolean = false
                       ) extends DataObject
 
   case class DurchgangDurationItem(

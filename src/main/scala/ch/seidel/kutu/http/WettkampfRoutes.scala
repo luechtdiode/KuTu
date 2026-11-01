@@ -857,8 +857,14 @@ trait WettkampfRoutes extends WettkampfClient with SprayJsonSupport
                 delete {
                   entity(as[UpdateRiegeRequest]) { request =>
                     onSuccess(readWettkampfAsync(wkuuid.toString)) { wk =>
-                      manager.deleteRiegen(wk.id, List(request.name))
-                      complete(StatusCodes.OK, JsObject("deleted" -> JsArray(List(request.name).map(JsString(_)).toVector)))
+                      val deletable = manager.getAllStartRiegen(wk.id).find(_.name == request.name)
+                        .forall(r => r.kind == RiegeRaw.KIND_EMPTY_RIEGE || r.riege2 || r.athletCount == 0)
+                      if deletable then {
+                        manager.deleteRiegen(wk.id, List(request.name))
+                        complete(StatusCodes.OK, JsObject("deleted" -> JsArray(List(request.name).map(JsString(_)).toVector)))
+                      } else {
+                        complete(StatusCodes.Conflict)
+                      }
                     }
                   }
                 }

@@ -10,6 +10,7 @@ import {Teilnehmer, TeilnehmerImportRow, TeilnehmerItem} from '../backend-types'
 
 @Component({
   templateUrl: 'admin-teilnehmer.page.html',
+  styleUrls: ['admin-teilnehmer.page.scss'],
   standalone: false
 })
 export class AdminTeilnehmerPage implements OnDestroy {
@@ -24,13 +25,22 @@ export class AdminTeilnehmerPage implements OnDestroy {
     const tokens = this.filter().toLowerCase().split(/\s+/).filter(t => t.length > 0);
     if (tokens.length === 0) return this.items();
     return this.items().filter(i => {
-      const hay = [i.name, i.vorname, i.verein, i.riege, i.riege2, i.teamName]
+      const hay = [i.name, i.vorname, i.jahrgang, i.verein, i.riege, i.riege2, i.teamName]
         .map(v => (v || '').toLowerCase()).join('\u0001');
       return tokens.every(t => hay.includes(t));
     });
   });
 
-  selectedId = signal<number | null>(null);
+  grouped = computed(() => {
+    const map = new Map<number, { programmId: number; programm: string; items: TeilnehmerItem[] }>();
+    for (const i of this.filtered()) {
+      if (!map.has(i.programmId)) {
+        map.set(i.programmId, { programmId: i.programmId, programm: i.programm, items: [] });
+      }
+      map.get(i.programmId)!.items.push(i);
+    }
+    return [...map.values()].sort((a, b) => a.programm.localeCompare(b.programm));
+  });
 
   importFile = signal<File | null>(null);
   importRows = signal<TeilnehmerImportRow[]>([]);
@@ -84,12 +94,7 @@ export class AdminTeilnehmerPage implements OnDestroy {
     this.filter.set(ev?.detail?.value ?? '');
   }
 
-  select(i: TeilnehmerItem) {
-    this.selectedId.set(i.athletId);
-  }
-
   async edit(i: TeilnehmerItem) {
-    this.selectedId.set(i.athletId);
     const modal = await this.modalCtrl.create({
       component: TeilnehmerEditModalComponent,
       componentProps: { uuid: this.uuid, secret: this.secret, item: i }
@@ -153,6 +158,15 @@ export class AdminTeilnehmerPage implements OnDestroy {
       }
     } catch (e) {
       await this.toast('Import-Vorschau fehlgeschlagen', 'danger');
+    }
+  }
+
+  importStatusColor(status: TeilnehmerImportRow['status']): string {
+    switch (status) {
+      case 'neu': return 'success';
+      case 'geändert': return 'warning';
+      case 'entfernt': return 'danger';
+      default: return 'medium';
     }
   }
 

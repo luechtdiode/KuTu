@@ -1,0 +1,20 @@
+.filter-note {
+  display: block;
+  padding: 0 16px 8px;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.meta ion-icon,
+.meta-sep {
+  vertical-align: middle;
+}
+
+.removed ion-label {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
