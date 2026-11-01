@@ -538,6 +538,7 @@ export interface RiegeItem {
   startName?: string;
   kind: number;
   athletCount: number;
+  riege2?: boolean;
 }
 
 export interface DurchgangDurationItem {
