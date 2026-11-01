@@ -14,8 +14,6 @@ import org.apache.pekko.http.scaladsl.model.*
 import org.apache.pekko.http.scaladsl.model.headers.{ContentDispositionTypes, `Content-Disposition`}
 import org.apache.pekko.http.scaladsl.server.Route
 import org.slf4j.{Logger, LoggerFactory}
-import scalafx.application.Platform
-import scalafx.print.PageOrientation
 import spray.json.*
 
 import java.io.File
