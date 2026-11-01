@@ -190,7 +190,7 @@ class ScoreToExcelRenderer {
       }
 
       // Autosize columns for this sheet
-      cols.indices.foreach(sheet.autoSizeColumn)
+      cols.indices.foreach(ExcelColumnWidth.autoSize(sheet, _))
 
       // Freeze title + first header row
       if rowIndex > 2 then sheet.createFreezePane(0, 2)
@@ -317,7 +317,7 @@ class ScoreToExcelRenderer {
         rowIndex += 1
       }
 
-      teamCols.indices.foreach(sheet.autoSizeColumn)
+      teamCols.indices.foreach(ExcelColumnWidth.autoSize(sheet, _))
       if rowIndex > 2 then sheet.createFreezePane(0, 2)
     }
   }

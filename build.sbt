@@ -103,6 +103,7 @@ libraryDependencies ++= Seq(
   // Utilities
   "org.slf4j" % "slf4j-api" % slf4jV,
   "ch.qos.logback" % "logback-classic" % logbackV,
+  "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.25.3",
   "commons-codec" % "commons-codec" % "1.23.0",
   "org.apache.commons" % "commons-lang3" % "3.21.0",
   "org.apache.commons" % "commons-text" % "1.15.0",

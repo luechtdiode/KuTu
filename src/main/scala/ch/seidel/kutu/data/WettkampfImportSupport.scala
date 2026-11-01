@@ -149,7 +149,7 @@ object WettkampfImportSupport {
       // Keep the header visible while scrolling, like ranking Excel exports.
       sheet.createFreezePane(0, 1)
       headers.zipWithIndex.foreach { case (_, colIdx) =>
-        sheet.autoSizeColumn(colIdx)
+        ch.seidel.kutu.renderer.ExcelColumnWidth.autoSize(sheet, colIdx)
       }
       workbook.write(outputStream)
     }

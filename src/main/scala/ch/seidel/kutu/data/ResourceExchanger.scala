@@ -1198,7 +1198,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
 
       sheet.createFreezePane(0, 1)
-      headers.indices.foreach(colIdx => sheet.autoSizeColumn(colIdx))
+      headers.indices.foreach(colIdx => ch.seidel.kutu.renderer.ExcelColumnWidth.autoSize(sheet, colIdx))
       workbook.write(outputStream)
     }
   }
@@ -1396,7 +1396,7 @@ object ResourceExchanger extends KutuService with RiegenBuilder {
       }
 
       sheet.createFreezePane(0, 1)
-      headers.indices.foreach(colIdx => sheet.autoSizeColumn(colIdx))
+      headers.indices.foreach(colIdx => ch.seidel.kutu.renderer.ExcelColumnWidth.autoSize(sheet, colIdx))
       workbook.write(outputStream)
     }
   }
