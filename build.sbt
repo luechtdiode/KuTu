@@ -13,16 +13,16 @@ ThisBuild / version := "2.4.2"
 name := "KuTu"
 
 // library versions (from pom properties)
-val scalafxV     = "26.0.0-R38"
+val scalafxV     = "27.0.0-R39"
 val javafxV      = "27-ea+21" // current issues with macos - see https://youtrack.jetbrains.com/articles/SUPPORT-A-860/How-to-fix-JavaFX-running-crash-issue-NSInternalInconsistencyException-on-macOS?_gl=1*173yxy7*_ga*NTcyODg1ODk1LjE3NjczMDM1MTc.*_ga_9J976DJZ68*czE3NjczMDM1MTYkbzEkZzAkdDE3NjczMDM1MTgkajYwJGwwJGgw*_gcl_au*MjI4ODI3MTEwLjE3NjczMDM1MTk.*FPAU*MjI4ODI3MTEwLjE3NjczMDM1MTk.&_cl=MTsxOzE7V0dydFNwb0tnM2w0eHZuUUdzMUxiVjFYS1JaV3NIQjNMQmxKcHViMUtaUDNRYjlkcFFjUjBaa0NVczdwOWZtbjs=
                               // 25.0.1 runs stable on macOS but has other issues with Treetable JavaFX controls
-val pekkoHttpV   = "1.4.0"
-val pekkoV       = "1.7.0"
+val pekkoHttpV   = "1.4.2"
+val pekkoV       = "1.7.1"
 val slickV       = "3.6.1"
 val scalatestV   = "3.3.0-SNAP4"
-val gatlingV     = "3.15.1"
+val gatlingV     = "3.16.0"
 val slf4jV       = "2.0.20"
-val logbackV     = "1.6.5"
+val logbackV     = "1.6.6"
 
 // Ensure Java compiler options match the project's target
 ThisBuild / javacOptions ++= Seq("-source", "25", "-target", "25")
@@ -96,7 +96,7 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.4",
 
   // Database drivers / utils
-  "org.xerial" % "sqlite-jdbc" % "3.53.4.0",
+  "org.xerial" % "sqlite-jdbc" % "3.54.1.0",
   "org.postgresql" % "postgresql" % "42.7.14",
   "com.zaxxer" % "HikariCP" % "7.1.0",
 
@@ -107,13 +107,13 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-lang3" % "3.21.0",
   "org.apache.commons" % "commons-text" % "1.15.0",
   "technology.tabula" % "tabula" % "1.0.5",
-  "org.apache.poi" % "poi" % "5.5.1",
+  "org.apache.poi" % "poi" % "6.0.0",
   "org.apache.poi" % "poi-ooxml" % "6.0.0",
 
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.6",
   "org.apache.poi" % "poi-ooxml" % "6.0.0",
-  "org.simplejavamail" % "simple-java-mail" % "9.3.8",
+  "org.simplejavamail" % "simple-java-mail" % "9.3.9",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
   "org.javadelight" % "delight-nashorn-sandbox" % "0.5.6",
