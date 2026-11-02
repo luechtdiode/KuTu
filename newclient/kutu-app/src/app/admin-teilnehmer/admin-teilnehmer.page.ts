@@ -21,6 +21,7 @@ export class AdminTeilnehmerPage implements OnDestroy {
   items = signal<TeilnehmerItem[]>([]);
   filter = signal('');
   loading = signal(false);
+  busy = signal<string | null>(null);
   filtered = computed(() => {
     const tokens = this.filter().toLowerCase().split(/\s+/).filter(t => t.length > 0);
     if (tokens.length === 0) return this.items();
@@ -121,16 +122,24 @@ export class AdminTeilnehmerPage implements OnDestroy {
   }
 
   async exportExcel(includeData: boolean) {
+    if (this.busy() !== null) return;
+    const action = includeData ? 'export-excel' : 'export-template';
+    this.busy.set(action);
     try {
       const blob = await firstValueFrom(this.backend.exportTeilnehmerExcel(this.uuid, this.secret, includeData, this.ids()));
       this.download(blob, includeData ? 'Teilnehmerliste.xlsx' : 'Teilnehmer-Vorlage.xlsx');
     } catch (e) {
       await this.toast('Export fehlgeschlagen', 'danger');
+    } finally {
+      this.busy.set(null);
     }
   }
 
   async print(kind: 'notenblatt' | 'teilnehmer' | 'vereine' | 'durchgang' | 'riegenblatt') {
+    if (this.busy() !== null) return;
     const win = window.open('', '_blank');
+    const action = 'print-' + kind;
+    this.busy.set(action);
     try {
       const blob = await firstValueFrom(this.backend.getTeilnehmerPrint(this.uuid, kind, this.ids(), this.secret));
       const url = URL.createObjectURL(new Blob([blob], { type: 'text/html;charset=utf-8' }));
@@ -139,6 +148,8 @@ export class AdminTeilnehmerPage implements OnDestroy {
     } catch (e) {
       win?.close();
       await this.toast('Keine Daten zum Drucken', 'danger');
+    } finally {
+      this.busy.set(null);
     }
   }
 
@@ -146,7 +157,8 @@ export class AdminTeilnehmerPage implements OnDestroy {
     const input = ev.target as HTMLInputElement;
     const file = input.files && input.files.length > 0 ? input.files[0] : null;
     input.value = '';
-    if (!file) return;
+    if (!file || this.busy() !== null) return;
+    this.busy.set('import-preview');
     try {
       const preview = await firstValueFrom(this.backend.previewTeilnehmerImport(this.uuid, file, this.secret));
       this.importFile.set(file);
@@ -158,6 +170,8 @@ export class AdminTeilnehmerPage implements OnDestroy {
       }
     } catch (e) {
       await this.toast('Import-Vorschau fehlgeschlagen', 'danger');
+    } finally {
+      this.busy.set(null);
     }
   }
 
@@ -184,7 +198,8 @@ export class AdminTeilnehmerPage implements OnDestroy {
 
   async applyImport() {
     const file = this.importFile();
-    if (!file) return;
+    if (!file || this.busy() !== null) return;
+    this.busy.set('import-apply');
     try {
       const res = await firstValueFrom(this.backend.applyTeilnehmerImport(this.uuid, file, [...this.importSelected()], this.secret));
       await this.toast(res.applied + ' Änderungen übernommen');
@@ -192,6 +207,8 @@ export class AdminTeilnehmerPage implements OnDestroy {
       await this.loadData();
     } catch (e) {
       await this.toast('Import fehlgeschlagen', 'danger');
+    } finally {
+      this.busy.set(null);
     }
   }
 
