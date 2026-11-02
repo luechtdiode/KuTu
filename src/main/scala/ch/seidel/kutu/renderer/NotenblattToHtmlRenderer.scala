@@ -4,6 +4,7 @@ import ch.seidel.kutu.renderer.ServerPrintUtil.*
 import org.slf4j.Logger
 
 import java.io.File
+import scala.math.BigDecimal.RoundingMode
 
 trait NotenblattToHtmlRenderer {
   val logger: Logger
@@ -62,6 +63,7 @@ trait NotenblattToHtmlRenderer {
         }
         .totalCol {
           border-left: 1px solid #000;
+          padding-bottom: 18px;
         }
         .large {
           padding: 10px;
@@ -117,8 +119,22 @@ trait NotenblattToHtmlRenderer {
 // for loading logo see https://stackoverflow.com/questions/26447451/javafx-in-webview-img-tag-is-not-loading-local-images
   private def notenblattForGeTu(kandidat: ch.seidel.kutu.domain.Kandidat, logo: File) = {
     val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+      val wertung = kandidat.wertungen.find(w => w.wettkampfdisziplin.disziplin == dis._1)
+        .map(_.toWertung.resultatWithVariables)
+        .map(r =>
+          val ex1 = List(
+            if r.teilresultateE.nonEmpty then r.teilresultateE.mkString("E: ",", ","") else "",
+            if r.teilresultateD.nonEmpty then r.teilresultateD.mkString("D: ",", ","") else "",
+            if r.teilresultateP.nonEmpty then r.teilresultateP.mkString("P: ",", ","") else "",
+            if r.isStreichwertung then "(Streichwertung)" else ""
+          ).filter(_.nonEmpty).mkString("<br>")
+          val total = escaped(r.formattedEnd)
+          s"<td class='dataTd'>$ex1</td><td class='totalCol large'>$total</td>"
+        )
+        .getOrElse("&nbsp;")
+      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td>$wertung</tr>"""
     }
+    val totalPunkte = kandidat.wertungen.filter(!_.resultat.isStreichwertung).map(_.resultat.endnote).sum.setScale(2, RoundingMode.HALF_UP)
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     val logoHtml = if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s""
     s"""<div class=notenblatt>
@@ -135,12 +151,11 @@ trait NotenblattToHtmlRenderer {
       </table>
       <div class="showborder">
         <table class='dataTable' width="100%">
-          <tr class="totalRow heavyRow"><td class='dataTd'>Gerät</td><td class='dataTd'>1. Wertung</td><td class='dataTd'>2. Wertung</td><td class="dataTd totalCol">Endnote</td></tr>
+          <tr class="totalRow heavyRow"><td class='dataTd'>Gerät</td><td class='dataTd'>Detailwertungen</td><td class="dataTd totalCol">Endnote</td></tr>
           $dt
-          <tr class="heavyRow"><td class="dataTd large">Total</td><td class='dataTd'>&nbsp;</td><td class='dataTd'>&nbsp;</td><td class="dataTd totalCol">&nbsp;</td></tr>
+          <tr class="heavyRow"><td class="dataTd large">Total</td><td class='dataTd'>&nbsp;</td><td class="dataTd totalCol">$totalPunkte</td></tr>
         </table>
       </div>
-      <div class="rang">Rang: __________</div>
     </div>
     """
   }
@@ -170,9 +185,24 @@ trait NotenblattToHtmlRenderer {
   }
 
   private def notenblattForKuTu(kandidat: ch.seidel.kutu.domain.Kandidat, logo: File) = {
-    val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size+1)).map{dis =>
-      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td><td>&nbsp;</td><td>&nbsp;</td><td class="totalCol">&nbsp;</td></tr>"""
+    val d = kandidat.diszipline.zip(Range(1, kandidat.diszipline.size + 1)).map { dis =>
+      val wertung = ch.seidel.kutu.domain.Kandidat.mapToBestOfCounting(kandidat.wertungen).find(w => w.wettkampfdisziplin.disziplin == dis._1)
+        .map(_.resultat)
+        .map(r =>
+          val ex1 = List(
+            if r.teilresultateE.nonEmpty then r.teilresultateE.mkString("E: ", ", ", "") else s"E: ${r.formattedE}",
+            if r.teilresultateD.nonEmpty then r.teilresultateD.mkString("D: ", ", ", "") else s"D: ${r.formattedD}",
+            if r.teilresultateP.nonEmpty then r.teilresultateP.mkString("P: ", ", ", "") else "",
+            if r.isStreichwertung then "(Streichwertung)" else ""
+          ).filter(_.nonEmpty).mkString("<br>")
+          val total = escaped(r.formattedEnd)
+          s"<td class='dataTd'>$ex1</td><td class='totalCol large'>$total</td>"
+        )
+        .getOrElse("&nbsp;")
+      s"""<tr class="geraeteRow"><td class="large">${dis._2}. ${escaped(dis._1.easyprint)}</td>$wertung</tr>"""
     }
+    val totalPunkte = kandidat.wertungen.filter(!_.resultat.isStreichwertung).map(_.resultat.endnote).sum.setScale(3, RoundingMode.HALF_UP)
+
     val dt = d.updated(d.size-1, d.last.replace("geraeteRow", "totalRow")).mkString("", "\n", "\n")
     val logoHtml = if logo.exists then s"""<img class=logo src="${logo.imageSrcForWebEngine}" title="Logo"/>""" else s""
     s"""<div class=notenblatt>
@@ -187,9 +217,9 @@ trait NotenblattToHtmlRenderer {
       </table>
       <div class="showborder">
         <table class="dataTable" width="100%">
-          <tr class="totalRow heavyRow"><td class='dataTd'>Gerät</td><td class='dataTd'>D-Wert</td><td class='dataTd'>E-Wert</td><td class="dataTd totalCol">Endnote</td></tr>
+          <tr class="totalRow heavyRow"><td class='dataTd'>Gerät</td><td class='dataTd'>Detailwertungen</td><td class="dataTd totalCol">Endnote</td></tr>
           $dt
-          <tr class="heavyRow"><td class="dataTd large">Total</td><td class='dataTd'>&nbsp;</td><td class='dataTd'>&nbsp;</td><td class="dataTd totalCol">&nbsp;</td></tr>
+          <tr class="heavyRow"><td class="dataTd large">Total</td><td class='dataTd'>&nbsp;</td><td class="dataTd totalCol">$totalPunkte</td></tr>
         </table>
       </div>
     </div>

@@ -23,6 +23,7 @@ case object EmptyResponse {
 trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging with IpToDeviceID
   with LoginRoutes
   with WertungenRoutes
+  with TeilnehmerRoutes
   with WettkampfRoutes
   with ScoreCalcRoutes
   with AltersklassenRoutes
@@ -58,6 +59,7 @@ trait ApiService extends RouteConcatenation with CIDSupport with RouterLogging w
           login(userLookup, userIdLookup) ~
           wertungenRoutes ~
           scoreCalcRoutes ~
+          teilnehmerRoutes ~
           wettkampfRoutes ~
           scoresRoutes ~
           reportRoutes ~

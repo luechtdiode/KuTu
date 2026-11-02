@@ -13,6 +13,7 @@ interface CellRiege {
   name: string;
   kind: number;
   athletCount: number;
+  riege2?: boolean;
 }
 
 interface TableRow {
@@ -151,7 +152,7 @@ export class RiegeEinteilungPage implements OnDestroy {
   private buildTable(riegen: RiegeItem[], durations: DurchgangDurationItem[]) {
     this.unassignedRiegen.set(riegen
       .filter(r => !r.durchgang)
-      .map(r => ({ name: r.name, kind: r.kind, athletCount: r.athletCount })));
+      .map(r => ({ name: r.name, kind: r.kind, athletCount: r.athletCount, riege2: r.riege2 })));
 
     const durchgangNames = [...new Set(riegen.map(r => r.durchgang).filter(Boolean))] as string[];
     this.durchgangNames.set(durchgangNames);
@@ -166,7 +167,7 @@ export class RiegeEinteilungPage implements OnDestroy {
       for (const r of dgRiegen) {
         const sid = r.startId ?? -1;
         if (!cells[sid]) cells[sid] = [];
-        cells[sid].push({ name: r.name, kind: r.kind, athletCount: r.athletCount });
+        cells[sid].push({ name: r.name, kind: r.kind, athletCount: r.athletCount, riege2: r.riege2 });
       }
       return {
         durchgangName: dgName,
@@ -202,7 +203,7 @@ export class RiegeEinteilungPage implements OnDestroy {
       const request: RiegeSuggestionRequest = {
         ...this.generateParams,
         splitSexOption: this.generateParams.splitSexOption || undefined,
-        onDisziplinIds: !allSelected ? [...this.selectedDisziplinIds] : undefined,
+        onDisziplinIds: [...this.selectedDisziplinIds],
         filterDurchgang: this.filterDurchgaenge().length > 0 ? this.filterDurchgaenge() : undefined,
       };
       await firstValueFrom(this.backend.suggestRiegen(this.uuid, request, this.secret));
@@ -294,7 +295,7 @@ export class RiegeEinteilungPage implements OnDestroy {
     }
   }
 
-  async editRiege(item: CellRiege, durchgang: string, startId: number) {
+  async editRiege(item: CellRiege, durchgang: string, startId: number | null) {
     const modal = await this.modalCtrl.create({
       component: RiegeEditModalComponent,
       componentProps: {
@@ -302,39 +303,29 @@ export class RiegeEinteilungPage implements OnDestroy {
         durchgang,
         startId,
         kind: item.kind,
+        riege2: !!item.riege2,
+        athletCount: item.athletCount,
         disziplinen: this.disziplinen(),
       }
     });
     modal.onDidDismiss().then(async (result) => {
       if (!result.data) return;
-      if (result.data.delete && result.data.kind === 1) {
-        const {name, durchgang: newDg, startId: newStartId, kind} = result.data;
-        if (name === item.name && newDg === durchgang && newStartId === startId) return;
-        try {
-          const request: UpdateRiegeRequest = {name, durchgang: newDg, startId: newStartId, kind};
+      const {name, durchgang: newDg, startId: newStartId, kind} = result.data;
+      const request: UpdateRiegeRequest = {name, durchgang: newDg, startId: newStartId, kind};
+      try {
+        if (result.data.delete) {
           await firstValueFrom(this.backend.deleteRiege(this.uuid, request, this.secret));
-        } catch {
-          const toast = await this.toastCtrl.create({
-            message: 'Fehler beim Speichern',
-            duration: 3000,
-            color: 'danger'
-          });
-          await toast.present();
+        } else {
+          if (name === item.name && newDg === durchgang && newStartId === startId) return;
+          await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
         }
-      } else {
-        const {name, durchgang: newDg, startId: newStartId, kind} = result.data;
-        if (name === item.name && newDg === durchgang && newStartId === startId) return;
-        try {
-        const request: UpdateRiegeRequest = {name, durchgang: newDg, startId: newStartId, kind};
-        await firstValueFrom(this.backend.updateRiege(this.uuid, request, this.secret));
       } catch {
-          const toast = await this.toastCtrl.create({
-            message: 'Fehler beim Speichern',
-            duration: 3000,
-            color: 'danger'
-          });
-          await toast.present();
-        }
+        const toast = await this.toastCtrl.create({
+          message: 'Fehler beim Speichern',
+          duration: 3000,
+          color: 'danger'
+        });
+        await toast.present();
       }
     });
     await modal.present();

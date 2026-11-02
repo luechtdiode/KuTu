@@ -391,6 +391,16 @@ trait WettkampfService extends DBService
     }, Duration.Inf).groupBy(_._1).map(x => (x._1, x._2.map(_._2).toList))
   }
 
+  def listRiege2NamesZuWettkampf(wettkampf: Long): Set[String] = {
+    Await.result(database.run {
+        sql"""
+                  SELECT distinct w.riege2
+                  FROM wertung w
+                  where w.riege2 is not null and w.wettkampf_id = $wettkampf
+       """.as[String].withPinnedSession
+    }, Duration.Inf).toSet
+  }
+
   def listRiegenZuWettkampf(wettkampf: Long): IndexedSeq[(String, Int, Option[String], Option[Disziplin])] = {
     Await.result(database.run {
         sql"""

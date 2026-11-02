@@ -172,13 +172,14 @@
           <ion-icon name="warning-outline" color="warning"></ion-icon>
           Noch nicht eingeteilte Riegen ({{ unassignedRiegen().length }})
         </ion-card-title>
-        <ion-card-subtitle>Ziehe eine Riege auf eine Zelle in der Tabelle, um sie einem Durchgang und Gerät zuzuweisen.</ion-card-subtitle>
+        <ion-card-subtitle>Ziehe eine Riege auf eine Zelle in der Tabelle, um sie einem Durchgang und Gerät zuzuweisen, oder klicke sie zum Bearbeiten an.</ion-card-subtitle>
       </ion-card-header>
       <ion-card-content class="unassigned-chips">
         @for (riege of unassignedRiegen(); track riege.name) {
           <div class="riege-chip unassigned"
             [attr.draggable]="riege.kind !== 1"
             (dragstart)="riege.kind !== 1 && onDragStart($event, riege.name, '', null)"
+            (click)="editRiege(riege, '', null)"
                [title]="riege.kind === 1 ? 'Leere Riege – ' + riege.name + ' (' + riege.athletCount + ' Athleten)' : riege.name + ' (' + riege.athletCount + ' Athleten)'">
             <span class="riege-name">{{ riege.kind === 1 ? 'Leere Riege' : riege.name }}</span>
             <span class="riege-count">{{ riege.athletCount }}</span>

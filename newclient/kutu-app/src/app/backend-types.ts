@@ -538,6 +538,7 @@ export interface RiegeItem {
   startName?: string;
   kind: number;
   athletCount: number;
+  riege2?: boolean;
 }
 
 export interface DurchgangDurationItem {
@@ -641,4 +642,50 @@ export interface Terms {
   stand: string;
   title: string;
   blocks: TermsBlock[];
+}
+
+export interface TeilnehmerItem {
+  athletId: number;
+  name: string;
+  vorname: string;
+  geschlecht: string;
+  jahrgang: string;
+  verein: string;
+  programmId: number;
+  programm: string;
+  riege?: string;
+  riege2?: string;
+  team: number;
+  teamName: string;
+  reserve: number;
+}
+
+export interface TeilnehmerProgramm {
+  id: number;
+  name: string;
+}
+
+export interface TeilnehmerUpdate {
+  programmId?: number;
+  reserve?: number;
+  riege?: string;
+  riege2?: string;
+  team?: number;
+}
+
+export interface TeilnehmerImportRow {
+  key: string;
+  status: 'neu' | 'geändert' | 'entfernt';
+  name: string;
+  vorname: string;
+  jahrgang: string;
+  verein: string;
+  programm: string;
+  oldProgramm: string;
+  team: number;
+  reserve: number;
+}
+
+export interface TeilnehmerImportPreview {
+  rows: TeilnehmerImportRow[];
 }

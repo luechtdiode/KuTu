@@ -1,0 +1,203 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button [defaultHref]="'/admin/competitions/' + uuid"></ion-back-button>
+      <ion-icon name="list" style="margin-left: 8px"></ion-icon>
+    </ion-buttons>
+    <ion-title>Teilnehmer</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="goToRiegenEinteilung()" title="Zur Riegeneinteilung">
+        <ion-icon name="git-network" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="loadData(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <ion-card>
+    <ion-accordion-group>
+      <ion-accordion value="actions">
+        <ion-item slot="header">
+          <ion-icon slot="start" name="download-outline"></ion-icon>
+          <ion-label>Import/Export &amp; Drucksachen</ion-label>
+        </ion-item>
+        <div class="ion-padding" slot="content">
+          <ion-button expand="block" fill="outline" [disabled]="busy() !== null" (click)="exportExcel(false)">
+            @if (busy() === 'export-template') {
+              <ion-spinner slot="start" name="crescent"></ion-spinner>
+            }
+            Excel Vorlage
+          </ion-button>
+          <ion-button expand="block" [disabled]="busy() !== null" (click)="fileInput.click()">
+            @if (busy() === 'import-preview') {
+              <ion-spinner slot="start" name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon name="cloud-upload" slot="start"></ion-icon>
+            }
+            Excel Import
+          </ion-button>
+          <ion-button expand="block" [disabled]="busy() !== null" (click)="exportExcel(true)">
+            @if (busy() === 'export-excel') {
+              <ion-spinner slot="start" name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon name="download" slot="start"></ion-icon>
+            }
+            Excel Export
+          </ion-button>
+          <input #fileInput type="file" accept=".xlsx,.xls,.csv" hidden (change)="onImportFile($event)" />
+          <ion-button expand="block" color="secondary" [disabled]="busy() !== null" (click)="print('notenblatt')">
+            @if (busy() === 'print-notenblatt') {
+              <ion-spinner slot="start" name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon name="print" slot="start"></ion-icon>
+            }
+            Notenblätter
+          </ion-button>
+          <ion-button expand="block" color="secondary" [disabled]="busy() !== null" (click)="print('riegenblatt')">
+            @if (busy() === 'print-riegenblatt') {
+              <ion-spinner slot="start" name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon name="print" slot="start"></ion-icon>
+            }
+            Riegenblätter
+          </ion-button>
+          <ion-button expand="block" color="secondary" [disabled]="busy() !== null" (click)="print('durchgang')">
+            @if (busy() === 'print-durchgang') {
+              <ion-spinner slot="start" name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon name="print" slot="start"></ion-icon>
+            }
+            Durchgangliste
+          </ion-button>
+          <ion-button expand="block" color="secondary" [disabled]="busy() !== null" (click)="print('teilnehmer')">
+            @if (busy() === 'print-teilnehmer') {
+              <ion-spinner slot="start" name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon name="print" slot="start"></ion-icon>
+            }
+            Kategorieliste
+          </ion-button>
+          <ion-button expand="block" color="secondary" [disabled]="busy() !== null" (click)="print('vereine')">
+            @if (busy() === 'print-vereine') {
+              <ion-spinner slot="start" name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon name="print" slot="start"></ion-icon>
+            }
+            Vereinsliste
+          </ion-button>
+        </div>
+      </ion-accordion>
+    </ion-accordion-group>
+  </ion-card>
+
+  <ion-searchbar placeholder="Suche in Name, Jahrgang, Verein, Riege, Team" [debounce]="200" (ionInput)="onFilter($event)"></ion-searchbar>
+
+  @if (filter()) {
+    <ion-note class="filter-note">Export/Druck nur für die {{ filtered().length }} gefilterten Teilnehmer.</ion-note>
+  }
+
+  @if (importFile(); as f) {
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Import-Vorschau: {{ f.name }}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content class="ion-no-padding">
+        <ion-list>
+          @for (r of importRows(); track r.key) {
+            <ion-item [class.removed]="r.status === 'entfernt'">
+              <ion-checkbox slot="start" [checked]="importSelected().has(r.key)" (ionChange)="toggleImport(r.key)"></ion-checkbox>
+              <ion-label class="ion-text-wrap">
+                <h2>
+                  {{ r.name }} {{ r.vorname }} ({{ r.jahrgang }})
+                  <ion-badge [color]="importStatusColor(r.status)">{{ r.status }}</ion-badge>
+                </h2>
+                <p>{{ r.verein }}</p>
+                <p>
+                  @if (r.status === 'entfernt') {
+                    {{ r.oldProgramm }}
+                  } @else if (r.status === 'geändert') {
+                    {{ r.oldProgramm }} &rarr; {{ r.programm }}
+                  } @else {
+                    {{ r.programm }}
+                  }
+                  @if (r.team > 0) {
+                    <span class="meta-sep">&middot; Team {{ r.team }}</span>
+                  }
+                </p>
+              </ion-label>
+            </ion-item>
+          }
+        </ion-list>
+        <div class="ion-padding">
+          <ion-button expand="block" (click)="applyImport()" [disabled]="busy() !== null || importSelected().size === 0">
+            @if (busy() === 'import-apply') {
+              <ion-spinner slot="start" name="crescent"></ion-spinner>
+              Wird übernommen…
+            } @else {
+              {{ importSelected().size }} übernehmen
+            }
+          </ion-button>
+          <ion-button expand="block" fill="outline" [disabled]="busy() !== null" (click)="cancelImport()">Abbrechen</ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  }
+
+  @if (loading()) {
+    <ion-progress-bar type="indeterminate"></ion-progress-bar>
+  }
+
+  <ion-list>
+    @for (group of grouped(); track group.programmId) {
+      <ion-item-divider sticky>
+        <ion-label>
+          {{ group.programm }}
+          <ion-badge color="medium">{{ group.items.length }}</ion-badge>
+        </ion-label>
+      </ion-item-divider>
+
+      @for (i of group.items; track i.athletId) {
+        <ion-item-sliding #sliding>
+          <ion-item button (click)="sliding.open('end')">
+            <ion-icon slot="start" name="person-outline" color="medium"></ion-icon>
+            <ion-label class="ion-text-wrap">
+              <h2>
+                {{ i.name }}, {{ i.vorname }}
+                <ion-badge color="secondary">{{ i.jahrgang }}</ion-badge>
+              </h2>
+              <p>{{ i.verein }}</p>
+              <p class="meta">
+                <span><ion-icon name="git-network-outline"></ion-icon> Riege 1: {{ i.riege || '—' }}</span>
+                <span><ion-icon name="git-network-outline"></ion-icon> Riege 2: {{ i.riege2 || '—' }}</span>
+                <span><ion-icon name="people-outline"></ion-icon> {{ i.teamName || 'kein Team' }}</span>
+                @if (i.reserve > 0) {
+                  <span><ion-icon name="person-add-outline"></ion-icon> Reserve: {{ i.reserve }}</span>
+                }
+              </p>
+            </ion-label>
+          </ion-item>
+          <ion-item-options side="end">
+            <ion-item-option color="primary" (click)="edit(i)">
+              <ion-icon name="create-outline"></ion-icon>
+              Bearbeiten
+            </ion-item-option>
+            <ion-item-option color="danger" (click)="unassignFromCompetition(i)">
+              <ion-icon name="trash-outline"></ion-icon>
+              Entfernen
+            </ion-item-option>
+          </ion-item-options>
+        </ion-item-sliding>
+      }
+    } @empty {
+      @if (!loading()) {
+        <ion-item>
+          <ion-label class="ion-text-center">Keine Teilnehmer gefunden.</ion-label>
+        </ion-item>
+      }
+    }
+  </ion-list>
+</ion-content>
