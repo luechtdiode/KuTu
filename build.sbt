@@ -96,7 +96,7 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.4",
 
   // Database drivers / utils
-  "org.xerial" % "sqlite-jdbc" % "3.53.4.0",
+  "org.xerial" % "sqlite-jdbc" % "3.54.1.0",
   "org.postgresql" % "postgresql" % "42.7.14",
   "com.zaxxer" % "HikariCP" % "7.1.0",
 
