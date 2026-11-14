@@ -4,7 +4,7 @@ import JpackageExecutor.*
 
 import scala.collection.immutable.Seq
 
-ThisBuild / scalaVersion := "3.10.0"
+ThisBuild / scalaVersion := "3.10.1"
 ThisBuild / organization := "ch.seidel"
 ThisBuild / version := "2.4.2"
 
@@ -92,8 +92,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp" % slickV,
 
   // JSON / Jackson / Spray
-  "com.fasterxml.jackson.core" % "jackson-core" % "2.22.4",
-  "com.fasterxml.jackson.core" % "jackson-databind" % "2.22.4",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.23.0",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.23.0",
 
   // Database drivers / utils
   "org.xerial" % "sqlite-jdbc" % "3.54.1.0",
@@ -103,9 +103,9 @@ libraryDependencies ++= Seq(
   // Utilities
   "org.slf4j" % "slf4j-api" % slf4jV,
   "ch.qos.logback" % "logback-classic" % logbackV,
-  "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.25.3",
+  "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.26.1",
   "commons-codec" % "commons-codec" % "1.23.0",
-  "org.apache.commons" % "commons-lang3" % "3.21.0",
+  "org.apache.commons" % "commons-lang3" % "3.22.0",
   "org.apache.commons" % "commons-text" % "1.15.0",
   "technology.tabula" % "tabula" % "1.0.5",
   "org.apache.poi" % "poi" % "6.0.0",
@@ -114,7 +114,7 @@ libraryDependencies ++= Seq(
   // Additional Java libraries from pom.xml
   "org.controlsfx" % "controlsfx" % "11.2.6",
   "org.apache.poi" % "poi-ooxml" % "6.0.0",
-  "org.simplejavamail" % "simple-java-mail" % "9.3.9",
+  "org.simplejavamail" % "simple-java-mail" % "9.3.10",
   "net.glxn" % "qrgen" % "1.4",
   "com.github.markusbernhardt" % "proxy-vole" % "1.0.5",
   "org.javadelight" % "delight-nashorn-sandbox" % "0.5.6",
@@ -137,7 +137,7 @@ libraryDependencies ++= Seq(
   "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingV % Test,
   "io.gatling"            % "gatling-test-framework"    % gatlingV % Test,
   // Scala 3 std lib
-  "org.scala-lang" %% "scala3-library" % "3.10.0"
+  "org.scala-lang" %% "scala3-library" % "3.10.1"
 )
 
 enablePlugins(GatlingPlugin)

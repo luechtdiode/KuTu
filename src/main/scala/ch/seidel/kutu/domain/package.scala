@@ -1538,14 +1538,14 @@ package object domain {
   }
 
   object MatchCode {
-    val bmenc = new BeiderMorseEncoder()
+    val bmenc = BeiderMorseEncoder.builder().get()
     bmenc.setRuleType(RuleType.EXACT)
     bmenc.setMaxPhonemes(5)
-    val bmenc2 = new BeiderMorseEncoder()
+    val bmenc2 = BeiderMorseEncoder.builder().get()
     bmenc2.setRuleType(RuleType.EXACT)
     bmenc2.setMaxPhonemes(5)
     bmenc2.setNameType(NameType.SEPHARDIC)
-    val bmenc3 = new BeiderMorseEncoder()
+    val bmenc3 = BeiderMorseEncoder.builder().get()
     bmenc3.setRuleType(RuleType.EXACT)
     bmenc3.setMaxPhonemes(5)
     bmenc3.setNameType(NameType.ASHKENAZI)
