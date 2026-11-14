@@ -431,7 +431,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
             } ~
             pathLabeled("intermediate", "intermediate") {
               get {
-                (parameters(Symbol("q").?, Symbol("filter").*, Symbol("html").?) & optionalHeaderValueByName("clientid")) { (q, filter, html, clientid) =>
+                (parameters(Symbol("q").?, Symbol("filter").*, Symbol("html").?)) { (q, filter, html) =>
 
                   def filterMatchingWertungenToQuery = {
                     val queryTokens = q.toList.flatMap(x => x.split(" ")).map(_.toLowerCase)
@@ -449,7 +449,7 @@ ScoreRoutes extends SprayJsonSupport with JsonSupport with AuthSupport with Rout
                         }
                     }
                   }
-                  complete(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(competitionId.toString), clientid.getOrElse("")).flatMap {
+                  complete(CompetitionCoordinatorClientActor.publish(StartedDurchgaenge(competitionId.toString), clientId).flatMap {
                     case ResponseMessage(startedDurchgaenge) =>
                       val sd = startedDurchgaenge.asInstanceOf[Set[String]]
                       val kind = if wettkampf.teamrule.nonEmpty then Kombirangliste else Einzelrangliste

@@ -276,11 +276,12 @@ trait RegistrationRoutes extends SprayJsonSupport with JsonSupport with JwtSuppo
             }
           } ~ pathLabeled("refreshsyncs", "refreshsyncs") {
             get {
-              complete(
-                AthletIndexActor.publish(ResyncIndex).map { _ =>
+              complete {
+                AthletIndexActor.publish(ResyncIndex).foreach { _ =>
                   CompetitionRegistrationClientActor.publish(RegistrationResync(wettkampf.uuid.get), clientId)
-                  StatusCodes.OK
-                })
+                }
+                StatusCodes.OK
+              }
             }
           } ~ pathLabeled("syncactions", "syncactions") {
             get {

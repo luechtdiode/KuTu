@@ -13,13 +13,15 @@ class DurchgangStartriegenManager(service: KutuService, onCompleteFn: () => Any 
   def getAllStartRiegen(wettkampfId: Long): List[RiegeItem] = {
     val riegen = service.selectRiegen(wettkampfId)
     val counts = service.listRiegenZuWettkampf(wettkampfId).groupMap(_._1)(_._2).view.mapValues(_.sum)
+    val riege2Names = service.listRiege2NamesZuWettkampf(wettkampfId)
     riegen.map(r => RiegeItem(
       name = r.r,
       durchgang = r.durchgang,
       startId = r.start.map(_.id),
       startName = r.start.map(_.name),
       kind = r.kind,
-      athletCount = counts.getOrElse(r.r, 0)
+      athletCount = counts.getOrElse(r.r, 0),
+      riege2 = riege2Names.contains(r.r)
     ))
   }
 
@@ -39,7 +41,8 @@ class DurchgangStartriegenManager(service: KutuService, onCompleteFn: () => Any 
     onCompleteFn()
 
     val counts = service.listRiegenZuWettkampf(riege.wettkampfId).groupMap(_._1)(_._2).view.mapValues(_.sum)
-    RiegeItem(updated.r, updated.durchgang, updated.start.map(_.id), updated.start.map(_.name), updated.kind,  counts.getOrElse(updated.r, 0))
+    RiegeItem(updated.r, updated.durchgang, updated.start.map(_.id), updated.start.map(_.name), updated.kind, counts.getOrElse(updated.r, 0),
+      service.listRiege2NamesZuWettkampf(riege.wettkampfId).contains(updated.r))
   }
 
   def setEmptyRiege(wettkampfId: Long, durchgang: String, startGeraet: Disziplin, notify:Boolean = true): Unit = {

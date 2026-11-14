@@ -40,7 +40,11 @@ import {
   ScoreCalcPreviewResponse,
   AltersklassenPreviewRequest,
   AltersklassenPreviewResponse,
-  Terms
+  Terms,
+  TeilnehmerItem,
+  TeilnehmerUpdate,
+  TeilnehmerProgramm,
+  TeilnehmerImportPreview
 } from '../backend-types';
 import {map} from "rxjs/operators";
 
@@ -289,6 +293,57 @@ export class AdminBackendService {
       { days },
       { headers }
     );
+  }
+
+  private teilnehmerUrl(uuid: string): string {
+    return this.api + 'competition/' + uuid + '/teilnehmer';
+  }
+
+  private authHeaders(secret: string): HttpHeaders {
+    return new HttpHeaders({ 'x-access-token': secret });
+  }
+
+  getTeilnehmer(uuid: string, secret: string): Observable<TeilnehmerItem[]> {
+    return this.http.get<TeilnehmerItem[]>(this.teilnehmerUrl(uuid), { headers: this.authHeaders(secret) });
+  }
+
+  getTeilnehmerProgramme(uuid: string, secret: string): Observable<TeilnehmerProgramm[]> {
+    return this.http.get<TeilnehmerProgramm[]>(this.teilnehmerUrl(uuid) + '/programme', { headers: this.authHeaders(secret) });
+  }
+
+  getTeilnehmerTeams(uuid: string, athletId: number, secret: string): Observable<TeamItem[]> {
+    return this.http.get<TeamItem[]>(this.teilnehmerUrl(uuid) + '/athlet/' + athletId + '/teams', { headers: this.authHeaders(secret) });
+  }
+
+  updateTeilnehmer(uuid: string, athletId: number, update: TeilnehmerUpdate, secret: string): Observable<TeilnehmerItem> {
+    return this.http.put<TeilnehmerItem>(this.teilnehmerUrl(uuid) + '/athlet/' + athletId, update, { headers: this.authHeaders(secret) });
+  }
+
+  exportTeilnehmerExcel(uuid: string, secret: string, includeData: boolean, ids: number[]): Observable<Blob> {
+    return this.http.get(this.teilnehmerUrl(uuid) + '/export?includeData=' + includeData + '&ids=' + ids.join(','), {
+      headers: this.authHeaders(secret),
+      responseType: 'blob'
+    });
+  }
+
+  previewTeilnehmerImport(uuid: string, file: File, secret: string): Observable<TeilnehmerImportPreview> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<TeilnehmerImportPreview>(this.teilnehmerUrl(uuid) + '/import/preview', form, { headers: this.authHeaders(secret) });
+  }
+
+  applyTeilnehmerImport(uuid: string, file: File, selected: string[], secret: string): Observable<{ applied: number }> {
+    const form = new FormData();
+    form.append('selected', JSON.stringify(selected));
+    form.append('file', file, file.name);
+    return this.http.post<{ applied: number }>(this.teilnehmerUrl(uuid) + '/import/apply', form, { headers: this.authHeaders(secret) });
+  }
+
+  getTeilnehmerPrint(uuid: string, kind: string, ids: number[], secret: string): Observable<Blob> {
+    return this.http.get(this.teilnehmerUrl(uuid) + '/print/' + kind + '?ids=' + ids.join(','), {
+      headers: this.authHeaders(secret),
+      responseType: 'blob'
+    });
   }
 
   unassignAthletFromCompetition(uuid: string, athletId: number, secret: string): Observable<{ removedWertungen: number }> {

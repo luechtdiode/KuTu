@@ -44,9 +44,14 @@
 
   <div class="ion-padding">
     @if (kind === 0) {
-      <ion-button expand="block" [disabled]="!editName.trim() || !editDurchgang.trim()" (click)="confirm()">
+      <ion-button expand="block" [disabled]="!editName.trim() || !editDurchgang.trim() || selectedStartId === null" (click)="confirm()">
         Speichern
       </ion-button>
+      @if (canDelete) {
+        <ion-button expand="block" color="danger" fill="outline" (click)="delete()">
+          Riege löschen (Einträge in den Wertungen werden entfernt)
+        </ion-button>
+      }
     } @else {
       <ion-button expand="block" color="danger" (click)="delete()">
         leere Riege löschen ({{ startGeraet }} wird nicht mehr verwendet)
