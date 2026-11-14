@@ -373,7 +373,7 @@ export class AdminRankingsPage implements OnDestroy {
               const toast = await this.toastCtrl.create({ message: 'Gelöscht', duration: 2000, color: 'success' });
               await toast.present();
               if (this.editingScore()?.id === score.id) {
-                this.editingScore.set(null);
+                this.closeEditor();
               }
               await this.loadSavedScores();
             } catch {
