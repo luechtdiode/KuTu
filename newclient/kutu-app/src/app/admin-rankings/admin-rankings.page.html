@@ -61,6 +61,11 @@
                       <ion-icon slot="start" [name]="score.published ? 'cloud-done' : 'cloud-upload'"></ion-icon>
                       {{ score.published ? 'Zurück' : 'Veröffentlichen' }}
                     </ion-button>
+                    <ion-button size="small" fill="outline" color="danger"
+                      class="ion-hide-md-down"
+                      (click)="deleteScore(score)">
+                      <ion-icon slot="start" name="trash"></ion-icon>Löschen
+                    </ion-button>
                   </div>
                 </ion-label>
               </ion-item>
